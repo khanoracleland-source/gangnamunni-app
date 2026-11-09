@@ -67,7 +67,7 @@ describe('POST /v1/auth/register', () => {
     return [[]];
   };
   const post = (path: string, body: any, ip = '1.1.1.1') => request(app.getHttpServer()).post(path).set('X-Requested-With', 'XMLHttpRequest').set('X-Forwarded-For', ip).send(body);
-  const form = (o: any = {}) => ({ email: 'New@Naver.com', code: '', password: 'Abcdef12!', password2: 'Abcdef12!', name: '김민', birthDate: '2000-01-02', phone: '010-1234-5678', agreeTerms: true, agreePrivacy: true, agreeMarketing: false, ...o });
+  const form = (o: any = {}) => ({ email: 'New@Naver.com', code: '', password: 'Abcdef12!', password2: 'Abcdef12!', name: '김민', birthDate: '2000-01-02', phone: '010-1234-5678', agreeAge14: true, agreeTerms: true, agreePrivacy: true, agreeMarketing: false, ...o });
   const issue = async (email: string, ip: string) => {
     mails = [];
     await post('/v1/auth/register/code', { email }, ip).expect(201);
@@ -119,6 +119,20 @@ describe('POST /v1/auth/register', () => {
     expect(calls.some((c) => /RELEASE_LOCK/.test(c.sql))).toBe(true);
     expect(bridge[0].slice(0, 3)).toEqual([id, 'register', false]);
   });
+  it('2026-11 design: e-mail, code and password are enough, name / birth / phone are stored empty', async () => {
+    const code = await issue('lite@naver.com', '4.0.0.9');
+    await post('/v1/auth/register', form({ email: 'lite@naver.com', code, name: '', birthDate: '', phone: '' }), '4.0.0.9').expect(201);
+    const ins = calls.find((c) => /^INSERT INTO g5_member/.test(c.sql))!;
+    const [id, , name, nick, , , , , , , phone, birth, age] = ins.args;
+    expect([name, phone, birth, age]).toEqual(['', '', '', '']);
+    expect(nick).toBe('user' + id.slice(-8));
+  });
+  it('the 만 14세 이상 box is required', async () => {
+    const code = await issue('age@naver.com', '4.0.0.8');
+    const { agreeAge14: _drop, ...noAge } = form({ email: 'age@naver.com', code });
+    expect((await post('/v1/auth/register', noAge, '4.0.0.8').expect(400)).body.message).toBe('만 14세 이상만 가입할 수 있습니다.');
+    expect(calls.some((c) => /^INSERT/.test(c.sql))).toBe(false);
+  });
   it('the code is single use but the 30-minute verified mark survives a failed field check', async () => {
     const code = await issue('v@naver.com', '5.0.0.1');
     expect((await post('/v1/auth/register', form({ email: 'v@naver.com', code, password2: 'x' }), '5.0.0.1').expect(400)).body.message).toBe('비밀번호가 일치하지 않습니다.');
@@ -128,7 +142,8 @@ describe('POST /v1/auth/register', () => {
   it('validation messages, in order', async () => {
     const code = await issue('m@naver.com', '6.0.0.1');
     const bad = async (o: any, msg: string) => expect((await post('/v1/auth/register', form({ email: 'm@naver.com', code, ...o }), '6.0.0.1').expect(400)).body.message).toBe(msg);
-    await bad({ agreePrivacy: false }, '회원가입 약관과 개인정보 수집·이용에 동의해주세요.');
+    await bad({ agreeAge14: false }, '만 14세 이상만 가입할 수 있습니다.');
+    await bad({ agreePrivacy: false }, '서비스 이용약관과 개인정보 수집·이용에 동의해주세요.');
     await bad({ name: 'a' }, '이름을 2~50자의 올바른 형식으로 입력해주세요.');
     await bad({ birthDate: '2999-01-01' }, '올바른 생년월일을 입력해주세요.');
     await bad({ password: 'abc', password2: 'abc' }, '비밀번호는 영문, 숫자, 특수문자를 각각 포함한 9~20자로 입력해주세요.');

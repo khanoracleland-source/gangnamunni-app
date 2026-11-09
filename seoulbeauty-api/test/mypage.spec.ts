@@ -79,8 +79,8 @@ describe('mypage API (mock DB)', () => {
     process.env.PROFILE_PHOTO_DIR = dir;
     global.fetch = jest.fn(async (_u: any, init: any) => {
       const c: string = init?.headers?.cookie || '';
-      const who = c.includes('sid=kim') ? { id: 'kim', no: 42, nickname: '김닉', phone: '010-1234-5678' } : null;
-      return new Response(JSON.stringify(who ? { loggedIn: true, user: { name: '이름', level: 2, ...who } } : { loggedIn: false, user: null }), { status: 200 });
+      const who = c.includes('sid=kim') ? { id: 'kim', no: 42, nickname: '김닉', name: '홍길동', phone: '010-1234-5678' } : null;
+      return new Response(JSON.stringify(who ? { loggedIn: true, user: { level: 2, ...who } } : { loggedIn: false, user: null }), { status: 200 });
     }) as any;
     @Global() @Module({ providers: [{ provide: DB, useValue: db }], exports: [DB] }) class TestDbModule {}
     const mod = await Test.createTestingModule({ imports: [TestDbModule, AuthModule, MypageModule] }).compile();
@@ -100,7 +100,7 @@ describe('mypage API (mock DB)', () => {
 
   it('summary: counters, avatar, mypage ad image, points hidden by default', async () => {
     const r = (await get('/v1/mypage').expect(200)).body;
-    expect(r).toMatchObject({ nickname: '김닉', bookingCount: 3, consultCount: 2, points: { visible: false, balance: 0 } });
+    expect(r).toMatchObject({ nickname: '김닉', name: '홍길동', bookingCount: 3, consultCount: 2, points: { visible: false, balance: 0 } });
     expect(r.avatarUrl).toMatch(/^\/hairwang\/gangnamunni\/uploads\/profile\/kim\.png\?v=\d+$/);
     expect(r.ads.show).toBe(true);
     expect(r.ads.autoScroll).toBe(true);

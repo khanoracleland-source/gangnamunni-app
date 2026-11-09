@@ -7,7 +7,7 @@ import { MemberCtx, MypageService } from './mypage.service';
 
 function member(req: AuthedRequest): MemberCtx {
   const u = req.session!.user!;
-  return { id: u.id, no: Number(u.no) || 0, nickname: u.nickname || u.name || u.id, phone: u.phone || '' };
+  return { id: u.id, no: Number(u.no) || 0, nickname: u.nickname || u.name || u.id, name: u.name || '', phone: u.phone || '' };
 }
 
 /** 마이페이지 data. Everything is the member's own, so it is never cached. */

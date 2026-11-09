@@ -42,7 +42,7 @@ export default function Login() {
   const opts = useQuery({ queryKey: ["login-options"], queryFn: () => api.loginOptions(), staleTime: 60_000 });
   const [sheet, setSheet] = useState(false);
   const router = useRouter();
-  /** ← : back to the page the visitor came from; with no history (opened directly) go to the Next home. */
+  /** < : back to the page the visitor came from; with no history (opened directly) go to the Next home. */
   const goBack = () => { if (window.history.length > 1) router.back(); else router.push("/"); };
 
   useEffect(() => { if (me.data?.loggedIn) window.location.replace(url && url.startsWith("/") && !url.startsWith("//") ? url : "/next"); }, [me.data, url]);
@@ -58,7 +58,9 @@ export default function Login() {
 
   return (
     <div className={styles.wrap}>
-      <button type="button" className={styles.back} onClick={goBack} aria-label="뒤로 가기">←</button>
+      <button type="button" className={styles.back} onClick={goBack} aria-label="뒤로 가기">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+      </button>
       <div className={styles.hero}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={assetUrl("data/logos/pc") ?? ""} alt="서울미녀" />

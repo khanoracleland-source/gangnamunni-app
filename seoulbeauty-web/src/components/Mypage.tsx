@@ -79,9 +79,9 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
               {!data ? <span className="skeleton" style={{ display: "block", width: "100%", height: "100%", borderRadius: "50%" }} /> : data.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={assetUrl(data.avatarUrl) ?? ""} alt="프로필" />
-              ) : Array.from(data.nickname)[0]}
+              ) : Array.from(data.name)[0]}
             </span>
-            <span className={styles.pname}>{data ? data.nickname : <span className="skeleton" style={{ display: "inline-block", width: 96, height: 18, borderRadius: 4 }} />}</span>
+            <span className={styles.pname}>{data ? data.name : <span className="skeleton" style={{ display: "inline-block", width: 96, height: 18, borderRadius: 4 }} />}</span>
             {ARROW}
           </Link>
           </div>

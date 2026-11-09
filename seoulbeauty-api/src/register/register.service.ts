@@ -12,11 +12,16 @@ const bad = (message: string, status = 400): never => { throw new HttpException(
 
 export interface RegisterInput {
   email?: unknown; code?: unknown; password?: unknown; password2?: unknown; name?: unknown; birthDate?: unknown; phone?: unknown;
-  agreeTerms?: unknown; agreePrivacy?: unknown; agreeMarketing?: unknown;
+  agreeAge14?: unknown; agreeTerms?: unknown; agreePrivacy?: unknown; agreeMarketing?: unknown;
 }
 
 /**
- * gangnamunni/auth/register.php. Same checks in the same order, same g5_member row; the Gnuboard session is minted by PHP through the
+ * Nest side of gangnamunni/auth/register.php (the PHP page is still reachable by URL and keeps its own, stricter rules: name / birth date /
+ * phone required, no 만 14세 box; the app maps it to /next/register). Same g5_member row. The 2026-11 design asks only e-mail + code +
+ * password + the 약관 sheet here, so 이름 / 생년월일 / 휴대폰 are optional (a given value is still validated, otherwise an empty one is
+ * stored) and 만 14세 이상 is a required box. /next/register/profile collects them right after sign-up.
+ *
+ * The Gnuboard session is minted by PHP through the
  * bridge (api/session_login.php) because only PHP can create it. If the bridge is unavailable the account still exists and the caller
  * is told to sign in (loggedIn=false).
  */
@@ -60,35 +65,37 @@ export class RegisterService {
     if (!this.submitIp.hit(ip).allowed) bad('잠시 후 다시 시도해주세요.', 429);
     const email = s(b.email).trim().toLowerCase();
     const name = s(b.name).replace(/[\x00-\x1F\x7F]/g, '').trim();
-    const birth = parseBirth(s(b.birthDate).trim());
+    const birthRaw = s(b.birthDate).trim();
+    const birth = birthRaw ? parseBirth(birthRaw) : null;
     const password = s(b.password);
     const phone = s(b.phone).replace(/[^0-9]/g, '');
     const marketing = s(b.agreeMarketing) === '1' || b.agreeMarketing === true ? 1 : 0;
     const yes = (v: unknown) => v === true || s(v) === '1';
     const cfg = await this.config();
 
-    if (!yes(b.agreeTerms) || !yes(b.agreePrivacy)) bad('회원가입 약관과 개인정보 수집·이용에 동의해주세요.');
+    if (!yes(b.agreeAge14)) bad('만 14세 이상만 가입할 수 있습니다.');
+    if (!yes(b.agreeTerms) || !yes(b.agreePrivacy)) bad('서비스 이용약관과 개인정보 수집·이용에 동의해주세요.');
     if (!isEmail(email)) bad('올바른 이메일 주소를 입력해주세요.');
-    if (!NAME_RE.test(name)) bad('이름을 2~50자의 올바른 형식으로 입력해주세요.');
-    if (!birth) bad('올바른 생년월일을 입력해주세요.');
+    if (name && !NAME_RE.test(name)) bad('이름을 2~50자의 올바른 형식으로 입력해주세요.');
+    if (birthRaw && !birth) bad('올바른 생년월일을 입력해주세요.');
     const policy = prohibitedMail(email, s(cfg.cf_prohibit_email));
     if (policy) bad(policy);
     const otpErr = this.otp.check(email, s(b.code).trim());
     if (otpErr) bad(otpErr);
     if (!PASSWORD_RE.test(password)) bad('비밀번호는 영문, 숫자, 특수문자를 각각 포함한 9~20자로 입력해주세요.');
     if (password !== s(b.password2)) bad('비밀번호가 일치하지 않습니다.');
-    if (!PHONE_RE.test(phone)) bad('휴대폰 번호를 정확히 입력해주세요. (예: 01012345678)');
+    if (phone && !PHONE_RE.test(phone)) bad('휴대폰 번호를 정확히 입력해주세요. (예: 01012345678)');
 
     // HMS sync and the sign-up bonus run inside the PHP bridge: without it an account would be created half-set-up.
     if (!this.bridge.configured()) { this.log.error('SESSION_BRIDGE_SECRET is not set'); bad('지금은 회원가입을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.', 503); }
-    const mbId = await this.create(email, name, password, phone, birth!, marketing, ip, cfg);
+    const mbId = await this.create(email, name, password, phone, birth, marketing, ip, cfg);
     this.otp.clear(email);
     this.afterMails(email, mbId, cfg).catch(() => undefined);
     const minted = await this.bridge.mint(mbId, 'register', false, cookie, userAgent);
     return { success: true, loggedIn: minted.ok, cookies: minted.setCookies };
   }
 
-  private async create(email: string, name: string, password: string, phone: string, birth: { ymd: string; age: number }, marketing: number, ip: string, cfg: Record<string, any>): Promise<string> {
+  private async create(email: string, name: string, password: string, phone: string, birth: { ymd: string; age: number } | null, marketing: number, ip: string, cfg: Record<string, any>): Promise<string> {
     const [dup] = (await this.db.query('SELECT mb_no FROM g5_member WHERE LOWER(mb_email) = LOWER(?) LIMIT 1', [email])) as any;
     const dupMsg = (id: string) => `이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용해주세요. (${id})`;
     const reqId = Math.random().toString(16).slice(2, 14);
@@ -112,7 +119,7 @@ export class RegisterService {
         `INSERT INTO g5_member (mb_id, mb_password, mb_name, mb_nick, mb_nick_date, mb_email, mb_level, mb_datetime, mb_today_login, mb_ip, mb_login_ip, mb_email_certify, mb_open_date, mb_1, mb_recommend, mb_mailling, mb_sms, mb_hp, mb_birth, mb_2)
          SELECT ?, ?, ?, ?, CURDATE(), ?, ?, NOW(), NOW(), ?, ?, NOW(), CURDATE(), 'general', '', ?, ?, ?, ?, ?
          FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM g5_member WHERE LOWER(mb_email) = LOWER(?))`,
-        [mbId, createHash(password), name, nick, email, level, ip, ip, marketing, marketing, phone, birth.ymd, String(birth.age), email])) as any;
+        [mbId, createHash(password), name, nick, email, level, ip, ip, marketing, marketing, phone, birth?.ymd ?? '', birth ? String(birth.age) : '', email])) as any;
       if (Number(ins?.affectedRows) !== 1) { this.log.warn(`[${reqId}] duplicate atomic insert`); bad(dupMsg(reqId), 409); }
     } catch (e) {
       if (e instanceof HttpException) throw e;

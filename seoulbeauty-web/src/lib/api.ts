@@ -249,7 +249,7 @@ export interface RegisterTermsData { terms: string; privacy: string }
 /** /v1/mypage* — 마이페이지 (member only) */
 export interface MypageAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string }
 export interface MypageSummary {
-  nickname: string; avatarUrl: string | null; bookingCount: number; consultCount: number;
+  nickname: string; /** the real name (nickname while it is empty): shown in the header */ name: string; avatarUrl: string | null; bookingCount: number; consultCount: number;
   points: { visible: boolean; balance: number }; ads: { show: boolean; autoScroll: boolean; items: MypageAd[] };
 }
 export interface MyWishlistItem { id: number; hospitalId: number; name: string; available: boolean; imageUrl: string | null; district: string; address: string }
@@ -441,7 +441,8 @@ export const api = {
   loginOptions: () => get<{ kakao: boolean; google: boolean; apple: boolean; nest?: string[] }>("/v1/auth/login-options"),
   login: (b: { email: string; password: string; remember: boolean; url: string }) => send<{ success: boolean; redirect: string | null }>("POST", "/v1/auth/login", b, 30000),
   registerCode: (email: string) => send<{ success: boolean; message: string }>("POST", "/v1/auth/register/code", { email }, 30000),
-  register: (b: { email: string; code: string; password: string; password2: string; name: string; birthDate: string; phone: string; agreeTerms: boolean; agreePrivacy: boolean; agreeMarketing: boolean }) =>
+  /** name / birthDate / phone are optional: the design asks them right after sign-up */
+  register: (b: { email: string; code: string; password: string; password2: string; name?: string; birthDate?: string; phone?: string; agreeAge14: boolean; agreeTerms: boolean; agreePrivacy: boolean; agreeMarketing: boolean }) =>
     send<{ success: boolean; loggedIn: boolean }>("POST", "/v1/auth/register", b, 60000),
   socialPending: () => get<{ pending: boolean; provider?: string; name?: string; email?: string }>("/v1/auth/social/pending"),
   socialRegister: (b: { name: string; email: string; agreeTerms: boolean; agreePrivacy: boolean }) => send<{ success: boolean; loggedIn: boolean }>("POST", "/v1/auth/social/register", b, 60000),

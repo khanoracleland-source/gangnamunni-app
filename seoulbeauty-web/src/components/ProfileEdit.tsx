@@ -63,7 +63,9 @@ function Form({ data }: { data: MyProfile }) {
   return (
     <div className={styles.wrap}>
       <div className={styles.head}>
-        <button type="button" className={styles.back} onClick={back} aria-label="뒤로 가기">←</button>
+        <button type="button" className={styles.back} onClick={back} aria-label="뒤로 가기" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
         <span className={styles.headTitle} style={{ fontSize: 18, fontWeight: 500 }}>내 정보 수정</span>
       </div>
       {err && (err.field === "form" || err.field === "photo") && <div className={styles.pfErr} role="alert" style={{ margin: "12px 16px" }}>{err.message}</div>}

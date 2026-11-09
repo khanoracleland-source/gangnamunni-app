@@ -6,10 +6,10 @@ import { PointsService } from '../points/points.service';
 import { safeLink } from '../home/home.service';
 import { addressShort, CONSULT_EVENT_LABELS, CONSULT_SLOTS, consultDt, consultStatus, consultTypeLabel, dotDate, profileFileId, reviewDistrict, safeHttpUrl, StatusTone, telDigits, wishlistDistrict } from './mypage.logic';
 
-export interface MemberCtx { id: string; no: number; nickname: string; phone: string }
+export interface MemberCtx { id: string; no: number; nickname: string; /** 이름 (g5_member.mb_name) — empty until the member has entered it */ name: string; phone: string }
 export interface MypageAd { id: number; title: string; subtitle: string | null; imageUrl: string | null; linkUrl: string }
 export interface MypageSummary {
-  nickname: string; avatarUrl: string | null; bookingCount: number; consultCount: number;
+  nickname: string; /** what the header shows: the real name (any script, e.g. Korean), the nickname while there is none */ name: string; avatarUrl: string | null; bookingCount: number; consultCount: number;
   points: { visible: boolean; balance: number };
   ads: { show: boolean; autoScroll: boolean; items: MypageAd[] };
 }
@@ -86,7 +86,7 @@ export class MypageService {
       linkUrl: safeLink(a.link_url),
     }));
     return {
-      nickname: m.nickname || m.id, avatarUrl, bookingCount, consultCount,
+      nickname: m.nickname || m.id, name: m.name.trim() || m.nickname || m.id, avatarUrl, bookingCount, consultCount,
       points: { visible: pointsVisible, balance },
       ads: { show: settings === '1' && items.length > 0, autoScroll: theme === '1', items },
     };
