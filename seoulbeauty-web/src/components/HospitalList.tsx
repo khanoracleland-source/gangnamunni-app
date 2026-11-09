@@ -15,7 +15,50 @@ import popularOn from "@/assets/icons/sort-popular.png";
 import popularOff from "@/assets/icons/sort-popular-off.png";
 import reviewOn from "@/assets/icons/sort-review.png";
 import reviewOff from "@/assets/icons/sort-review-off.png";
-import styles from "./HospitalList.module.css";
+import "./hospital-list.css";
+
+/** hospital-list.css class names (plain, readable in the DOM instead of a CSS-module hash). */
+const styles = {
+  adAddr: "hl-ad-addr",
+  adBadge: "hl-ad-badge",
+  adCard: "hl-ad-card",
+  adInfo: "hl-ad-info",
+  adRounded: "hl-ad-rounded",
+  adThumb: "hl-ad-thumb",
+  adThumbEmpty: "hl-ad-thumb-empty",
+  adTitle: "hl-ad-title",
+  chip: "hl-chip",
+  chipActive: "hl-chip-active",
+  chipPill: "hl-chip-pill",
+  chips: "hl-chips",
+  district: "hl-district",
+  dosage: "hl-dosage",
+  dosageT: "hl-dosage-t",
+  empty: "hl-empty",
+  filter: "hl-filter",
+  filters: "hl-filters",
+  grid: "hl-grid",
+  gridBoxed: "hl-grid-boxed",
+  gridRounded: "hl-grid-rounded",
+  retry: "hl-retry",
+  selChip: "hl-sel-chip",
+  selRow: "hl-sel-row",
+  selT: "hl-sel-t",
+  sep: "hl-sep",
+  srChip: "hl-sr-chip",
+  srChipActive: "hl-sr-chip-active",
+  srEmpty: "hl-sr-empty",
+  srEmptyBtn: "hl-sr-empty-btn",
+  srEmptyIco: "hl-sr-empty-ico",
+  srEmptySub: "hl-sr-empty-sub",
+  srEmptyTitle: "hl-sr-empty-title",
+  srNone: "hl-sr-none",
+  srSugg: "hl-sr-sugg",
+  srSuggChip: "hl-sr-sugg-chip",
+  srSuggChips: "hl-sr-sugg-chips",
+  srSuggT: "hl-sr-sugg-t",
+  treat: "hl-treat",
+} as const;
 
 /**
  * Same orders as the API (hospital-query.ts). The rows come with the cheapest price line (server sort=price), whose priceMin is the
@@ -264,7 +307,6 @@ export default function HospitalList({ params, initial }: { params: HospitalList
             {SORT_LABEL[s]}
           </Link>
         ))}
-        {isFetching && <span className={styles.spin} aria-label="업데이트 중" />}
       </div>}
       {!noneFlag && ((p.treatment && !treatMode) || p.category) && (
         <div className={styles.filters}>

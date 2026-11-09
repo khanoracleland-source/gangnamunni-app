@@ -1,0 +1,47 @@
+/* 병원 카드 (HospitalCard, ListSkeleton): plain global classes with the hc- prefix, used through hospitalCardClasses.ts. Not a CSS module on purpose. */
+/* design 03-04 / 05-01: row 16/20, thumb 100, name 16/500 + wish 22, address 12, rating · reviews · best badge, tag chips 22 */
+.hc-card { position: relative; display: flex; gap: 14px; padding: 16px 20px; border-bottom: 1px solid #ECE9EA; align-items: flex-start; color: inherit; }
+.hc-thumb { width: 100px; height: 100px; flex: 0 0 100px; object-fit: cover; border: 1px solid #ECE9EA; box-sizing: border-box; background: #fff; display: block; }
+.hc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.hc-name-row { display: flex; align-items: flex-start; gap: 6px; }
+.hc-name { flex: 1; min-width: 0; font-size: calc(16px * var(--fs-scale)); font-weight: 500; line-height: 1.35; }
+.hc-wish { flex: 0 0 auto; display: flex; }
+.hc-addr { font-size: calc(12px * var(--fs-scale)); color: #4A4446; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-district { color: #4A4446; }
+.hc-sep { color: #CFC8CB; }
+.hc-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: calc(12px * var(--fs-scale)); color: #4A4446; }
+.hc-rating { display: inline-flex; align-items: center; gap: 3px; color: #1A1718; }
+.hc-rating img, .hc-best img { width: 14px; height: 14px; display: block; object-fit: contain; flex-shrink: 0; }
+.hc-rating b { font-weight: 700; }
+.hc-reviews { color: #4A4446; }
+.hc-best { display: inline-flex; align-items: center; gap: 3px; font-weight: 500; color: #1A1718; }
+.hc-price { color: var(--accent); font-weight: 700; font-size: calc(15px * var(--fs-scale)); }
+.hc-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 2px; }
+.hc-tag { height: 22px; padding: 0 7px; display: inline-flex; align-items: center; background: #F4F2F3; font-size: calc(11px * var(--fs-scale)); color: #4A4446; }
+/* hospital_list_content.php .card-tag-price (treatment selected, 05-01) */
+.hc-tag-price { margin-top: 2px; }
+.hc-tag-item { font-size: calc(16px * var(--fs-scale)); font-weight: 500; color: #1A1718; margin-bottom: 2px; }
+.hc-vat { font-size: calc(12px * var(--fs-scale)); color: #6B6466; }
+.hc-price-row { display: flex; align-items: baseline; gap: 8px; }
+.hc-sale { color: var(--accent); font-weight: 700; }
+.hc-num { font-size: calc(18px * var(--fs-scale)); }
+.hc-unit { font-size: calc(12px * var(--fs-scale)); font-weight: 400; color: #1A1718; }
+.hc-per { font-size: calc(12px * var(--fs-scale)); color: #6B6466; }
+/* design 03-09 (search result with a treatment): same divided rows as the list, price in ink (not red) */
+.hc-boxed { margin: 0; padding: 16px 20px; border: 0; border-bottom: 1px solid #ECE9EA; border-radius: 0; background: transparent; }
+.hc-boxed .hc-thumb { width: 100px; height: 100px; flex: 0 0 100px; border-color: #DCD6D8; border-radius: 12px; }
+.hc-boxed .hc-info { gap: 3px; }
+.hc-boxed .hc-tag-price { margin-top: 2px; }
+.hc-boxed .hc-sale { color: #1A1718; }
+.hc-boxed .hc-per { color: #6B6466; }
+/* design 05-01 (treatment picked) and the plain browse list: rounded card, 76 thumb, 17px treatment + price lines */
+.hc-rounded { margin: 12px 20px 0; padding: 16px; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; }
+.hc-rounded .hc-thumb { width: 76px; height: 76px; flex: 0 0 76px; border-color: #DCD6D8; border-radius: 12px; }
+.hc-rounded .hc-info { gap: 3px; }
+.hc-rounded .hc-name { font-size: calc(17px * var(--fs-scale)); }
+.hc-rounded .hc-tag-price { margin-top: 2px; }
+.hc-rounded .hc-tag-item { font-size: calc(17px * var(--fs-scale)); margin-bottom: 0; }
+.hc-rounded .hc-sale { color: #1A1718; }
+.hc-rounded .hc-num { font-size: calc(17px * var(--fs-scale)); }
+.hc-rounded .hc-price-row { line-height: 1.25; }
+.hc-rounded .hc-tags { margin-top: 4px; }

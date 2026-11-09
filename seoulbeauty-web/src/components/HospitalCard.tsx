@@ -7,7 +7,7 @@ import { trackSlotClick } from "@/lib/adTracking";
 import WishlistButton from "./WishlistButton";
 import starIcon from "@/assets/icons/star.png";
 import trophyIcon from "@/assets/icons/trophy.png";
-import styles from "./HospitalCard.module.css";
+import styles from "./hospitalCardClasses";
 
 /** extract_addr_district(): "서울 강남구 …" -> "강남" (2nd token first). */
 export function addrDistrict(addr: string | null): string {

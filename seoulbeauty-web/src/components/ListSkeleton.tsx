@@ -1,4 +1,4 @@
-import styles from "./HospitalCard.module.css";
+import styles from "./hospitalCardClasses";
 
 /** `rounded`: the placeholder rows take the bordered card shape (hospital browse list), so nothing jumps when the real cards arrive. */
 export default function ListSkeleton({ rows = 6, rounded = false }: { rows?: number; rounded?: boolean }) {

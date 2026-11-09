@@ -1,0 +1,62 @@
+/* 병원 목록 (/hospitals): plain global classes with the hl- prefix (readable in the DOM), used through the `styles` map in HospitalList.tsx. Not a CSS module on purpose. */
+.hl-chips { display: flex; gap: 8px; padding: 14px 20px; border-bottom: 1px solid #ECE9EA; overflow-x: auto; scrollbar-width: none; align-items: center; }
+.hl-chips::-webkit-scrollbar { display: none; }
+.hl-chip { flex: 0 0 auto; height: 32px; padding: 0 10px; display: inline-flex; align-items: center; gap: 5px; border: 1px solid #DCD6D8; border-radius: 4px; font-size: calc(14px * var(--fs-scale)); color: #9A9395; background: var(--bg); }
+.hl-chip img { width: 16px; height: 16px; display: block; object-fit: contain; flex-shrink: 0; }
+.hl-chip-pill { border-radius: 17px; }
+.hl-chip-active { border-color: #1A1718; color: #1A1718; }
+.hl-filters { display: flex; gap: 6px; padding: 0 16px 8px; align-items: center; flex-wrap: wrap; }
+.hl-filter { font-size: 12px; border: 1px solid var(--accent); padding: 3px 10px; }
+.hl-grid { padding: 0; }
+.hl-grid-boxed { padding-bottom: 0; }
+/* rounded cards carry margin-top only; give the last one room above the bottom nav */
+.hl-grid-rounded { padding-bottom: 12px; }
+.hl-empty { text-align: center; padding: 80px 20px; color: #999; }
+.hl-retry { color: var(--accent); text-decoration: underline; margin-left: 6px; }
+/* hospitals.php dosage chips (figma_sync_index.css .sr-dosage / .sr-chip) */
+.hl-dosage { display: flex; align-items: center; gap: 6px; padding: 12px 20px 10px; overflow-x: auto; scrollbar-width: none; }
+.hl-dosage::-webkit-scrollbar { display: none; }
+.hl-dosage-t { flex: 0 0 auto; font-size: calc(12px * var(--fs-scale)); font-weight: 700; color: #4A4446; margin-right: 4px; }
+.hl-sr-chip { flex: 0 0 auto; height: 30px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 15px; font-size: calc(13px * var(--fs-scale)); color: #1A1718; text-decoration: none; background: var(--bg); white-space: nowrap; }
+.hl-sr-chip-active { border-color: #DCD6D8; color: #4A4446; background: #F2EFF0; font-weight: 700; }
+.hl-filter b { font-weight: 700; margin-left: 2px; }
+/* in-feed ad card (hospital_list_content.php .ad-card) */
+.hl-ad-card { position: relative; display: flex; gap: 14px; padding: 16px 20px; border-bottom: 1px solid #ECE9EA; align-items: flex-start; text-decoration: none; color: inherit; }
+.hl-ad-thumb { width: 100px; height: 100px; flex: 0 0 100px; object-fit: cover; border: 1px solid #ECE9EA; box-sizing: border-box; background: #fff; }
+.hl-ad-thumb-empty { background: #D9D9D9; border-color: #D9D9D9; }
+.hl-ad-badge { position: absolute; top: 20px; left: 24px; background: #000; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+/* same shape as HospitalCard .hc-rounded so an ad sits inside the rounded list without breaking the rhythm */
+.hl-ad-rounded { margin: 12px 20px 0; padding: 16px; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; }
+.hl-ad-rounded .hl-ad-thumb { width: 76px; height: 76px; flex: 0 0 76px; border-color: #DCD6D8; border-radius: 12px; }
+.hl-ad-rounded .hl-ad-badge { top: 20px; left: 20px; }   /* 4px inside the rounded thumb (padding 16 + 4), as the divided row does (20/24 over 16/20) */
+.hl-ad-rounded .hl-ad-title { font-size: calc(17px * var(--fs-scale)); }
+.hl-ad-info { flex: 1; min-width: 0; }
+.hl-ad-title { font-size: 16px; font-weight: 500; line-height: 1.35; margin-bottom: 6px; }
+.hl-ad-addr { font-size: 13px; color: #4A4446; }
+.hl-district { color: #1A1718; }
+.hl-sep { color: #CFC8CB; }
+/* empty states (03-11 / 03-14) */
+.hl-sr-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 70px 32px 30px; }
+.hl-sr-empty-ico { width: 72px; height: 72px; border-radius: 50%; background: #F2EFF0; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+.hl-sr-empty-title { font-size: calc(18px * var(--fs-scale)); font-weight: 700; color: #1A1718; }
+.hl-sr-empty-sub { font-size: calc(14px * var(--fs-scale)); line-height: 1.6; color: #6B6466; margin-top: 8px; }
+.hl-sr-empty-btn { margin-top: 22px; width: 180px; height: 44px; box-sizing: border-box; border: 1px solid #DCD6D8; border-radius: 12px; background: #fff; color: #1A1718; font-size: calc(15px * var(--fs-scale)); font-weight: 500; }
+.hl-sr-sugg { padding: 0 20px 30px; text-align: center; }
+.hl-sr-sugg-t { font-size: calc(15px * var(--fs-scale)); font-weight: 700; margin-bottom: 12px; color: #1A1718; }
+.hl-sr-sugg-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.hl-sr-sugg-chip { height: 36px; padding: 0 12px; box-sizing: border-box; display: inline-flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 18px; font-size: calc(15px * var(--fs-scale)); color: #1A1718; text-decoration: none; }
+/* 03-14 (nothing found at all): roomier top, 17 / 15 text */
+.hl-sr-none { padding-top: 90px; }
+.hl-sr-none .hl-sr-empty-title { font-size: calc(17px * var(--fs-scale)); }
+.hl-sr-none .hl-sr-empty-sub { font-size: calc(15px * var(--fs-scale)); }
+
+/* design 05-01: treatment picked from the home list */
+.hl-sel-row { display: flex; align-items: center; gap: 8px; padding: 12px 20px 0; }
+.hl-sel-t { flex: 0 0 auto; font-size: calc(12px * var(--fs-scale)); font-weight: 700; color: #4A4446; }
+.hl-sel-chip { height: 36px; padding: 0 10px 0 12px; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #DCD6D8; border-radius: 18px; background: #F2EFF0; color: #4A4446; font-size: calc(13px * var(--fs-scale)); font-weight: 700; white-space: nowrap; text-decoration: none; min-width: 0; }
+.hl-treat .hl-dosage { padding: 10px 20px 0; }
+.hl-treat .hl-sr-chip { height: 36px; padding: 0 10px; border-radius: 18px; box-sizing: border-box; }
+.hl-treat .hl-chips { padding: 14px 20px; }
+.hl-treat .hl-chip { height: 36px; box-sizing: border-box; border-radius: 18px; font-size: calc(15px * var(--fs-scale)); color: #857E80; }
+.hl-treat .hl-chip-active { border-color: #1A1718; color: #1A1718; }
+.hl-treat .hl-grid { padding-bottom: 12px; }
