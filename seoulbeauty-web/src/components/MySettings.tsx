@@ -2,12 +2,13 @@
 import Loading from "./Loading";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import bellIcon from "@/assets/icons/bell.png";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type NotificationSettings, type SettingKey } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
-import { inApp, onFlutterEvent, openNotificationSettings, requestNotificationStatus } from "@/lib/bridge";
+import { announceLogout, inApp, onFlutterEvent, openNotificationSettings, requestNotificationStatus } from "@/lib/bridge";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
@@ -27,7 +28,7 @@ type Data = { settings: NotificationSettings };
 /** "2026.10.19" in Korea time, whatever the device clock says */
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()).replaceAll("-", ".");
 
-/** 07-01 설정 (notification_settings.php): the eight toggles, 로그아웃 (PHP ends the session, then lands on /next/ and tells the app) and 회원 탈퇴 (own page). */
+/** 07-01 설정 (notification_settings.php): the eight toggles, 로그아웃 (PHP ends the session, then lands on /next/ and tells the app) and 회원 탈퇴 (07-08 sheet first: a social member leaves right there, the others go on to /mypage/withdraw for the password). */
 export default function MySettings({ initial, anon }: { initial?: Data; anon?: boolean }) {
   const php = usePhpBase();
   const qc = useQueryClient();
@@ -37,6 +38,11 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
   const [note, setNote] = useState("");
   const [sheet, setSheet] = useState(false);
   const sheetRef = useRef<BottomSheetHandle>(null);
+  const [leave, setLeave] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const leaveRef = useRef<BottomSheetHandle>(null);
+  const router = useRouter();
+  const { data: profile } = useQuery({ queryKey: qk.myProfile, queryFn: () => api.myProfile(), retry: false, enabled: !anon });
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const say = (m: string) => { setNote(m); if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => setNote(""), 3000); };
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -63,6 +69,24 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
       const name = MKT_NAME[key];
       if (name) say(`${today()} 마케팅 정보(${name}) 수신${on ? "에 동의했어요" : "을 거부했어요"}`);
     } catch (e) { set(!on); say(e instanceof ApiError && e.status === 503 && typeof e.body?.message === "string" && e.body.message ? e.body.message : "설정 저장에 실패했어요. 다시 시도해주세요"); } finally { setBusy(null); }
+  };
+  /* 07-08 탈퇴 sheet: social members have no password, so they leave right here; the others go on to the form (reason, password). */
+  const leaveNow = async () => {
+    if (leaving) return;
+    setLeaving(true);
+    try {
+      /* the profile may still be loading (or have failed): ask for it now, and let the form decide when it cannot be told */
+      let me = profile;
+      if (!me) { try { me = await qc.fetchQuery({ queryKey: qk.myProfile, queryFn: () => api.myProfile() }); } catch { /* the form handles it */ } }
+      if (me?.social !== true) { router.push("/mypage/withdraw"); setLeaving(false); return; }
+      await api.withdraw({ reason: "", detail: "", password: "" });
+      announceLogout();
+      window.location.replace("/next/?app_logout=1");
+    } catch (e) {
+      setLeaving(false);
+      leaveRef.current?.close();
+      say(e instanceof ApiError && e.status !== 401 && e.message ? e.message : "탈퇴 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
+    }
   };
   const group = (title: string, items: [SettingKey, string, string?][]) => data && (
     <section className={styles.card}>
@@ -107,7 +131,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
               <section className={styles.card}>
                 <div className={styles.label}>계정관리</div>
                 <button type="button" className={styles.row} onClick={() => setSheet(true)}><span>로그아웃</span></button>
-                <Link className={styles.row} href="/mypage/withdraw"><span>회원 탈퇴</span></Link>
+                <button type="button" className={styles.row} onClick={() => setLeave(true)}><span>회원 탈퇴</span></button>
               </section>
             </>
           )}
@@ -119,6 +143,18 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
           <div className={styles.sheetBtns}>
             <button type="button" className={styles.sheetBtn} onClick={() => window.location.assign(phpUrl(php, "bbs/logout.php?url=%2Fnext%2F"))}>로그아웃</button>
             <button type="button" className={`${styles.sheetBtn} ${styles.sheetBtnPri}`} onClick={() => sheetRef.current?.close()}>아니오</button>
+          </div>
+        </div>
+      </BottomSheet>
+      <BottomSheet ref={leaveRef} open={leave} onClose={() => setLeave(false)} label="회원 탈퇴" dismissible={!leaving}>
+        <div className={styles.sheet}>
+          <div className={styles.sheetHead}>
+            <h2 className={styles.sheetTitle}>{profile?.name || profile?.nick || "회원"}님 정말 떠나시겠어요?</h2>
+            <p className={styles.sheetDesc}>탈퇴 후에는 일부 정보가 복구되지 않을 수 있어요<br />더 나은 경험을 제공할 수 있도록 계속 노력하겠습니다</p>
+          </div>
+          <div className={styles.sheetBtns}>
+            <button type="button" className={styles.sheetBtn} disabled={leaving} onClick={leaveNow}>{leaving ? "처리 중…" : "탈퇴하기"}</button>
+            <button type="button" className={`${styles.sheetBtn} ${styles.sheetBtnPri}`} disabled={leaving} onClick={() => leaveRef.current?.close()}>아니오</button>
           </div>
         </div>
       </BottomSheet>
