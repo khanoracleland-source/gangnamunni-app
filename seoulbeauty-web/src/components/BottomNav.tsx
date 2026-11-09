@@ -20,8 +20,8 @@ const items = [
   { next: "/mypage", label: "마이페이지", on: myOn, off: myOff },
 ] as const;
 
-/** Design part 02 (login / sign-up / password) and 07-01 설정 / 07-06 이용약관 have no tab bar. */
-const NO_NAV = ["/booking", "/login", "/register", "/register-terms", "/password-lost", "/password-reset", "/mypage/settings", "/terms"];
+/** Design part 02 (login / sign-up / password), 07-01 설정 / 07-06 이용약관 and 07-09 탈퇴 완료 have no tab bar. */
+const NO_NAV = ["/booking", "/login", "/register", "/register-terms", "/password-lost", "/password-reset", "/mypage/settings", "/mypage/withdraw/done", "/terms"];
 
 export default function BottomNav() {
   const pathname = usePathname();

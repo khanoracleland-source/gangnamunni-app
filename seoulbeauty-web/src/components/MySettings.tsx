@@ -81,7 +81,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
       if (me?.social !== true) { router.push("/mypage/withdraw"); setLeaving(false); return; }
       await api.withdraw({ reason: "", detail: "", password: "" });
       announceLogout();
-      window.location.replace("/next/?app_logout=1");
+      window.location.replace("/next/mypage/withdraw/done?app_logout=1");
     } catch (e) {
       setLeaving(false);
       leaveRef.current?.close();
