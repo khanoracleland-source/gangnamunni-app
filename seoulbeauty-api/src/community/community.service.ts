@@ -52,7 +52,7 @@ export class CommunityService {
   }
 
   /** community.php. Viewer-specific (blocked authors hidden, own likes) — callers must not cache publicly. */
-  async list(viewer: string | null, p: { tab: CommunityTab; category: string; regions: string[]; q: string; page: number }): Promise<CommunityList> {
+  async list(viewer: string | null, p: { tab: CommunityTab; category: string; regions: string[]; q: string; page: number; mine?: boolean }): Promise<CommunityList> {
     const blocked = await this.blockedIds(viewer);
     const offset = (p.page - 1) * COMMUNITY_PER_PAGE;
     const kw = p.q ? `%${likeEscape(p.q)}%` : '';
@@ -98,8 +98,10 @@ export class CommunityService {
       });
     } else {
       const nb = notBlockedSql('p.mb_id', blocked);
+      const cnb = notBlockedSql('c.mb_id', blocked);
       const where = [`p.status = 'active'`, nb.sql];
       const vals: unknown[] = [...nb.values];
+      if (p.mine) { where.push('p.mb_id = ?'); vals.push(viewer ?? ''); } // MY 커뮤니티 글: only the viewer's own posts
       if (p.category) { where.push('p.category = ?'); vals.push(p.category); }
       if (p.regions.length) {
         where.push(`(${p.regions.map(() => '(p.title LIKE ? OR p.content LIKE ?)').join(' OR ')})`);
@@ -110,10 +112,13 @@ export class CommunityService {
       const [[cnt], [rows]] = (await Promise.all([
         this.db.query(`SELECT COUNT(*) AS cnt FROM gangnamunni_community_posts p WHERE ${where.join(' AND ')}`, vals),
         this.db.query(
+          // comment_count: counted from the comment rows (the stored column drifts: it is never decremented), without blocked authors,
+          // so the list shows exactly what the detail page lists.
           `SELECT p.*,
-                  COALESCE((SELECT COUNT(*) FROM gangnamunni_community_likes l WHERE l.post_id = p.id), 0) AS like_count
+                  COALESCE((SELECT COUNT(*) FROM gangnamunni_community_likes l WHERE l.post_id = p.id), 0) AS like_count,
+                  (SELECT COUNT(*) FROM gangnamunni_community_comments c WHERE c.post_id = p.id AND ${cnb.sql}) AS comment_count
              FROM gangnamunni_community_posts p WHERE ${where.join(' AND ')} ORDER BY ${order} LIMIT ? OFFSET ?`,
-          [...vals, COMMUNITY_PER_PAGE, offset]),
+          [...cnb.values, ...vals, COMMUNITY_PER_PAGE, offset]),
       ])) as any;
       total = n(cnt[0]?.cnt);
       const liked = await this.likedSet(viewer, (rows as any[]).map((r) => n(r.id)), 'post');

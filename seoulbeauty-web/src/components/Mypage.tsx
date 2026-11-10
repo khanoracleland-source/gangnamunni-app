@@ -126,7 +126,7 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
           ))}
           <div className={styles.card}>
             <div className={styles.sectionTitle}>커뮤니티</div>
-            {row("/community", "icon-mypage-community", "MY 커뮤니티 글", undefined, true)}
+            {row("/mypage/community", "icon-mypage-community", "MY 커뮤니티 글", undefined, true)}
             {row("/mypage/wishlist", "icon-mypage-like", "MY 좋아요 목록", undefined, true)}
           </div>
           {support}

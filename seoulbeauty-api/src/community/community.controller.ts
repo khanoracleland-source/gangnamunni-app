@@ -29,6 +29,17 @@ export class CommunityController {
     });
   }
 
+  /** MY 커뮤니티 글 (마이페이지): the member's own posts, newest or most liked first. Member-only. */
+  @Get('mine')
+  @UseGuards(RequireAuthGuard)
+  async mine(@Query('tab') tab: unknown, @Query('page') page: unknown, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    return this.community.list(viewerOf(req)!.id, {
+      tab: normalizeTab(tab) === 'popular' ? 'popular' : 'latest', category: '', regions: [], q: '',
+      page: intParam(page, 1, 1, 100000, 'page'), mine: true,
+    });
+  }
+
   /** detail_community.php. `?view=1` (server render of the page only) counts one view. */
   @Get(':id')
   @UseGuards(AuthGuard)

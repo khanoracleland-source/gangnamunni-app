@@ -477,6 +477,8 @@ export const api = {
   event: (id: number, ctx?: ServerCtx) => get<EventDetail>(`/v1/events/${id}`, undefined, ctx),
   enterEvent: (id: number, input: EventEntryInput) => post<{ success: boolean; entryId: number; message: string }>(`/v1/events/${id}/entries`, input),
   community: (p: CommunityListParams = {}, ctx?: ServerCtx) => get<CommunityList>("/v1/community", { tab: p.tab, category: p.category, region: p.region, q: p.q, page: p.page && p.page > 1 ? p.page : undefined }, ctx),
+  /** MY 커뮤니티 글 (member only; 401 when logged out). */
+  myCommunity: (p: { tab?: string; page?: number } = {}) => get<CommunityList>("/v1/community/mine", { tab: p.tab, page: p.page && p.page > 1 ? p.page : undefined }),
   /** `view: true` only for the server render of the page (counts one view, like PHP). */
   communityPost: (id: number, o: { view?: boolean } = {}, ctx?: ServerCtx) => get<CommunityPost>(`/v1/community/${id}`, o.view ? { view: 1 } : undefined, ctx),
   toggleCommunityLike: (id: number) => post<{ success: boolean; liked: boolean; count: number }>(`/v1/community/${id}/like`, {}),
@@ -534,6 +536,7 @@ export const qk = {
   home: ["home"] as const,
   events: (category: string, raffle: boolean) => ["events", category, raffle] as const,
   event: (id: number) => ["event", id] as const,
+  myCommunity: (tab: string, page: number) => ["community", "mine", tab, page] as const,
   community: (p: CommunityListParams) => ["community", p.tab || "latest", p.category || "", p.region || "", p.q || "", p.page || 1] as const,
   communityPost: (id: number) => ["communityPost", id] as const,
 };

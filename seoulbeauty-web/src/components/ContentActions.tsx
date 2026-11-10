@@ -23,7 +23,7 @@ const REASONS: [string, string][] = [
 const DOTS = <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>;
 
 const LINE = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" } as const;
-const DELETE_ICON = <svg viewBox="0 0 24 24" {...LINE} aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10 11v5M14 11v5" /></svg>;
+const DELETE_ICON = <svg viewBox="0 0 24 24" {...LINE} aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>;
 
 /** closing leg of a sheet → sheet hand-over: a bit quicker than a plain close (400 ms) so the pair does not drag */
 const CHAIN_MS = 280;
@@ -48,9 +48,14 @@ export default function ContentActions({ type, id, isMine, authorName, className
   const toast = useToast();
 
   const nextRef = useRef<Step | null>(null);
+  const liveRef = useRef(false); // a sheet is on screen (false once it has closed, e.g. the user dismissed it while the link was being copied)
+  const afterRef = useRef<(() => void) | null>(null); // runs once the sheet has finished sliding out (e.g. the 링크 복사 toast)
   const close = () => {
+    liveRef.current = false;
     setStep("closed"); setPicked([]); setDetail(""); setMsg("");
     // "신고" from the ⋯ menu: the menu sheet has just glided down; now a fresh sheet slides up with the report form
+    const after = afterRef.current; afterRef.current = null;
+    if (after) window.setTimeout(after, 30);
     const next = nextRef.current; nextRef.current = null;
     if (next) window.setTimeout(() => setStep(next), 30);
   };
@@ -78,14 +83,16 @@ export default function ContentActions({ type, id, isMine, authorName, className
   const copyLink = async () => {
     const url = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? "/next"}/${type === "review" ? "reviews" : "community"}/${id}`;
     const ok = await copyText(url);
+    const say = () => toast(ok ? "링크가 복사되었습니다." : "링크 복사에 실패했습니다.");
+    if (!liveRef.current) { say(); return; } // the user already dismissed the sheet while copying
+    afterRef.current = say; // after the sheet has glided down, then the toast rises
     sheetRef.current?.close();
-    toast(ok ? "링크가 복사되었습니다." : "링크 복사에 실패했습니다.");
   };
 
   const label = type === "community" ? "게시글" : type === "comment" ? "댓글" : "후기";
   return (
     <>
-      <button type="button" className={className} aria-label={`${label} 메뉴`} onClick={(e) => { e.stopPropagation(); setStep("menu"); }}>{DOTS}</button>
+      <button type="button" className={className} aria-label={`${label} 메뉴`} onClick={(e) => { e.stopPropagation(); afterRef.current = null; nextRef.current = null; liveRef.current = true; setStep("menu"); }}>{DOTS}</button>
       {/* the sheet is a portal, but React still bubbles its clicks (dim tap included) to the parent card's onClick: stop them here */}
       <div style={{ display: "contents" }} onClick={(e) => e.stopPropagation()}>
       <BottomSheet ref={sheetRef} open={step !== "closed"} onClose={close} label={`${label} 메뉴`} dismissible={!busy}>
@@ -101,10 +108,10 @@ export default function ContentActions({ type, id, isMine, authorName, className
                 {isMine && type === "community" ? (
                   <>
                     <button type="button" className={styles.row} onClick={() => router.push(`/community/write?id=${id}`)}>
-                      <span className={styles.ico}><Image src={editIcon} alt="" width={22} height={22} /></span>수정
+                      <span className={styles.ico}><Image src={editIcon} alt="" width={22} height={22} /></span>수정하기
                     </button>
-                    <button type="button" className={`${styles.row} ${styles.red}`} onClick={() => goTo("delete")}>
-                      <span className={styles.ico}>{DELETE_ICON}</span>삭제
+                    <button type="button" className={styles.row} onClick={() => goTo("delete")}>
+                      <span className={`${styles.ico} ${styles.red}`}>{DELETE_ICON}</span>삭제하기
                     </button>
                   </>
                 ) : isMine ? (

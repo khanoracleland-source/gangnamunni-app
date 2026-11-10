@@ -1,7 +1,7 @@
 /* design: 커뮤니티 글쓰기 (no tab bar; submit pinned to the bottom) */
 .wrap { box-sizing: border-box; max-width: 640px; margin: 0 auto calc(-1 * (var(--nav-h) + var(--sab))); min-height: 100dvh; display: flex; flex-direction: column; padding: 0 20px calc(24px + var(--sab)); background: #fff; color: #1A1718; }
-.head { position: relative; height: 56px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
-.back { position: absolute; left: -8px; width: 40px; height: 44px; display: flex; align-items: center; justify-content: center; color: inherit; }
+.head { position: sticky; top: 0; z-index: 20; height: 56px; display: flex; align-items: center; justify-content: center; margin: 0 -20px 8px; padding: 0 20px; background: #fff; } /* stays pinned while the form scrolls */
+.back { position: absolute; left: 12px; width: 40px; height: 44px; display: flex; align-items: center; justify-content: center; color: inherit; }
 .title { font-size: 17px; font-weight: 500; }
 .h { display: block; font-size: 15px; font-weight: 700; margin: 0 0 12px; }
 .hGap { margin-top: 24px; }
@@ -13,15 +13,16 @@
 .cat input:checked + .box::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
 .cat input:focus-visible + .box { outline: 2px solid #AC1830; outline-offset: 2px; }
 .line { border: 0; border-top: 1px solid #ECE9EA; margin: 20px 0 24px; }
-.field { display: block; width: 100%; box-sizing: border-box; padding: 0 16px; height: 52px; border: 1px solid #DAD7D8; border-radius: 12px; font: inherit; font-size: 16px; background: #fff; color: #1A1718; }
+.field { display: block; width: 100%; box-sizing: border-box; padding: 0 16px; height: 52px; border: 1px solid #DAD7D8; border-radius: 14px; font: inherit; font-size: 16px; background: #fff; color: #1A1718; }
 .field::placeholder { color: #9A9395; }
 .field:focus { outline: none; border-color: #AC1830; }
-.area { height: 148px; padding: 14px 16px; resize: none; line-height: 1.5; }
+.area { height: 154px; padding: 16px; resize: none; line-height: 1.5; border-color: transparent; border-radius: 20px; background: #F7F5F6; }
+.area:focus { border-color: #AC1830; }
 .count { margin-top: 8px; text-align: right; font-size: 13px; color: #6B6567; }
 .photos { display: flex; flex-wrap: wrap; gap: 10px; }
-.tile { width: 90px; height: 88px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px dashed #BDB6B9; background: #fff; font: inherit; font-size: 13px; color: #4A4446; padding: 0; }
+.tile { width: 92px; height: 92px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; border: 1px dashed #BDB6B9; background: #fff; font: inherit; font-size: 13px; color: #4A4446; padding: 0; }
 .tile:disabled { opacity: .5; }
-.thumb { position: relative; width: 90px; height: 88px; background: #DAD7D8; }
+.thumb { position: relative; width: 92px; height: 92px; background: #DAD7D8; border-radius: 10px; overflow: hidden; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .thumb button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff; line-height: 22px; }
 .hint { margin-top: 16px; font-size: 12px; color: #4A4446; }
@@ -30,3 +31,9 @@
 .submit { width: 100%; height: 60px; border-radius: 12px; background: #A02535; color: #fff; font-size: 18px; font-weight: 700; }
 .submit:disabled { opacity: 0.6; }
 .empty { padding: 60px 20px; text-align: center; }
+/* preview of the /community card photos (same sizes as CommunityList .thumbs/.thumb) */
+.pv { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-radius: 16px; overflow: hidden; background: #DAD7D8; }
+.pvOne { grid-template-columns: 1fr; }
+.pvCell { height: clamp(115px, 30vw, 180px); overflow: hidden; background: #DAD7D8; }
+.pvCell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pvNote { margin-top: 8px; font-size: 12px; color: #9A9395; }

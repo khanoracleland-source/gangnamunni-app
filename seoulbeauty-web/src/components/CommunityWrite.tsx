@@ -88,7 +88,7 @@ function Editor({ id, data }: { id: number | null; data: CommunityForm }) {
         <button type="button" className={styles.back} onClick={() => router.back()} aria-label="뒤로 가기">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
         </button>
-        <div className={styles.title}>{id ? "게시글 수정" : "나만의 뷰티 경험을 공유해보세요"}</div>
+        <div className={styles.title}>{id ? "글 수정하기" : "나만의 뷰티 경험을 공유해보세요"}</div>
       </div>
 
       <div className={styles.h}>관심 있는 카테고리를 선택해주세요</div>
@@ -112,12 +112,6 @@ function Editor({ id, data }: { id: number | null; data: CommunityForm }) {
 
       <div className={`${styles.h} ${styles.hGap}`}>사진 (최대 {data.maxPhotos}장, 각 5MB 이하)</div>
       <div className={styles.photos}>
-        {/* Button + ref, not a label: Android WebView opens the chooser twice for label-wrapped inputs. */}
-        <button type="button" className={styles.tile} disabled={slots - picks.length <= 0} onClick={() => fileRef.current?.click()}>
-          {plus}<span>사진 추가</span>
-        </button>
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={onPick} />
-        <div className={styles.tile} aria-live="polite">{plus}<span>{total} / {data.maxPhotos}</span></div>
         {kept.map((u) => (
           <div key={u} className={styles.thumb}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -132,11 +126,31 @@ function Editor({ id, data }: { id: number | null; data: CommunityForm }) {
             <button type="button" aria-label="사진 삭제" onClick={() => { URL.revokeObjectURL(p.url); setPicks((cur) => cur.filter((x) => x !== p)); }}>×</button>
           </div>
         ))}
+        {/* One dashed tile = add button + counter (design). Button + ref, not a label: Android WebView opens the chooser twice for label-wrapped inputs. */}
+        <button type="button" className={styles.tile} disabled={slots - picks.length <= 0} aria-label={`사진 추가 ${total} / ${data.maxPhotos}`} onClick={() => fileRef.current?.click()}>
+          {plus}<span aria-live="polite">{total} / {data.maxPhotos}</span>
+        </button>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden onChange={onPick} />
       </div>
+      {total > 0 && (
+        <>
+          {/* how the photos look on a /community card: the first two, side by side (one photo = full width) */}
+          <div className={`${styles.h} ${styles.hGap}`}>커뮤니티 미리보기</div>
+          <div className={`${styles.pv} ${total === 1 ? styles.pvOne : ""}`}>
+            {[...kept.map((u) => assetUrl(u) ?? ""), ...picks.map((p) => p.url)].slice(0, 2).map((src, i) => (
+              <div className={styles.pvCell} key={i}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" />
+              </div>
+            ))}
+          </div>
+          {total > 2 && <div className={styles.pvNote}>목록에는 처음 2장만 보여요</div>}
+        </>
+      )}
       <div className={styles.hint}>운영정책을 위반한 게시물은 삭제될 수 있습니다</div>
       {error && <div className={styles.error} role="alert">{error}</div>}
       <div className={styles.spacer} />
-      <button type="submit" className={styles.submit} disabled={busy}>{busy ? "저장 중…" : id ? "수정하기" : "작성했어요"}</button>
+      <button type="submit" className={styles.submit} disabled={busy}>{busy ? "저장 중…" : id ? "수정했어요" : "작성했어요"}</button>
     </form>
   );
 }
