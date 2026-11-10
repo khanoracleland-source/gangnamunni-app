@@ -114,7 +114,7 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
                       </div>
                       <span className={styles.aname}>{it.authorName}</span>
                       <ContentActions type={it.kind === "review" ? "review" : "community"} id={it.id} isMine={it.isMine} authorName={it.authorName} className={styles.more}
-                        onDone={(w) => say(w === "deleted" ? "게시글이 삭제되었습니다." : w === "blocked" ? "사용자를 차단했습니다." : "신고가 접수되었습니다.")} />
+                        onDone={(w) => { if (w !== "blocked") say(w === "deleted" ? "게시글이 삭제되었습니다." : "신고가 접수되었습니다."); }} />
                     </div>
                     <span className={it.kind === "review" ? styles.tag : styles.cat}>{it.category}</span>
                     <Link href={href} className={styles.ptitle}>{it.title}</Link>

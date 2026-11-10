@@ -10,6 +10,8 @@ import linkIcon from "@/assets/icons/menu-link.png";
 import blockIcon from "@/assets/icons/menu-block.png";
 import reportIcon from "@/assets/icons/menu-report.png";
 import editIcon from "@/assets/icons/menu-edit.png";
+import hideContentIcon from "@/assets/icons/menu-hide-content.png";
+import hideNoticeIcon from "@/assets/icons/menu-hide-notice.png";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import { useToast } from "./Toast";
 import styles from "./ContentActions.module.css";
@@ -52,6 +54,7 @@ export default function ContentActions({ type, id, isMine, authorName, className
       if (r === undefined) return; // redirected to login
       refresh();
       sheetRef.current?.close();
+      if (done === "blocked") toast("차단이 완료되었어요."); // here, not in the callers: the screen may change right after (detail page → list)
       onDone?.(done);
     } catch (e) {
       setMsg(e instanceof ApiError && e.status !== 401 ? e.message : fallback);
@@ -116,9 +119,23 @@ export default function ContentActions({ type, id, isMine, authorName, className
             )}
             {step === "block" && (
               <>
-                <p className={styles.text}>{authorName}님을 차단하면 서로의 글과 댓글이 보이지 않습니다.</p>
-                <button type="button" className={`${styles.item} ${styles.danger}`} disabled={busy}
-                  onClick={() => run(() => api.blockAuthor(type, id), "blocked", "차단하지 못했습니다.")}>차단하기</button>
+                <h2 className={styles.confirmTitle}>{authorName}님을 차단할까요?</h2>
+                <ul className={styles.facts}>
+                  <li>
+                    <span className={styles.factIco}><Image src={hideContentIcon} alt="" width={24} height={24} /></span>
+                    <div><strong>콘텐츠 비공개</strong><p>서로의 후기와 게시글, 프로필을 볼 수 없어요</p></div>
+                  </li>
+                  <li>
+                    <span className={styles.factIco}><Image src={hideNoticeIcon} alt="" width={24} height={24} /></span>
+                    <div><strong>차단 사실 비공개</strong><p>상대방에게 차단 사실을 알리지 않아요</p></div>
+                  </li>
+                </ul>
+                {msg && <div className={styles.error} role="alert">{msg}</div>}
+                <div className={styles.btnRow}>
+                  <button type="button" className={styles.btnGray} disabled={busy} onClick={() => sheetRef.current?.close()}>취소</button>
+                  <button type="button" className={styles.btnRed} disabled={busy}
+                    onClick={() => run(() => api.blockAuthor(type, id), "blocked", "차단하지 못했습니다.")}>차단</button>
+                </div>
               </>
             )}
             {step === "report" && (
@@ -137,8 +154,8 @@ export default function ContentActions({ type, id, isMine, authorName, className
                   onClick={() => run(() => api.reportContent(type, id, picked, detail), "reported", "신고하지 못했습니다.")}>신고 접수</button>
               </>
             )}
-            {msg && <div className={styles.error} role="alert">{msg}</div>}
-            <button type="button" className={styles.cancel} onClick={() => sheetRef.current?.close()}>취소</button>
+            {step !== "block" && msg && <div className={styles.error} role="alert">{msg}</div>}
+            {step !== "block" && <button type="button" className={styles.cancel} onClick={() => sheetRef.current?.close()}>취소</button>}
           </div>
         </div>
       </BottomSheet>
