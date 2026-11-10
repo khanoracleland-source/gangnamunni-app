@@ -1,8 +1,9 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpException, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthedRequest, RequireAuthGuard } from '../auth/auth.guard';
 import { AuthService } from '../auth/auth.service';
 import { SameOriginGuard } from '../common/same-origin.guard';
+import { PasswordLostService } from '../password-lost/password-lost.service';
 import { AccountSecurityService } from './account-security.service';
 
 const nocache = (res: Response) => res.setHeader('Cache-Control', 'private, no-store');
@@ -13,7 +14,7 @@ const cookie = (req: AuthedRequest) => req.headers.cookie || '';
 @Controller('v1/account')
 @UseGuards(RequireAuthGuard, SameOriginGuard)
 export class AccountSecurityController {
-  constructor(private readonly security: AccountSecurityService, private readonly auth: AuthService) {}
+  constructor(private readonly security: AccountSecurityService, private readonly auth: AuthService, private readonly lost: PasswordLostService) {}
 
   @Post('password')
   async password(@Body() body: Record<string, unknown>, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
@@ -21,6 +22,16 @@ export class AccountSecurityController {
     const r = await this.security.changePassword(uid(req), cookie(req), body ?? {});
     this.auth.forget(req.headers.cookie); // PHP has just ended every session of this member
     return r;
+  }
+
+  /** "현재 비밀번호를 잊으셨나요?": mails a 12-character temporary password to the member's own e-mail (ends every sign-in, this one too). */
+  @Post('password/temp')
+  async passwordTemp(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
+    nocache(res);
+    const r = await this.lost.requestForMember(uid(req), req.ip || 'unknown');
+    if (!r.sent) throw new HttpException({ success: false, message: '임시 비밀번호를 보내지 못했어요. 잠시 후 다시 시도해주세요.' }, 503); // nothing changed: still signed in
+    this.auth.forget(req.headers.cookie); // every sign-in of this member was just revoked
+    return { success: true, sent: true };
   }
 
   @Post('email/send')

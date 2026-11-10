@@ -2,7 +2,7 @@
 import { randomBytes } from 'node:crypto';
 
 export const COMMUNITY_CATEGORIES = ['일상', '시술/수술고민', '의사Q&A', '정보공유', '시술 추천', '병원 추천', '기타'];
-export const MAX_PHOTOS = 4;
+export const MAX_PHOTOS = 2;
 export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export function categoriesFor(existing?: string | null): string[] {

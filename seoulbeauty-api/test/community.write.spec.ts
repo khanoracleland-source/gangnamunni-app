@@ -98,7 +98,7 @@ describe('community write API (mock DB)', () => {
 
   it('form: categories, and edit only for the author', async () => {
     const r = await as(request(srv()).get('/v1/community/form')).expect(200);
-    expect(r.body).toMatchObject({ maxPhotos: 4, post: null });
+    expect(r.body).toMatchObject({ maxPhotos: 2, post: null });
     expect(r.body.categories).toContain('일상');
     const e = await as(request(srv()).get('/v1/community/form?id=5')).expect(200);
     expect(e.body.post).toMatchObject({ id: 5, title: '옛', photos: ['/hairwang/app/uploads/community/a.png'] });

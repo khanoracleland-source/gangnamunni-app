@@ -4,6 +4,7 @@ import request from 'supertest';
 import * as bcrypt from 'bcryptjs';
 import { DB } from '../src/db/db.module';
 import { MailService, reservedMailDomain } from '../src/mail/mail.service';
+import { PasswordLostService } from '../src/password-lost/password-lost.service';
 import { PasswordLostModule } from '../src/password-lost/password-lost.module';
 import { createHash, RateWindow, resetMail, resetMarker, resetLimitsOff, resetLimitsSkipped, resetMarkerValid, temporaryPassword, validateHash } from '../src/password-lost/password-lost.logic';
 
@@ -250,5 +251,40 @@ describe('PASSWORD_LOST_TEST_* rule', () => {
     expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', { ...base, PASSWORD_LOST_TEST_UNTIL: '' }, now)).toBeNull();
     expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', { ...base, PASSWORD_LOST_TEST_IPS: '' }, now)).toBeNull();
     expect(resetLimitsSkipped('me@gmail.com', '1.2.3.4', { PASSWORD_LOST_TEST_EMAILS: 'me@gmail.com' } as any, now)).toBeNull();
+  });
+});
+
+describe('requestForMember (signed-in member who forgot the current password)', () => {
+  const build = (mailOk: boolean, email = 'me@naver.com') => {
+    const calls: string[] = [];
+    const respond = (sql: string): any => {
+      calls.push(sql);
+      if (/SELECT mb_email FROM g5_member WHERE mb_id/.test(sql)) return [[{ mb_email: email }]];
+      if (/FROM g5_member WHERE LOWER/.test(sql)) return [[{ mb_no: 1, mb_id: 'kim', mb_name: '김', mb_nick: 'k', mb_email: email, mb_leave_date: '', mb_intercept_date: '', mb_email_certify: '2020', }]];
+      if (/FROM g5_config/.test(sql)) return [[{ cf_title: '서울미녀', cf_admin: 'admin', cf_use_email_certify: 0 }]];
+      if (/FROM member_sync/.test(sql)) return [[]];
+      return [{ affectedRows: 1 }];
+    };
+    const conn = { query: async (sql: string) => respond(sql), release: () => undefined };
+    const db: any = { query: async (sql: string) => respond(sql), getConnection: async () => conn };
+    const mail: any = { send: async () => (mailOk ? { success: true } : { success: false, error: 'smtp' }) };
+    return { svc: new PasswordLostService(db, mail), calls };
+  };
+  it('mail accepted: sent=true and every sign-in revoked', async () => {
+    const { svc, calls } = build(true);
+    expect(await svc.requestForMember('kim', '1.1.1.1')).toEqual({ sent: true });
+    expect(calls.some((c) => /mb_cred_epoch/.test(c))).toBe(true);
+  });
+  it('mail failure: sent=false, rolled back, nothing revoked (the member stays signed in)', async () => {
+    const { svc, calls } = build(false);
+    expect(await svc.requestForMember('kim', '1.1.1.1')).toEqual({ sent: false });
+    expect(calls).toContain('ROLLBACK');
+    expect(calls.some((c) => /mb_cred_epoch/.test(c))).toBe(false);
+  });
+  it('no usable e-mail on file: sent=false; asking again within a minute is limited', async () => {
+    expect(await build(true, '').svc.requestForMember('kim', '1.1.1.1')).toEqual({ sent: false });
+    const { svc } = build(true);
+    await svc.requestForMember('kim', '1.1.1.1');
+    await expect(svc.requestForMember('kim', '1.1.1.1')).rejects.toMatchObject({ status: 429 });
   });
 });

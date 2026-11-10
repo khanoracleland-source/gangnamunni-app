@@ -60,7 +60,7 @@ export class CommunityWriteService {
   /** Validates and stores the new images (all-or-nothing); returns their public URLs and the paths to undo on failure. */
   private async storePhotos(files: UploadedFile[], slots: number): Promise<{ urls: string[]; paths: string[] }> {
     if (!files.length) return { urls: [], paths: [] };
-    if (files.length > slots) throw new BadRequestException('사진은 최대 4장까지 첨부할 수 있습니다.');
+    if (files.length > slots) throw new BadRequestException(`사진은 최대 ${MAX_PHOTOS}장까지 첨부할 수 있습니다.`);
     const dir = process.env.COMMUNITY_UPLOAD_DIR;
     if (!dir) throw new ServiceUnavailableException('사진 업로드가 설정되지 않았습니다.');
     const prefix = (process.env.COMMUNITY_UPLOAD_URL || '/hairwang/app/uploads/community/').replace(/\/?$/, '/');

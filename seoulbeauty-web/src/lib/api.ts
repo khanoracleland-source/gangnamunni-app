@@ -447,6 +447,8 @@ export const api = {
     send<{ success: boolean; loggedIn: boolean }>("POST", "/v1/auth/register", b, 60000),
   socialPending: () => get<{ pending: boolean; provider?: string; name?: string; email?: string }>("/v1/auth/social/pending"),
   socialRegister: (b: { name: string; email: string; agreeTerms: boolean; agreePrivacy: boolean }) => send<{ success: boolean; loggedIn: boolean }>("POST", "/v1/auth/social/register", b, 60000),
+  /** signed-in member who forgot the current password: mails the 12-character temporary password to their own e-mail */
+  sendTempPassword: () => send<{ success: boolean; sent: boolean }>("POST", "/v1/account/password/temp", {}, 30000),
   passwordLost: (email: string) => send<{ success: boolean; requestId: string }>("POST", "/v1/auth/password-lost", { email }, 30000),
   passwordResetVerify: (email: string, temporaryPassword: string) => send<{ success: boolean; ticket: string }>("POST", "/v1/auth/password-reset/verify", { email, temporaryPassword }, 30000),
   passwordResetConfirm: (ticket: string, password: string) => send<{ success: boolean }>("POST", "/v1/auth/password-reset/confirm", { ticket, password }, 30000),

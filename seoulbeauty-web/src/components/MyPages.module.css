@@ -227,3 +227,14 @@
 .bkReasonInput { display: block; width: 100%; box-sizing: border-box; height: 46px; margin-top: 14px; padding: 0 12px; border: 1px solid #DCD6D8; font-size: 15px; font-family: inherit; }
 .bkReasonInput:focus { outline: none; border-color: #AC1830; }
 .bkBtnWide { width: 100%; margin-top: 18px; }
+
+/* 비밀번호 변경: "현재 비밀번호를 잊으셨나요?" link + confirm sheet (same frame as the 로그아웃 sheet) */
+.fgLink { display: block; margin: 14px auto 0; padding: 6px 4px; font-size: 14px; color: #6B6366; text-decoration: underline; text-underline-offset: 3px; }
+.fgSheet { padding: 14px 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+.fgTitle { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.5; text-align: center; }
+.fgDesc { margin: 0; font-size: 14px; line-height: 1.7; color: #4A4546; text-align: center; word-break: keep-all; }
+.fgDesc b { color: #1A1718; word-break: break-all; }
+.fgBtns { display: flex; gap: 10px; margin-top: 4px; }
+.fgBtn { flex: 1 1 0; height: 52px; border-radius: 10px; font-size: 17px; font-weight: 600; background: #F2EFF0; color: #1A1718; }
+.fgBtnPri { background: #AC1830; color: #fff; }
+.fgBtn:disabled { opacity: .6; }

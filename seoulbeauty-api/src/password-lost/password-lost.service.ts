@@ -53,7 +53,8 @@ export class PasswordLostService {
     return { success: true, requestId };
   }
 
-  private async process(email: string, requestId: string): Promise<void> {
+  /** true only when the temporary password was saved AND the mail was accepted (everything committed, every sign-in revoked). */
+  private async process(email: string, requestId: string): Promise<boolean> {
     const [rows] = (await this.db.query(
       'SELECT mb_no, mb_id, mb_name, mb_nick, mb_email, mb_leave_date, mb_intercept_date, mb_email_certify FROM g5_member WHERE LOWER(mb_email) = ?', [email])) as any;
     const list = rows as any[];
@@ -63,7 +64,7 @@ export class PasswordLostService {
     // anything else does nothing (and says nothing) - a mail is never sent for an account that could not finish the reset
     if (list.length !== 1 || !this.eligible(list[0], config)) {
       this.log.log(`[${requestId}] no target or excluded account`);
-      return;
+      return false;
     }
     const mb = list[0];
     const plain = temporaryPassword(12);
@@ -76,18 +77,36 @@ export class PasswordLostService {
     try {
       await conn.query('START TRANSACTION');
       const [up] = (await conn.query("UPDATE g5_member SET mb_password = ?, mb_lost_certify = ? WHERE mb_no = ?", [createHash(plain), resetMarker(), mb.mb_no])) as any;
-      if (Number(up?.affectedRows) !== 1) { await conn.query('ROLLBACK'); this.log.error(`[${requestId}] password could not be saved`); return; }
+      if (Number(up?.affectedRows) !== 1) { await conn.query('ROLLBACK'); this.log.error(`[${requestId}] password could not be saved`); return false; }
       await this.syncHmsPassword(conn, s(mb.mb_id), plain);
       const sent = await this.mail.send(s(mb.mb_email), subject, html);
-      if (!sent.success) { await conn.query('ROLLBACK'); this.log.error(`[${requestId}] mail failed: ${sent.error}`); return; }
+      if (!sent.success) { await conn.query('ROLLBACK'); this.log.error(`[${requestId}] mail failed: ${sent.error}`); return false; }
       await conn.query('COMMIT');
       committed = true;
       this.log.log(`[${requestId}] SMTP accepted`);
       await this.revokeAll(conn, s(mb.mb_id), true);
+      return true;
     } catch (e) {
       if (!committed) await conn.query('ROLLBACK').catch(() => undefined);
       throw e;
     } finally { conn.release(); }
+  }
+
+  /**
+   * A signed-in member who forgot the current password (마이페이지 › 비밀번호 변경): the same reset for the member's own e-mail, but the answer is
+   * honest — there is no enumeration risk for one's own account — so the page never logs the member out of the app without a mail.
+   */
+  async requestForMember(mbId: string, ip: string): Promise<{ sent: boolean }> {
+    if (!/^[0-9a-z_]+$/i.test(mbId)) return { sent: false };
+    if (!this.cooldown.hit(`m:${mbId}`).allowed || !this.byEmailIp.hit(`m:${mbId}`).allowed) this.tooMany();
+    const [rows] = (await this.db.query('SELECT mb_email FROM g5_member WHERE mb_id = ? LIMIT 1', [mbId])) as any;
+    const email = s((rows as any[])[0]?.mb_email).trim().toLowerCase();
+    if (!isEmail(email)) return { sent: false };
+    const requestId = randomBytes(6).toString('hex');
+    this.audit('reset_requested_by_member', mbId, ip, `request=${requestId}`);
+    let sent = false;
+    try { sent = await this.process(email, requestId); } catch (e) { this.log.error(`[${requestId}] ${(e as Error).message}`); }
+    return { sent };
   }
 
   /** sync_hms_password_by_mapping(): only through member_sync (never by e-mail: a staff account may share the address). */
