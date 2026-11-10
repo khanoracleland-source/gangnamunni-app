@@ -25,6 +25,9 @@ const DOTS = <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ci
 const LINE = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" } as const;
 const DELETE_ICON = <svg viewBox="0 0 24 24" {...LINE} aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10 11v5M14 11v5" /></svg>;
 
+/** closing leg of a sheet → sheet hand-over: a bit quicker than a plain close (400 ms) so the pair does not drag */
+const CHAIN_MS = 280;
+
 type Step = "closed" | "menu" | "report" | "block" | "delete";
 
 /** ⋯ button + action sheet (the shared BottomSheet, portal above the tab bar): own post → edit/delete; anyone else's post/comment/review → report/block. */
@@ -44,7 +47,15 @@ export default function ContentActions({ type, id, isMine, authorName, className
   const sheetRef = useRef<BottomSheetHandle>(null);
   const toast = useToast();
 
-  const close = () => { setStep("closed"); setPicked([]); setDetail(""); setMsg(""); };
+  const nextRef = useRef<Step | null>(null);
+  const close = () => {
+    setStep("closed"); setPicked([]); setDetail(""); setMsg("");
+    // "신고" from the ⋯ menu: the menu sheet has just glided down; now a fresh sheet slides up with the report form
+    const next = nextRef.current; nextRef.current = null;
+    if (next) window.setTimeout(() => setStep(next), 30);
+  };
+  /** close the menu sheet with its slide-out, then open `next` as a new sheet */
+  const goTo = (next: Step) => { nextRef.current = next; sheetRef.current?.close(CHAIN_MS); };
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["community"] }); void qc.invalidateQueries({ queryKey: ["communityPost"] }); };
   const run = async (fn: () => Promise<unknown>, done: "deleted" | "blocked" | "reported", fallback: string) => {
     if (busy) return;
@@ -92,7 +103,7 @@ export default function ContentActions({ type, id, isMine, authorName, className
                     <button type="button" className={styles.row} onClick={() => router.push(`/community/write?id=${id}`)}>
                       <span className={styles.ico}><Image src={editIcon} alt="" width={22} height={22} /></span>수정
                     </button>
-                    <button type="button" className={`${styles.row} ${styles.red}`} onClick={() => setStep("delete")}>
+                    <button type="button" className={`${styles.row} ${styles.red}`} onClick={() => goTo("delete")}>
                       <span className={styles.ico}>{DELETE_ICON}</span>삭제
                     </button>
                   </>
@@ -100,10 +111,10 @@ export default function ContentActions({ type, id, isMine, authorName, className
                   <div className={styles.note}>내가 작성한 {label}입니다.</div>
                 ) : (
                   <>
-                    <button type="button" className={styles.row} onClick={() => setStep("block")}>
+                    <button type="button" className={styles.row} onClick={() => goTo("block")}>
                       <span className={styles.ico}><Image src={blockIcon} alt="" width={22} height={22} /></span>차단
                     </button>
-                    <button type="button" className={styles.row} onClick={() => setStep("report")}>
+                    <button type="button" className={styles.row} onClick={() => goTo("report")}>
                       <span className={styles.ico}><Image src={reportIcon} alt="" width={22} height={22} /></span>신고
                     </button>
                   </>
@@ -147,9 +158,12 @@ export default function ContentActions({ type, id, isMine, authorName, className
                       onChange={(e) => setPicked((p) => (e.target.checked ? [...p, key] : p.filter((k) => k !== key)))} />{text}
                   </label>
                 ))}
-                {picked.includes("other") && (
-                  <input type="text" className={styles.area} maxLength={50} placeholder="기타 사유를 입력해주세요. (50자 이내)" value={detail} onChange={(e) => setDetail(e.target.value)} />
-                )}
+                {/* always mounted: the row height eases 0 → input height, so the sheet grows (and shrinks back) smoothly */}
+                <div className={`${styles.reveal} ${picked.includes("other") ? styles.revealOn : ""}`} aria-hidden={!picked.includes("other")}>
+                  <div className={styles.revealIn}>
+                    <input type="text" className={styles.area} maxLength={50} tabIndex={picked.includes("other") ? 0 : -1} placeholder="기타 사유를 입력해주세요. (50자 이내)" value={detail} onChange={(e) => setDetail(e.target.value)} />
+                  </div>
+                </div>
                 {msg && <div className={styles.error} role="alert">{msg}</div>}
                 <div className={`${styles.btnRow} ${styles.btnRowList}`}>
                   <button type="button" className={styles.btnGray} disabled={busy} onClick={() => sheetRef.current?.close()}>취소</button>

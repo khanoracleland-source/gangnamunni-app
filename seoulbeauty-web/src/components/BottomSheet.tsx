@@ -13,7 +13,7 @@ import styles from "./BottomSheet.module.css";
  *  - `dismissible={false}`: a decision sheet that only its own button closes (no dim tap, Esc or drag)
  * `onClose` runs after the slide-out. A parent closes it with the animation through the ref: `ref.current?.close()`.
  */
-export type BottomSheetHandle = { close: () => void };
+export type BottomSheetHandle = { close: (ms?: number) => void };
 const DURATION = 400;
 
 const BottomSheet = forwardRef<BottomSheetHandle, { open: boolean; onClose: () => void; label: string; children: React.ReactNode; dismissible?: boolean }>(
@@ -26,7 +26,7 @@ const BottomSheet = forwardRef<BottomSheetHandle, { open: boolean; onClose: () =
     const dismissibleRef = useRef(dismissible);
     useEffect(() => { onCloseRef.current = onClose; dismissibleRef.current = dismissible; });
 
-    const close = () => {
+    const close = (ms: number = DURATION) => {
       if (closing.current) return;
       closing.current = true;
       const el = sheetRef.current, dim = dimRef.current;
@@ -36,13 +36,13 @@ const BottomSheet = forwardRef<BottomSheetHandle, { open: boolean; onClose: () =
       if (el) { const t = getComputedStyle(el).transform; el.style.transform = t === "none" ? "translateY(0)" : t; el.style.animation = "none"; el.style.transition = "none"; }
       if (dim) { dim.style.opacity = getComputedStyle(dim).opacity; dim.style.animation = "none"; dim.style.transition = "none"; }
       void el?.offsetHeight;
-      if (el) { el.style.transition = `transform ${DURATION}ms cubic-bezier(.4,0,.2,1)`; el.style.transform = "translateY(100%)"; }
-      if (dim) { dim.style.transition = `opacity ${DURATION}ms ease`; dim.style.opacity = "0"; }
-      window.setTimeout(() => { closing.current = false; onCloseRef.current(); }, DURATION);
+      if (el) { el.style.transition = `transform ${ms}ms cubic-bezier(.4,0,.2,1)`; el.style.transform = "translateY(100%)"; }
+      if (dim) { dim.style.transition = `opacity ${ms}ms ease`; dim.style.opacity = "0"; }
+      window.setTimeout(() => { closing.current = false; onCloseRef.current(); }, ms);
     };
     const closeRef = useRef(close);
     useEffect(() => { closeRef.current = close; });
-    useImperativeHandle(ref, () => ({ close: () => closeRef.current() }), []);
+    useImperativeHandle(ref, () => ({ close: (ms?: number) => closeRef.current(ms) }), []);
 
     useEffect(() => {
       if (!open) return;
@@ -79,7 +79,7 @@ const BottomSheet = forwardRef<BottomSheetHandle, { open: boolean; onClose: () =
     };
 
     return createPortal(
-      <div ref={dimRef} className={styles.dim} onClick={dismissible ? close : undefined}>
+      <div ref={dimRef} className={styles.dim} onClick={dismissible ? () => close() : undefined}>
         <div ref={sheetRef} className={styles.sheet} role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()}>
           {dismissible ? (
             <div className={styles.gripZone} onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end} aria-hidden="true">
