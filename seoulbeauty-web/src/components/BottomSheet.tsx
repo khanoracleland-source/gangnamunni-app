@@ -30,8 +30,14 @@ const BottomSheet = forwardRef<BottomSheetHandle, { open: boolean; onClose: () =
       if (closing.current) return;
       closing.current = true;
       const el = sheetRef.current, dim = dimRef.current;
-      if (el) { el.style.animation = "none"; el.style.transition = `transform ${DURATION}ms cubic-bezier(.4,0,.2,1)`; el.style.transform = "translateY(100%)"; }
-      if (dim) { dim.style.animation = "none"; dim.style.transition = `opacity ${DURATION}ms ease`; dim.style.opacity = "0"; }
+      // 1) freeze both exactly where they are now (end of the open animation, mid-open, or mid-drag) and flush that style;
+      // 2) only then start the slide-out. Doing `animation: none` and the transition in one go made the browser skip the
+      //    transition: the sheet and the dim vanished at once instead of gliding down (measured in Chrome, 2026-11-10).
+      if (el) { const t = getComputedStyle(el).transform; el.style.transform = t === "none" ? "translateY(0)" : t; el.style.animation = "none"; el.style.transition = "none"; }
+      if (dim) { dim.style.opacity = getComputedStyle(dim).opacity; dim.style.animation = "none"; dim.style.transition = "none"; }
+      void el?.offsetHeight;
+      if (el) { el.style.transition = `transform ${DURATION}ms cubic-bezier(.4,0,.2,1)`; el.style.transform = "translateY(100%)"; }
+      if (dim) { dim.style.transition = `opacity ${DURATION}ms ease`; dim.style.opacity = "0"; }
       window.setTimeout(() => { closing.current = false; onCloseRef.current(); }, DURATION);
     };
     const closeRef = useRef(close);

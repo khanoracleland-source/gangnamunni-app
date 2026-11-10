@@ -1,10 +1,17 @@
 "use client";
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, type ContentType } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { useRequireLogin } from "@/lib/me";
+import linkIcon from "@/assets/icons/menu-link.png";
+import blockIcon from "@/assets/icons/menu-block.png";
+import reportIcon from "@/assets/icons/menu-report.png";
+import editIcon from "@/assets/icons/menu-edit.png";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
+import { useToast } from "./Toast";
 import styles from "./ContentActions.module.css";
 
 const REASONS: [string, string][] = [
@@ -12,6 +19,9 @@ const REASONS: [string, string][] = [
   ["privacy", "개인정보노출"], ["repeat", "같은 내용 반복게시"], ["other", "기타"],
 ];
 const DOTS = <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>;
+
+const LINE = { fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round" } as const;
+const DELETE_ICON = <svg viewBox="0 0 24 24" {...LINE} aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12M10 11v5M14 11v5" /></svg>;
 
 type Step = "closed" | "menu" | "report" | "block" | "delete";
 
@@ -30,6 +40,7 @@ export default function ContentActions({ type, id, isMine, authorName, className
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const sheetRef = useRef<BottomSheetHandle>(null);
+  const toast = useToast();
 
   const close = () => { setStep("closed"); setPicked([]); setDetail(""); setMsg(""); };
   const refresh = () => { void qc.invalidateQueries({ queryKey: ["community"] }); void qc.invalidateQueries({ queryKey: ["communityPost"] }); };
@@ -49,6 +60,14 @@ export default function ContentActions({ type, id, isMine, authorName, className
     }
   };
 
+  /** "링크 복사": the page of this post/review (comments have no page of their own). */
+  const copyLink = async () => {
+    const url = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? "/next"}/${type === "review" ? "reviews" : "community"}/${id}`;
+    const ok = await copyText(url);
+    sheetRef.current?.close();
+    toast(ok ? "링크가 복사되었습니다." : "링크 복사에 실패했습니다.");
+  };
+
   const label = type === "community" ? "게시글" : type === "comment" ? "댓글" : "후기";
   return (
     <>
@@ -58,19 +77,36 @@ export default function ContentActions({ type, id, isMine, authorName, className
       <BottomSheet ref={sheetRef} open={step !== "closed"} onClose={close} label={`${label} 메뉴`} dismissible={!busy}>
         <div className={styles.body} onClick={(e) => e.stopPropagation()}>
           <div>
-            {step === "menu" && (isMine && type === "community" ? (
-              <>
-                <button type="button" className={styles.item} onClick={() => router.push(`/community/write?id=${id}`)}>수정</button>
-                <button type="button" className={`${styles.item} ${styles.danger}`} onClick={() => setStep("delete")}>삭제</button>
-              </>
-            ) : isMine ? (
-              <div className={styles.note}>내가 작성한 {label}입니다.</div>
-            ) : (
-              <>
-                <button type="button" className={styles.item} onClick={() => setStep("report")}>신고하기</button>
-                <button type="button" className={styles.item} onClick={() => setStep("block")}>{authorName} 차단하기</button>
-              </>
-            ))}
+            {step === "menu" && (
+              <div className={styles.list}>
+                {type !== "comment" && (
+                  <button type="button" className={styles.row} onClick={copyLink}>
+                    <span className={styles.ico}><Image src={linkIcon} alt="" width={22} height={22} /></span>링크 복사
+                  </button>
+                )}
+                {isMine && type === "community" ? (
+                  <>
+                    <button type="button" className={styles.row} onClick={() => router.push(`/community/write?id=${id}`)}>
+                      <span className={styles.ico}><Image src={editIcon} alt="" width={22} height={22} /></span>수정
+                    </button>
+                    <button type="button" className={`${styles.row} ${styles.red}`} onClick={() => setStep("delete")}>
+                      <span className={styles.ico}>{DELETE_ICON}</span>삭제
+                    </button>
+                  </>
+                ) : isMine ? (
+                  <div className={styles.note}>내가 작성한 {label}입니다.</div>
+                ) : (
+                  <>
+                    <button type="button" className={styles.row} onClick={() => setStep("block")}>
+                      <span className={styles.ico}><Image src={blockIcon} alt="" width={22} height={22} /></span>차단
+                    </button>
+                    <button type="button" className={styles.row} onClick={() => setStep("report")}>
+                      <span className={styles.ico}><Image src={reportIcon} alt="" width={22} height={22} /></span>신고
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             {step === "delete" && (
               <>
                 <p className={styles.text}>게시글을 삭제할까요?</p>
@@ -102,7 +138,7 @@ export default function ContentActions({ type, id, isMine, authorName, className
               </>
             )}
             {msg && <div className={styles.error} role="alert">{msg}</div>}
-            <button type="button" className={`${styles.item} ${styles.last}`} onClick={() => sheetRef.current?.close()}>취소</button>
+            <button type="button" className={styles.cancel} onClick={() => sheetRef.current?.close()}>취소</button>
           </div>
         </div>
       </BottomSheet>
