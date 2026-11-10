@@ -424,7 +424,10 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
         }
       },
       child: Scaffold(
+        // iOS: the page runs under the home indicator and pads itself with env(safe-area-inset-bottom) (the web marks html[data-ios]);
+        // Android keeps the native bottom inset (its WebView reports env() insets unreliably).
         body: SafeArea(
+          bottom: defaultTargetPlatform != TargetPlatform.iOS,
           child: Stack(
             fit: StackFit.expand,
             children: [

@@ -13,7 +13,10 @@
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
 }
-html[data-app] { --sat: 0px; --sab: 0px; }
+/* Inside the app the native SafeArea already keeps the WebView above the home indicator / system bar: the tab bar needs only a small gap from the WebView's own bottom edge (10 instead of 22), the page reserves 12 less */
+html[data-app] { --sat: 0px; --sab: 0px; --nav-h: 92px; }
+/* iOS app: the WebView runs under the home indicator (Flutter SafeArea bottom:false), so the real bottom inset applies again */
+html[data-app][data-ios] { --sab: env(safe-area-inset-bottom, 0px); --nav-h: max(70px, calc(104px - var(--sab))); }
 @media (max-width: 339px) { :root { --fs-scale: .92; } }
 @media (min-width: 340px) and (max-width: 374px) { :root { --fs-scale: .96; } }
 @media (min-width: 768px) { :root { --fs-scale: 1.06; } }

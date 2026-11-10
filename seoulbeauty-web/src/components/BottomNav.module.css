@@ -18,3 +18,7 @@
 
 /* a text field has focus (keyboard up): the tab bar steps aside */
 .typing { display: none; }
+/* in the app the WebView already ends above the home indicator: 10px is enough (see globals.css) */
+:global(html[data-app]) .nav { bottom: 10px; }
+/* iOS app: the bar floats just above the home indicator zone */
+:global(html[data-app][data-ios]) .nav { bottom: max(10px, calc(var(--sab) - 8px)); }
