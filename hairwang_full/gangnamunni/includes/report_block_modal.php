@@ -416,7 +416,7 @@ define('REPORT_BLOCK_MODAL_LOADED', true);
                 <label for="rbr_other" class="rb-reason-label"><span class="rb-reason-dot" aria-hidden="true"></span>기타</label>
             </div>
 
-            <textarea class="rb-textarea" id="rbReportDetail" hidden aria-label="상세 신고 사유" placeholder="상세 설명을 입력해주세요 (선택)" maxlength="1000"></textarea>
+            <textarea class="rb-textarea" id="rbReportDetail" hidden aria-label="상세 신고 사유" placeholder="상세 설명을 입력해주세요 (50자 이내)" maxlength="50"></textarea>
         </div>
         <div class="rb-modal-footer">
             <button type="button" class="rb-btn rb-btn-cancel" onclick="closeReportModal()">취소</button>

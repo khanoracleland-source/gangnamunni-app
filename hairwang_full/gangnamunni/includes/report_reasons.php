@@ -8,10 +8,10 @@ function ugc_report_reason_options(): array {
 }
 function ugc_encode_report_reasons($reasons, $detail): array {
     $options=ugc_report_reason_options();
-    if (!is_array($reasons) || !$reasons || count($reasons)>6 || !is_string($detail) || mb_strlen($detail)>1000) throw new InvalidArgumentException('신고 사유를 확인해주세요.');
+    if (!is_array($reasons) || !$reasons || count($reasons)>6 || !is_string($detail) || mb_strlen($detail)>50) throw new InvalidArgumentException('신고 사유를 확인해주세요.');
     foreach($reasons as $reason) if (!is_string($reason) || !isset($options[$reason])) throw new InvalidArgumentException('올바른 신고 사유를 선택해주세요.');
     $reasons=array_values(array_unique($reasons));
-    return [$options[$reasons[0]][1], json_encode(['version'=>1,'reasons'=>$reasons,'detail'=>in_array('other',$reasons,true)?trim($detail):''],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)];
+    return [$options[$reasons[0]][1], json_encode(['version'=>1,'reasons'=>$reasons,'labels'=>array_map(fn($r)=>$options[$r][0],$reasons),'detail'=>in_array('other',$reasons,true)?trim($detail):''],JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR)];
 }
 function ugc_display_report_reasons(array $report, array $legacyLabels): array {
     $data=json_decode($report['reason_detail'] ?? '',true);

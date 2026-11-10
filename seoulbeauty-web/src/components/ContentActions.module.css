@@ -12,8 +12,14 @@
 .danger { color: #AC1830; }
 .text { margin: 8px 0 12px; font-size: 15px; line-height: 1.6; text-align: center; }
 .note { height: 56px; display: flex; align-items: center; justify-content: center; color: #9A9395; border-bottom: 1px solid #ECE9EA; }
-.check { display: flex; align-items: center; gap: 10px; padding: 10px 0; font-size: 15px; }
-.area { width: 100%; box-sizing: border-box; min-height: 80px; margin: 6px 0 10px; padding: 10px 12px; border: 1px solid #DAD7D8; border-radius: 10px; font: inherit; }
+/* report reasons (design): red-filled square checkbox, the picked reason turns bold */
+.listTitle { margin: 0 0 6px; font-size: 18px; font-weight: 700; line-height: 1.4; color: #1A1718; }
+.check { display: flex; align-items: center; gap: 12px; min-height: 36px; font-size: 16px; color: #1A1718; cursor: pointer; }
+.checkOn { font-weight: 700; }
+.check input { appearance: none; -webkit-appearance: none; flex: none; width: 20px; height: 20px; margin: 0; border: 1.5px solid #D4CFD1; border-radius: 4px; background: #fff; cursor: pointer; }
+.check input:checked { border-color: #AC1830; background: #AC1830 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px 14px no-repeat; }
+.check input:focus-visible { outline: 2px solid #AC1830; outline-offset: 2px; }
+.area { width: 100%; box-sizing: border-box; height: 48px; margin: 6px 0 10px; padding: 0 12px; border: 1px solid #DAD7D8; border-radius: 10px; font: inherit; font-size: 16px; }
 .error { margin: 8px 0; color: #AC1830; font-size: 14px; text-align: center; }
 /* block confirmation (design): title, two icon facts, grey 취소 + red 차단 side by side */
 .confirmTitle { margin: 0 0 14px; font-size: 18px; font-weight: 700; line-height: 1.4; color: #1A1718; }
@@ -28,3 +34,4 @@
 .btnGray { background: #F1EFF0; color: #1A1718; }
 .btnRed { background: #AC1830; color: #fff; }
 .btnGray:disabled, .btnRed:disabled { opacity: .5; }
+.btnRowList { margin-top: 15px; }

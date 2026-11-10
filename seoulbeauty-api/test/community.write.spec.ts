@@ -27,8 +27,10 @@ describe('community write logic', () => {
     expect(sniffImage(Buffer.from('<?php echo 1;'))).toBeNull();
   });
   it('encodeReportReasons', () => {
-    expect(encodeReportReasons(['spam', 'other'], ' 상세 ')).toEqual({ reason: 'spam', reasonDetail: JSON.stringify({ version: 1, reasons: ['spam', 'other'], detail: '상세' }) });
+    expect(encodeReportReasons(['spam', 'other'], ' 상세 ')).toEqual({ reason: 'spam', reasonDetail: JSON.stringify({ version: 1, reasons: ['spam', 'other'], labels: ['영리성 홍보 목적', '기타'], detail: '상세' }) });
     expect(encodeReportReasons(['privacy'], 'x')?.reason).toBe('other');
+    expect(encodeReportReasons(['other'], 'a'.repeat(51))).toBeNull();
+    expect(encodeReportReasons(['other'], 'a'.repeat(50))).not.toBeNull();
     expect(encodeReportReasons([], '')).toBeNull();
     expect(encodeReportReasons(['bogus'], '')).toBeNull();
     expect(encodeReportReasons('spam', '')).toBeNull();

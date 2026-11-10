@@ -140,22 +140,26 @@ export default function ContentActions({ type, id, isMine, authorName, className
             )}
             {step === "report" && (
               <>
-                <p className={styles.text}>신고 사유를 선택해주세요.</p>
+                <h2 className={styles.listTitle}>신고하는 이유</h2>
                 {REASONS.map(([key, text]) => (
-                  <label key={key} className={styles.check}>
+                  <label key={key} className={`${styles.check} ${picked.includes(key) ? styles.checkOn : ""}`}>
                     <input type="checkbox" checked={picked.includes(key)}
                       onChange={(e) => setPicked((p) => (e.target.checked ? [...p, key] : p.filter((k) => k !== key)))} />{text}
                   </label>
                 ))}
                 {picked.includes("other") && (
-                  <textarea className={styles.area} maxLength={1000} placeholder="기타 사유를 입력해주세요." value={detail} onChange={(e) => setDetail(e.target.value)} />
+                  <input type="text" className={styles.area} maxLength={50} placeholder="기타 사유를 입력해주세요. (50자 이내)" value={detail} onChange={(e) => setDetail(e.target.value)} />
                 )}
-                <button type="button" className={`${styles.item} ${styles.danger}`} disabled={busy || picked.length === 0 || (picked.includes("other") && !detail.trim())}
-                  onClick={() => run(() => api.reportContent(type, id, picked, detail), "reported", "신고하지 못했습니다.")}>신고 접수</button>
+                {msg && <div className={styles.error} role="alert">{msg}</div>}
+                <div className={`${styles.btnRow} ${styles.btnRowList}`}>
+                  <button type="button" className={styles.btnGray} disabled={busy} onClick={() => sheetRef.current?.close()}>취소</button>
+                  <button type="button" className={styles.btnRed} disabled={busy || picked.length === 0 || (picked.includes("other") && !detail.trim())}
+                    onClick={() => run(() => api.reportContent(type, id, picked, detail), "reported", "신고하지 못했습니다.")}>확인</button>
+                </div>
               </>
             )}
-            {step !== "block" && msg && <div className={styles.error} role="alert">{msg}</div>}
-            {step !== "block" && <button type="button" className={styles.cancel} onClick={() => sheetRef.current?.close()}>취소</button>}
+            {step !== "block" && step !== "report" && msg && <div className={styles.error} role="alert">{msg}</div>}
+            {step !== "block" && step !== "report" && <button type="button" className={styles.cancel} onClick={() => sheetRef.current?.close()}>취소</button>}
           </div>
         </div>
       </BottomSheet>

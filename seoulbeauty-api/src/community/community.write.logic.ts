@@ -41,11 +41,11 @@ export const REPORT_REASONS: Record<string, [string, string]> = {
 export function encodeReportReasons(reasons: unknown, detail: unknown): { reason: string; reasonDetail: string } | null {
   if (!Array.isArray(reasons) || !reasons.length || reasons.length > 6) return null;
   const d = detail == null ? '' : detail;
-  if (typeof d !== 'string' || Array.from(d).length > 1000) return null;
+  if (typeof d !== 'string' || Array.from(d).length > 50) return null;
   if (!reasons.every((r) => typeof r === 'string' && Object.prototype.hasOwnProperty.call(REPORT_REASONS, r))) return null;
   const ids = [...new Set(reasons as string[])];
   return {
     reason: REPORT_REASONS[ids[0]][1],
-    reasonDetail: JSON.stringify({ version: 1, reasons: ids, detail: ids.includes('other') ? d.trim() : '' }),
+    reasonDetail: JSON.stringify({ version: 1, reasons: ids, labels: ids.map((i) => REPORT_REASONS[i][0]), detail: ids.includes('other') ? d.trim() : '' }),
   };
 }
