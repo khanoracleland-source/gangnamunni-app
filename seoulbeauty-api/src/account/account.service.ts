@@ -4,9 +4,10 @@ import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { DB, Db } from '../db/db.module';
 import { kstNow } from '../bookings/bookings.logic';
+import { nickReserved } from '../register/register.logic';
 import { profileFileId } from '../mypage/mypage.logic';
 import {
-  BIRTH_CHANGE_DAYS, birthToInput, checkProfile, isSettingField, PROFILE_PHOTO_MAX_BYTES, photoKind, SETTING_DEFAULTS, SETTING_FIELDS,
+  BIRTH_CHANGE_DAYS, birthToInput, checkProfile, isSettingField, nickProblem, PROFILE_PHOTO_MAX_BYTES, photoKind, SETTING_DEFAULTS, SETTING_FIELDS,
 } from './account.logic';
 
 const s = (v: unknown) => (v == null ? '' : String(v));
@@ -59,6 +60,30 @@ export class AccountService {
     return r;
   }
 
+  /** null when the (lower-case) nickname is free for this member, otherwise the message to show. Case-insensitive, like Instagram handles. */
+  private async nickTaken(nick: string, mbId: string): Promise<string | null> {
+    const [dup] = (await this.db.query('SELECT mb_id FROM g5_member WHERE LOWER(mb_nick) = ? AND mb_id != ? LIMIT 1', [nick, mbId])) as any;
+    if (Array.isArray(dup) && dup.length) return '이미 사용 중인 닉네임입니다.';
+    try { // reserve_mb_nick(): the site's prohibited words (g5_config.cf_prohibit_id)
+      const [cfg] = (await this.db.query('SELECT cf_prohibit_id FROM g5_config LIMIT 1')) as any;
+      const row = Array.isArray(cfg) ? cfg[0] : null;
+      if (row && nickReserved(nick, s(row.cf_prohibit_id))) return '사용할 수 없는 닉네임입니다.';
+    } catch (e) { this.log.warn(`prohibit list: ${(e as Error).message}`); }
+    return null;
+  }
+
+  /** Live check while typing in the nickname sheet: format + availability, same rules as saving. */
+  async checkNick(mbId: string, raw: unknown): Promise<{ available: boolean; message: string }> {
+    this.rateLimit(`nick:${mbId}`, 120);
+    const nick = s(raw).trim();
+    const old = await this.member(mbId);
+    if (nick === s(old.mb_nick)) return { available: true, message: '현재 사용 중인 닉네임입니다.' };
+    const bad = nickProblem(nick);
+    if (bad) return { available: false, message: bad };
+    const taken = await this.nickTaken(nick.toLowerCase(), mbId);
+    return taken ? { available: false, message: taken } : { available: true, message: '사용 가능한 닉네임입니다.' };
+  }
+
   /** profile_edit.php (GET): the editable fields. `social`: a social-login member has no service password to change. */
   async profile(mbId: string) {
     const [m, photoUrl, social] = await Promise.all([this.member(mbId), this.avatar(mbId), this.isSocial(mbId)]);
@@ -68,15 +93,19 @@ export class AccountService {
   /** profile_edit.php action=save_all: validate everything first, save the member row, then the photo. */
   async saveProfile(mbId: string, input: ProfileInput, file: PhotoFile | undefined, ip: string) {
     this.rateLimit(`profile:${mbId}`, 20);
-    const nick = s(input.nick).trim();
+    const nickIn = s(input.nick).trim();
     const name = s(input.name).trim();
     const hp = s(input.hp).trim();
     const birth = s(input.birth).trim();
-    const bad = checkProfile(name, nick, hp, birth, kstNow().slice(0, 10));
+    const old = await this.member(mbId);
+    const nickSame = nickIn === s(old.mb_nick);
+    const bad = checkProfile(name, nickIn, hp, birth, kstNow().slice(0, 10), s(old.mb_nick));
     if (bad) throw new BadRequestException({ success: false, field: bad.field, message: bad.message });
-
-    const [dup] = (await this.db.query('SELECT mb_id FROM g5_member WHERE mb_nick = ? AND mb_id != ? LIMIT 1', [nick, mbId])) as any;
-    if ((dup as any[]).length) throw new ConflictException({ success: false, field: 'nick', message: '이미 사용 중인 닉네임입니다.' });
+    const nick = nickSame ? nickIn : nickIn.toLowerCase(); // Instagram-style: handles are case-insensitive, stored lower-case
+    if (!nickSame) {
+      const taken = await this.nickTaken(nick, mbId);
+      if (taken) throw new ConflictException({ success: false, field: 'nick', message: taken });
+    }
 
     let kind: { ext: 'jpg' | 'png' | 'webp' } | null = null;
     if (file) {
@@ -85,7 +114,6 @@ export class AccountService {
       if (!kind) throw new BadRequestException({ success: false, field: 'photo', message: '이미지 파일만 업로드 가능합니다.' });
     }
 
-    const old = await this.member(mbId);
     const oldBirth = s(old.mb_birth).replace(/\D+/g, '');
     const newBirth = birth.replace(/-/g, '');
     const hadBirth = birthToInput(old.mb_birth) !== '';

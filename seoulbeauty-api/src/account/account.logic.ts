@@ -26,15 +26,25 @@ export function validBirth(input: string, today: string): boolean {
   return input <= today && input >= limit;
 }
 
-export const NICK_RE = /^[a-zA-Z0-9_]+$/;
+/** Instagram-style nickname: 1–30 Latin letters, digits, "_" and "."; no "." at the start/end or twice in a row; case-insensitive (stored lower-case). */
+export const NICK_MAX = 30;
+export function nickProblem(nick: string): string | null {
+  if (nick === '') return '닉네임을 입력해주세요.';
+  if (nick.length > NICK_MAX) return `닉네임은 ${NICK_MAX}자 이하로 입력해주세요.`;
+  if (!/^[a-zA-Z0-9_.]+$/.test(nick)) return '닉네임은 영문, 숫자, 밑줄(_), 마침표(.)만 사용할 수 있습니다.';
+  if (nick.startsWith('.') || nick.endsWith('.') || nick.includes('..')) return '마침표(.)는 처음이나 끝에 올 수 없고, 연속으로 쓸 수 없습니다.';
+  return null;
+}
 export const HP_RE = /^[0-9+\-() ]{0,20}$/;
 
 export type ProfileCheck = { field: 'name' | 'birth' | 'nick' | 'hp'; message: string } | null;
 /** Validation order of save_all: name, birth, nick (+ the phone, which PHP did not check at all). */
-export function checkProfile(name: string, nick: string, hp: string, birth: string, today: string): ProfileCheck {
+export function checkProfile(name: string, nick: string, hp: string, birth: string, today: string, currentNick?: string): ProfileCheck {
   if (name === '' || name.length > 50) return { field: 'name', message: '이름을 입력해주세요.' };
   if (!validBirth(birth, today)) return { field: 'birth', message: '올바른 생년월일을 입력해주세요.' };
-  if (nick === '' || nick.length > 50 || !NICK_RE.test(nick)) return { field: 'nick', message: '닉네임은 영문, 숫자, 밑줄(_)만 사용할 수 있습니다.' };
+  // an unchanged nickname is not re-checked: older members (sign-up / social login) may have one that breaks today's rules
+  const nickBad = nick === currentNick ? null : nickProblem(nick);
+  if (nickBad) return { field: 'nick', message: nickBad };
   if (!HP_RE.test(hp)) return { field: 'hp', message: '올바른 휴대폰 번호를 입력해주세요.' };
   return null;
 }

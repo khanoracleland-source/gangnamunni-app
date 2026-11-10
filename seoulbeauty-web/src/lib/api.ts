@@ -431,6 +431,7 @@ export const api = {
   deleteProgressEntry: (id: number, entryId: number) => send<{ success: boolean }>("DELETE", `/v1/mypage/progress/${id}/entries/${entryId}`),
   submitProgress: (id: number) => post<{ success: boolean; message: string }>(`/v1/mypage/progress/${id}/submit`, {}),
   deleteProgress: (id: number) => send<{ success: boolean }>("DELETE", `/v1/mypage/progress/${id}`),
+  nickCheck: (nick: string) => get<{ available: boolean; message: string }>("/v1/mypage/profile/nick-check", { nick }),
   saveProfile: (form: FormData) => send<{ success: boolean; photoError: string | null; photoUrl: string | null }>("POST", "/v1/mypage/profile", form, 30000),
   notificationSettings: (ctx?: ServerCtx) => get<{ settings: NotificationSettings }>("/v1/mypage/notification-settings", undefined, ctx),
   setNotificationSetting: (field: SettingKey, value: boolean) => post<{ success: boolean }>("/v1/mypage/notification-settings", { field, value: value ? "1" : "0" }),

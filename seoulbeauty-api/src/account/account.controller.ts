@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { AuthedRequest, RequireAuthGuard } from '../auth/auth.guard';
@@ -18,6 +18,9 @@ export class AccountController {
 
   @Get('profile')
   profile(@Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { nocache(res); return this.account.profile(uid(req)); }
+
+  @Get('profile/nick-check')
+  nickCheck(@Query('nick') nick: unknown, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { nocache(res); return this.account.checkNick(uid(req), nick); }
 
   @Post('profile')
   @UseGuards(SameOriginGuard)

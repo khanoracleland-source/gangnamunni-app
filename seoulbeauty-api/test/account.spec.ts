@@ -32,6 +32,10 @@ describe('account logic', () => {
     expect(checkProfile('홍', 'a', '', '', TODAY)?.field).toBe('birth');
     expect(checkProfile('홍', '한글', '', '1990-01-01', TODAY)?.field).toBe('nick');
     expect(checkProfile('홍', 'a_1', '010-1234-5678', '1990-01-01', TODAY)).toBeNull();
+    // Instagram-style nicknames: Latin letters, digits, _ and . (no leading/trailing/double period), 1–30, case-insensitive
+    for (const ok of ['a.b', 'A_b.9', 'x', 'a'.repeat(30)]) expect(checkProfile('홍', ok, '', '1990-01-01', TODAY)).toBeNull();
+    for (const bad of ['.a', 'a.', 'a..b', 'a b', 'a-b', 'a'.repeat(31), 'é', '서울미녀']) expect(checkProfile('홍', bad, '', '1990-01-01', TODAY)?.field).toBe('nick');
+    expect(checkProfile('홍', '서울미녀', '', '1990-01-01', TODAY, '서울미녀')).toBeNull(); // unchanged legacy nickname is left alone
     expect(checkProfile('홍', 'a_1', 'x;drop', '1990-01-01', TODAY)?.field).toBe('hp');
   });
   it('photo sniff and settings whitelist', () => {
@@ -55,7 +59,7 @@ describe('account API', () => {
   const respond = (sql: string, args: any[]): any => {
     calls.push({ sql, args });
     if (/FROM g5_member WHERE mb_id = \?/.test(sql)) return [[member]];
-    if (/mb_nick = \? AND mb_id != \?/.test(sql)) return [nickTaken ? [{ mb_id: 'other' }] : []];
+    if (/LOWER\(mb_nick\) = \? AND mb_id != \?/.test(sql)) return [nickTaken ? [{ mb_id: 'other' }] : []];
     if (/gangnamunni_member_birth_log WHERE/.test(sql)) { if (failBirthLog) throw new Error('no table'); return [[{ c: recentBirth }]]; }
     if (/FROM gangnamunni_notification_settings/.test(sql)) return [[{ noti_booking: 1, noti_visit: 0, noti_community: 1, noti_review: 1, mkt_push: 1, mkt_sms: 0, mkt_email: 0, mkt_night_push: 0 }]];
     if (/UPDATE gangnamunni_notification_settings SET noti_review/.test(sql) && columnMissing) { const err: any = new Error("Unknown column 'noti_review'"); err.code = 'ER_BAD_FIELD_ERROR'; throw err; }
@@ -117,6 +121,16 @@ describe('account API', () => {
     expect(r.body).toMatchObject({ field: 'nick' });
     expect((await save({ ...ok, birth: '2999-01-01' }).expect(400)).body.field).toBe('birth');
     expect(calls.some((c) => /^UPDATE/.test(c.sql))).toBe(false);
+  });
+  it('nickname is stored lower-case; nick-check reports format and availability', async () => {
+    await save({ ...ok, nick: 'New.Nick_1' }).expect(201);
+    expect(calls.find((c) => /^UPDATE g5_member/.test(c.sql))!.args[0]).toBe('new.nick_1');
+    const chk = (nick: string) => request(app.getHttpServer()).get('/v1/mypage/profile/nick-check').query({ nick }).set('Cookie', 'sid=kim');
+    expect((await chk('good.nick').expect(200)).body).toMatchObject({ available: true });
+    expect((await chk('bad..nick').expect(200)).body).toMatchObject({ available: false });
+    expect((await chk('old').expect(200)).body).toMatchObject({ available: true }); // the member's own current nickname
+    nickTaken = true;
+    expect((await chk('taken').expect(200)).body).toEqual({ available: false, message: '이미 사용 중인 닉네임입니다.' });
   });
   it('taken nick -> 409', async () => {
     nickTaken = true;
