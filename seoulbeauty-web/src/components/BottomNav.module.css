@@ -15,3 +15,6 @@
 .active { color: var(--accent); font-weight: 700; }
 .pill { position: absolute; z-index: 0; top: 6px; left: 6px; height: 56px; width: calc((100% - 12px - 9px) / 4); border-radius: 28px; background: #F2EFF0; pointer-events: none; transition: transform .38s cubic-bezier(.4, 0, .2, 1), opacity .2s ease; }
 @media (prefers-reduced-motion: reduce) { .pill { transition: none; } }
+
+/* a text field has focus (keyboard up): the tab bar steps aside */
+.typing { display: none; }

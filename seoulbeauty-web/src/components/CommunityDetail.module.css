@@ -52,3 +52,5 @@
 .empty { text-align: center; padding: 60px 20px; color: #999; }
 .retry { color: var(--accent); text-decoration: underline; margin-left: 6px; }
 .cbtn svg { width: 16px; height: 16px; display: block; }
+/* tab bar is hidden while typing: the comment bar drops to the bottom (above the keyboard when it overlays) */
+:global(html[data-typing]) .form { bottom: var(--comment-bottom, var(--sab)); }

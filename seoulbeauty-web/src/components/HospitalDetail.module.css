@@ -61,3 +61,4 @@
   .nameRow, .cta, .secTitleLg, .secTitle { padding-left: 16px; padding-right: 16px; }
   .hospCard, .addrRow, .intro { margin-left: 16px; margin-right: 16px; }
 }
+:global(html[data-typing]) .cta { bottom: var(--sab); }

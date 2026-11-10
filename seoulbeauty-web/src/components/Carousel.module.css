@@ -1,4 +1,4 @@
-.wrap { position: relative; overflow: hidden; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.wrap { position: relative; overflow: hidden; border-radius: inherit; touch-action: pan-y; user-select: none; -webkit-user-select: none; }
 .wrap img { -webkit-user-drag: none; user-drag: none; }
 .dragging { cursor: grabbing; }
 .track { display: flex; will-change: transform; }

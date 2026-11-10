@@ -3,12 +3,12 @@
 .sectionHead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .sectionTitle { font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
 .more { font-size: calc(22px * var(--fs-scale)); color: var(--muted); padding: 0 6px; }
-.ad { display: block; text-decoration: none; }
-.adImg { width: 100%; height: auto; object-fit: cover; border: 1px solid #ECE9EA; }
-.adText { position: relative; background: #F6F5F5; border: 1px solid #ECE9EA; padding: 20px 16px; min-height: 100px; color: #4A4446; }
+.ad { display: block; text-decoration: none; border-radius: 16px; overflow: hidden; border: 1px solid #ECE9EA; }   /* the hairline lives on the rounded card, not on the square picture inside */
+.adImg { width: 100%; height: auto; object-fit: cover; display: block; }
+.adText { position: relative; background: #F6F5F5; padding: 20px 16px; min-height: 100px; color: #4A4446; }
 .adTitle { font-size: calc(15px * var(--fs-scale)); font-weight: 700; margin-bottom: 4px; color: #1A1718; }
 .adSub { font-size: calc(12px * var(--fs-scale)); color: #6B6466; line-height: 1.4; }
-.promo { display: block; padding: 20px 16px; min-height: 100px; color: #fff; text-decoration: none; }
+.promo { display: block; border-radius: 16px; padding: 20px 16px; min-height: 100px; color: #fff; text-decoration: none; }
 .promoTitle { font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
 .promoSub { font-size: calc(13px * var(--fs-scale)); opacity: .9; margin-top: 4px; }
 .eventsScroll { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
@@ -26,19 +26,19 @@
 .orig { color: var(--muted); font-size: calc(11px * var(--fs-scale)); }
 .disc { font-weight: 700; color: var(--accent); }
 /* design 03-01: banner 125 / #F1F0F0 under the search row; banner and category table share the search row's side inset (20px, 16px at ≤360px) */
-.banner { position: relative; min-height: 125px; height: clamp(125px, 32vw, 160px); margin: 12px 20px 0; background: #F1F0F0; overflow: hidden; }
+.banner { position: relative; min-height: 125px; height: clamp(125px, 32vw, 160px); margin: 12px 20px 0; background: #F1F0F0; overflow: hidden; border-radius: 16px; }
 .bannerText { padding: 22px 16px 0 clamp(20px, 7.6vw, 40px); }
 .bannerTitle { font-size: clamp(15px, 4.1vw, 19px); font-weight: 700; line-height: 1.4; }
 .bannerSub { font-size: calc(11px * var(--fs-scale)); margin-top: 6px; }
 /* ad picture: shown whole, never cropped. The box has a fixed ratio (--ar, set from the first picture and remembered), so nothing below it moves when the image loads;
    a picture with another ratio is letterboxed on the banner's own grey. */
 .bannerAd { height: auto; min-height: 0; }
-.bannerAd .ad { display: block; }
+.bannerAd .ad { display: block; border: 0; }
 .bannerAd .adImg { display: block; width: 100%; height: auto; aspect-ratio: var(--ar, 2.8); object-fit: contain; border: 0; }
 .bannerAd .adText { aspect-ratio: var(--ar, 2.8); height: auto; border: 0; background: #F1F0F0; }
 .table { padding: 0 20px; }
 /* design footer: #F1F0F0, 10px / 1.75, #6B6466 */
-.company { margin: 8px 20px 0; padding: 20px 16px 24px; background: #F1F0F0; color: #6B6466; font-size: calc(10px * var(--fs-scale)); line-height: 1.75; }   /* same side inset as the banner / table */
+.company { margin: 8px 20px 0; border-radius: 16px; padding: 20px 16px 24px; background: #F1F0F0; color: #6B6466; font-size: calc(10px * var(--fs-scale)); line-height: 1.75; }   /* same side inset as the banner / table */
 .company p { margin: 0; }
 .company a { color: inherit; text-decoration: none; }
 .companyLogo { margin-bottom: 10px; }
