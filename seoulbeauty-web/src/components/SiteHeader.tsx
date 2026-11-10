@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { useToast } from "./Toast";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -72,20 +73,14 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
   const setSearchOpen = (v: boolean) => { setOpenedAt(v ? urlKey : null); if (v) setPickerOpen(false); }; // one panel at a time: the search screen has its own region panel
   const [pickerOpen, setPickerOpen] = useState(false);
   const [q, setQ] = useState(initialQ);
-  const [toast, setToast] = useState("");
   const [logoBroken, setLogoBroken] = useState(false);
-  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const regionKey = target === "community" ? COMMUNITY_REGION_KEY : REGION_KEY;
   const regions = useSavedRegions(regionKey);
   // Region groups + popular keywords come with the home payload (cached 60 s; shared with the home page).
   // Loaded as soon as the header mounts (shared with the home page / WarmUp cache, no refetch for 5 min): the panel then opens with its data at once.
   const homeQ = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: home, staleTime: 5 * 60_000, refetchOnMount: false });
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(""), 1800);
-  };
+  const showToast = useToast();
 
   /** header.php applyRegionFilter(): on the list page keep the other filters; keyword change drops dosage; page resets. */
   const apply = (keyword: string, regs: string[]) => {
@@ -152,7 +147,6 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
           </div>
         </header>
       )}
-      {toast && <div className={styles.toast} role="status" aria-live="polite">{toast}</div>}
 
       {showSearch && (
         <>

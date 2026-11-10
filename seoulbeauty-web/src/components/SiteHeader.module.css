@@ -7,7 +7,6 @@
 .iconBtn img { width: 22px; height: 22px; display: block; object-fit: contain; }
 .bell img { width: 24px; height: 24px; }
 .loginBtn { display: inline-flex; align-items: center; height: 30px; padding: 0 10px; background: var(--accent); color: #fff; border-radius: 3px; font-size: calc(12px * var(--fs-scale)); font-weight: 700; text-decoration: none; white-space: nowrap; margin-left: 4px; margin-right: 8px; }
-.toast { position: fixed; left: 50%; bottom: 84px; z-index: 2000; transform: translateX(-50%); padding: 10px 16px; border-radius: 20px; background: rgba(20,20,20,.9); color: #fff; font-size: calc(13px * var(--fs-scale)); white-space: nowrap; }
 /* design: underlined search row (1.5px ink), placeholder #9A9395, dark pill region button */
 .searchWrap { position: relative; }
 .searchRow { display: flex; gap: 8px; margin: 4px 20px 0; height: 48px; align-items: center; border-bottom: 1.5px solid #1A1718; }

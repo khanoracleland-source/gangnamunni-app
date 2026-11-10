@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useToast } from "./Toast";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api, qk, type HospitalDetail } from "@/lib/api";
 import { useMe } from "@/lib/me";
@@ -36,10 +37,7 @@ export default function ConsultSheet({ hospital, open, onClose }: { hospital: Ho
   const [showPolicy, setShowPolicy] = useState(false);
   const [done, setDone] = useState<null | { method: Method; time: string }>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [toast, setToast] = useState("");
-  const toastTimer = useRef<number | null>(null);
-  const showToast = (t: string) => { if (toastTimer.current) window.clearTimeout(toastTimer.current); setToast(t); toastTimer.current = window.setTimeout(() => setToast(""), 2000); };
-  useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current); }, []);
+  const showToast = useToast();
   // The sheet itself (dim, grip drag, 0.4 s slide, Esc) is BottomSheet; buttons here close it through the ref so they animate too.
   const sheet = useRef<BottomSheetHandle>(null);
   const closeAnimated = () => sheet.current?.close();
@@ -163,7 +161,6 @@ export default function ConsultSheet({ hospital, open, onClose }: { hospital: Ho
             <button type="submit" className={styles.submit} disabled={m.isPending} aria-busy={m.isPending}>{m.isPending ? "전송중..." : "신청하기"}</button>
           </form>
         )}
-        {toast && <div className={styles.toast} role="status">{toast}</div>}
       </div>
     </BottomSheet>
   );

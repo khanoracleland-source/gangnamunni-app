@@ -8,6 +8,7 @@ import { api, ApiError, assetUrl, qk, type MyDoneReview, type MyWritableReview }
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import styles from "./MyPages.module.css";
+import { useToast } from "./Toast";
 
 type Data = { progressEnabled: boolean; writable: MyWritableReview[]; done: MyDoneReview[] };
 
@@ -23,7 +24,7 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState("");
+  const say = useToast();
   const tab = useSearchParams().get("tab") === "done" ? "done" : "writable";
   const { data, error, refetch } = useQuery({ queryKey: qk.myReviews, queryFn: () => api.myReviews(), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
@@ -36,9 +37,8 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
       void qc.invalidateQueries({ queryKey: qk.mypage });
       await refetch();
     } catch (err) {
-      setToast(err instanceof ApiError && err.status === 404 ? "이미 삭제된 후기예요." : "삭제하지 못했습니다. 다시 시도해주세요.");
+      say(err instanceof ApiError && err.status === 404 ? "이미 삭제된 후기예요." : "삭제하지 못했습니다. 다시 시도해주세요.");
       setConfirm(null);
-      window.setTimeout(() => setToast(""), 2500);
     } finally {
       setBusy(false);
     }
@@ -101,7 +101,6 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
           )}
         </>
       )}
-      {toast && <div className={styles.ntToast} role="status">{toast}</div>}
       {confirm !== null && (
         <div className={styles.pfModal} role="presentation" onClick={() => !busy && setConfirm(null)}>
           <div className={styles.pfModalBox} role="dialog" aria-modal="true" aria-labelledby="rv-del" onClick={(e) => e.stopPropagation()}>

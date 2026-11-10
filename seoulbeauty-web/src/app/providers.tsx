@@ -7,6 +7,7 @@ import { api, qk } from "@/lib/api";
 import { announceLogoutFromUrl, notifyPageChanged } from "@/lib/bridge";
 import { useMe } from "@/lib/me";
 import { countSpaNav } from "@/lib/nav";
+import { ToastProvider } from "@/components/Toast";
 import { CACHE_BUSTER, CACHE_MAX_AGE, createIdbPersister, restorePersonal, shouldPersist } from "@/lib/persist";
 
 /**
@@ -120,7 +121,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <PageChangeNotifier />
         <LogoutAnnouncer />
       </Suspense>
-      {children}
+      <ToastProvider>{children}</ToastProvider>
     </PersistQueryClientProvider>
   );
 }

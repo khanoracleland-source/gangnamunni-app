@@ -87,5 +87,4 @@
 .modal { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.9); display: flex; align-items: center; justify-content: center; }
 .modal img { max-width: 95vw; max-height: 95vh; object-fit: contain; }
 .modalClose { position: absolute; top: 16px; right: 16px; background: none; border: 0; color: #fff; font-size: 32px; cursor: pointer; }
-.toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); padding: 10px 16px; background: rgba(0,0,0,.8); color: #fff; font-size: 14px; border-radius: 20px; z-index: 1100; }
 @media (max-width: 420px) { .stats { gap: 16px; } .hthumb { width: 82px; height: 82px; } .rcard { padding-left: 16px; padding-right: 16px; } .hosp { margin-left: 16px; margin-right: 16px; } }

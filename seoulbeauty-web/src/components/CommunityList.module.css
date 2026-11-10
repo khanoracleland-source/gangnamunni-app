@@ -40,4 +40,3 @@
 /* write button: 62x38 pill centered, floats just above the tab bar */
 .fab { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + var(--sab) + 10px); width: 62px; height: 38px; border-radius: 19px; background: #AC1830; display: flex; align-items: center; justify-content: center; z-index: 100; padding: 0; box-shadow: 0 4px 12px rgba(26, 23, 24, .18); }
 .fab img { width: 20px; height: 20px; object-fit: contain; display: block; }
-.toast { position: fixed; left: 20px; right: 20px; bottom: calc(var(--nav-h) + var(--sab) + 64px); margin: 0 auto; max-width: 600px; height: 56px; padding: 0 16px; border: 1px solid #CFC8CB; border-radius: 16px; background: #fff; color: #1A1718; display: flex; align-items: center; justify-content: center; font-size: calc(18px * var(--fs-scale)); font-weight: 700; box-shadow: 0 2px 8px rgba(26, 23, 24, .06); z-index: 1100; pointer-events: none; }

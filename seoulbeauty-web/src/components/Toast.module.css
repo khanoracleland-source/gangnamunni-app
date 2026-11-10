@@ -1,0 +1,22 @@
+/* Toast (components/Toast.tsx). Sits above the floating tab bar; below the screen edge until `.show` lifts it in. */
+.toast {
+  position: fixed; left: 20px; right: 20px; margin: 0 auto; max-width: 600px;
+  bottom: calc(var(--nav-h) + var(--sab) + 64px);
+  min-height: 56px; padding: 12px 16px; box-sizing: border-box; /* grows with a 2-line message instead of overflowing */
+  line-height: 1.35; word-break: keep-all; overflow-wrap: anywhere;
+  border: 1px solid #CFC8CB; border-radius: 16px; background: #fff; color: #1A1718;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-size: calc(18px * var(--fs-scale)); font-weight: 700;
+  box-shadow: 0 2px 8px rgba(26, 23, 24, .06);
+  z-index: 1100; pointer-events: none;
+  /* hidden: fully below the screen edge */
+  transform: translateY(calc(var(--nav-h) + var(--sab) + 64px + 100%)); opacity: 0;
+  /* sinking down (default): 0.4 s, same as BottomSheet's close */
+  transition: transform .4s cubic-bezier(.4, 0, .2, 1), opacity .4s ease;
+}
+/* rising: 0.4 s, same as BottomSheet's open */
+.show { transform: translateY(0); opacity: 1; transition-timing-function: cubic-bezier(.2, .8, .2, 1), ease; }
+@media (prefers-reduced-motion: reduce) {
+  .toast { transform: none; transition: opacity .2s ease; }
+  .show { transform: none; }
+}

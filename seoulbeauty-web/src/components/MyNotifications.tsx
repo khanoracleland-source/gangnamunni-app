@@ -1,6 +1,7 @@
 "use client";
 import Loading from "./Loading";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useToast } from "./Toast";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
@@ -32,10 +33,8 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
     retry: false, enabled: !anon,
   });
   const loggedOut = anon || (q.error instanceof ApiError && q.error.status === 401);
-  const [toast, setToast] = useState("");
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [busy, setBusy] = useState(false);
-  const say = (m: string) => { setToast(m); if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => setToast(""), 2500); };
+  const say = useToast();
 
   const pages = q.data?.pages ?? [];
   const items = pages.flatMap((p) => p.items);
@@ -150,7 +149,6 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
           )}
         </>
       )}
-      {toast && <div className={styles.ntToast} role="status" aria-live="polite">{toast}</div>}
     </div>
   );
 }

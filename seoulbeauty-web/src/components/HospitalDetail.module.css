@@ -61,4 +61,3 @@
   .nameRow, .cta, .secTitleLg, .secTitle { padding-left: 16px; padding-right: 16px; }
   .hospCard, .addrRow, .intro { margin-left: 16px; margin-right: 16px; }
 }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + var(--sab) + 88px); background: rgba(26,23,24,.88); color: #fff; font-size: calc(13px * var(--fs-scale)); padding: 10px 16px; border-radius: 20px; z-index: 50; white-space: nowrap; }

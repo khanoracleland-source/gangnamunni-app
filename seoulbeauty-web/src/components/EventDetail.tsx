@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useToast } from "./Toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,22 +33,15 @@ export default function EventDetail({ id, initial }: { id: number; initial?: Det
   const [name, setName] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [toast, setToast] = useState<{ msg: string; kind: "ok" | "err" } | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  const say = (msg: string, kind: "ok" | "err") => {
-    setToast({ msg, kind });
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), 3000);
-  };
+  const say = useToast();
 
   const enter = useMutation({
     mutationFn: (v: { name: string; phone: string; email: string }) => api.enterEvent(id, v),
     onSuccess: () => {
-      say("응모가 완료되었습니다!", "ok");
+      say("응모가 완료되었습니다!");
       qc.setQueryData<Detail>(qk.event(id), (p) => (p && p.raffle ? { ...p, raffle: { ...p.raffle, entered: true, entryCount: p.raffle.entryCount + 1 } } : p));
     },
-    onError: (e) => say(e instanceof ApiError ? e.message : "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", "err"),
+    onError: (e) => say(e instanceof ApiError ? e.message : "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."),
   });
 
   if (!ev) {
@@ -70,8 +64,8 @@ export default function EventDetail({ id, initial }: { id: number; initial?: Det
   const phoneVal = phone ?? formatPhone(me.data?.user?.phone ?? "");
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nameVal.trim()) return say("이름을 입력해주세요.", "err");
-    if (phoneVal.replace(/[^0-9]/g, "").length < 10) return say("올바른 전화번호를 입력해주세요.", "err");
+    if (!nameVal.trim()) return say("이름을 입력해주세요.");
+    if (phoneVal.replace(/[^0-9]/g, "").length < 10) return say("올바른 전화번호를 입력해주세요.");
     void requireLogin(() => enter.mutateAsync({ name: nameVal.trim(), phone: phoneVal.replace(/[^0-9]/g, ""), email: email.trim() })).catch(() => {});
   };
 
@@ -206,7 +200,6 @@ export default function EventDetail({ id, initial }: { id: number; initial?: Det
         </section>
       )}
 
-      {toast && <div className={`${styles.toast} ${toast.kind === "ok" ? styles.toastOk : styles.toastErr}`} role="status" aria-live="polite">{toast.msg}</div>}
     </article>
   );
 }

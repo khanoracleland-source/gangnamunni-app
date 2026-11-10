@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useToast } from "./Toast";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -95,14 +96,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
   const [seen, setSeen] = useState<DetailTab[]>([initialTab]);
   const [consultOpen, setConsultOpen] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
-  const [toast, setToast] = useState("");
-  const toastTimer = useRef<number | null>(null);
-  const showToast = (msg: string) => {
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    setToast(msg);
-    toastTimer.current = window.setTimeout(() => { setToast(""); toastTimer.current = null; }, 2000);
-  };
-  useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current); }, []);
+  const showToast = useToast();
   const now = useNow();
   const { data: h, error, isError, refetch } = useQuery({
     queryKey: qk.hospital(id),
@@ -284,7 +278,6 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
         <button type="button" className={styles.ctaPrimary} onClick={() => setConsultOpen(true)}>상담신청</button>
         <Link href={`/booking?id=${id}&from=hospital`} className={styles.ctaSecondary}>예약하기</Link>
       </div>
-      {toast && <div className={styles.toast} role="status">{toast}</div>}
       <ConsultSheet hospital={h} open={consultOpen} onClose={() => setConsultOpen(false)} />
     </article>
   );

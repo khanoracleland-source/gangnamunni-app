@@ -30,8 +30,6 @@
 .empty { padding: 70px 20px; text-align: center; color: #777; line-height: 1.7; }
 .retry { color: #AC1830; text-decoration: underline; }
 /* 07-03 / 07-04: the consent note floats above the tab bar */
-.note { position: fixed; left: 20px; right: 20px; bottom: calc(40px + var(--sab, 0px)); max-width: 600px; margin: 0 auto; box-sizing: border-box; min-height: 56px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #DCD6D8; border-radius: 16px; background: #fff; box-shadow: 0 4px 12px rgba(26, 23, 24, .1); font-size: 15px; font-weight: 500; line-height: 1.5; z-index: 60; }
-.noteX { flex: none; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: #4A4446; }
 /* 07-07 logout sheet */
 .sheet { padding: 14px 20px 24px; display: flex; flex-direction: column; gap: 18px; }
 .sheetTitle { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.5; text-align: center; }

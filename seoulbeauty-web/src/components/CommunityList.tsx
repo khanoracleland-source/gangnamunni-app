@@ -1,12 +1,13 @@
 "use client";
 import Loading from "./Loading";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, assetUrl, qk, type CommunityItem, type CommunityList as Data, type CommunityListParams, type CommunityTab } from "@/lib/api";
 import { useLoginUrl, useMe, useRequireLogin } from "@/lib/me";
 import ContentActions from "./ContentActions";
+import { useToast } from "./Toast";
 import { timeDisplay, num } from "@/lib/community";
 import { COMMUNITY_REGION_KEY, writeRegions } from "./SiteHeader";
 import styles from "./CommunityList.module.css";
@@ -41,14 +42,7 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
     initialData: initial,
   });
   const [open, setOpen] = useState<Record<string, boolean>>({});
-  const [toast, setToast] = useState("");
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  const say = (msg: string) => {
-    setToast(msg);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(""), 2000);
-  };
+  const say = useToast();
 
   // community.php page_js: a region in the URL is remembered; without one the remembered regions are applied.
   useEffect(() => {
@@ -182,7 +176,6 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
           <img src={ICON("icon-community-write")} alt="" />
         </a>
       )}
-      {toast && <div className={styles.toast} role="status" aria-live="polite">{toast}</div>}
     </div>
   );
 }

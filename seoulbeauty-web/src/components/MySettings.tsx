@@ -11,6 +11,7 @@ import { phpUrl, usePhpBase } from "@/lib/php";
 import { announceLogout, inApp, onFlutterEvent, openNotificationSettings, requestNotificationStatus } from "@/lib/bridge";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import LoginPrompt from "./LoginPrompt";
+import { useToast } from "./Toast";
 import MyHeader from "./MyHeader";
 import styles from "./MySettings.module.css";
 
@@ -35,7 +36,6 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
   const { data, error, refetch } = useQuery({ queryKey: qk.notificationSettings, queryFn: () => api.notificationSettings(), initialData: initial, retry: false, enabled: !anon });
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const [busy, setBusy] = useState<SettingKey | null>(null);
-  const [note, setNote] = useState("");
   const [sheet, setSheet] = useState(false);
   const sheetRef = useRef<BottomSheetHandle>(null);
   const [leave, setLeave] = useState(false);
@@ -43,9 +43,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
   const leaveRef = useRef<BottomSheetHandle>(null);
   const router = useRouter();
   const { data: profile } = useQuery({ queryKey: qk.myProfile, queryFn: () => api.myProfile(), retry: false, enabled: !anon });
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const say = (m: string) => { setNote(m); if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => setNote(""), 3000); };
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const say = useToast();
 
   /* 07-01 "기기 알림이 꺼져 있어요": only inside the app, when the OS permission is off. Re-asked whenever the page comes back
      into view (the app also re-sends it on resume), so the banner goes away after the member turns notifications on. */
@@ -158,14 +156,6 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
           </div>
         </div>
       </BottomSheet>
-      {note && (
-        <div className={styles.note} role="status" aria-live="polite">
-          <span>{note}</span>
-          <button type="button" className={styles.noteX} onClick={() => setNote("")} aria-label="닫기">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
-        </div>
-      )}
     </div>
   );
 }

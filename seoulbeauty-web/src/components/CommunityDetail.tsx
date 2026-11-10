@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import DetailSkeleton from "./DetailSkeleton";
+import { useToast } from "./Toast";
 import { api, ApiError, assetUrl, qk, type CommunityPost } from "@/lib/api";
 import { useLoginUrl, useMe, useRequireLogin } from "@/lib/me";
 import { commentAge, num, shortDate } from "@/lib/community";
@@ -30,17 +31,10 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
   const [text, setText] = useState("");
   const [replyTo, setReplyTo] = useState<{ id: number; name: string } | null>(null);
   const [busy, setBusy] = useState<Record<number, boolean>>({});
-  const [toast, setToast] = useState("");
   const scrollTo = useRef<number | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  const say = (msg: string) => {
-    setToast(msg);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(""), 2500);
-  };
+  const say = useToast();
   const touchLists = () => { void qc.invalidateQueries({ queryKey: ["community"] }); };
 
   // Show "...더보기" only when the text exceeds the three-line preview (as detail_community.php does).
@@ -233,7 +227,6 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
           </form>
         )}
       </div>
-      {toast && <div className={styles.toast} role="status" aria-live="polite">{toast}</div>}
     </>
   );
 }

@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type ReviewDetail as Detail } from "@/lib/api";
 import { useRequireLogin } from "@/lib/me";
 import SupportHeader from "./SupportHeader";
+import { useToast } from "./Toast";
 import styles from "./Support.module.css";
 
 const ICON = (name: string) => assetUrl(`assets/icons/${name}.png?v=1`) ?? "";
@@ -17,7 +18,7 @@ export default function ReviewDetail({ id, initial }: { id: number; initial?: De
   const requireLogin = useRequireLogin();
   const { data, error, refetch } = useQuery({ queryKey: qk.reviewDetail(id), queryFn: () => api.reviewDetail(id), initialData: initial, retry: false });
   const [zoom, setZoom] = useState<string | null>(null);
-  const [toast, setToast] = useState("");
+  const say = useToast();
   const like = useMutation({
     mutationFn: () => api.toggleReviewLike(id),
     onSuccess: (r) => {
@@ -27,7 +28,7 @@ export default function ReviewDetail({ id, initial }: { id: number; initial?: De
   });
   const onLike = () => {
     if (like.isPending) return;
-    void requireLogin(() => like.mutateAsync()).catch(() => { setToast("좋아요 처리 중 오류가 발생했습니다."); setTimeout(() => setToast(""), 2500); });
+    void requireLogin(() => like.mutateAsync()).catch(() => say("좋아요 처리 중 오류가 발생했습니다."));
   };
   const missing = error instanceof ApiError && (error.status === 404 || error.status === 400);
   return (
@@ -107,7 +108,6 @@ export default function ReviewDetail({ id, initial }: { id: number; initial?: De
           <img src={zoom} alt="" />
         </div>
       )}
-      {toast && <div className={styles.toast} role="status">{toast}</div>}
     </div>
   );
 }
