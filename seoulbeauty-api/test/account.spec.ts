@@ -36,6 +36,12 @@ describe('account logic', () => {
     for (const ok of ['a.b', 'A_b.9', 'x', 'a'.repeat(30)]) expect(checkProfile('홍', ok, '', '1990-01-01', TODAY)).toBeNull();
     for (const bad of ['.a', 'a.', 'a..b', 'a b', 'a-b', 'a'.repeat(31), 'é', '서울미녀']) expect(checkProfile('홍', bad, '', '1990-01-01', TODAY)?.field).toBe('nick');
     expect(checkProfile('홍', '서울미녀', '', '1990-01-01', TODAY, '서울미녀')).toBeNull(); // unchanged legacy nickname is left alone
+    // a member with no name / birth date on file can still save other items; entering a bad value is still rejected
+    expect(checkProfile('', 'a', '', '', TODAY, 'a', { name: '', birth: '' })).toBeNull();
+    expect(checkProfile('', 'a', '', '1990-01-01', TODAY, 'a', { name: '', birth: '' })).toBeNull(); // only the birth date is being filled in
+    expect(checkProfile('홍', 'a', '', '', TODAY, 'a', { name: '', birth: '' })).toBeNull(); // only the name is being filled in
+    expect(checkProfile('', 'a', '', '', TODAY, 'a', { name: '홍', birth: '' })?.field).toBe('name'); // cannot blank an existing name
+    expect(checkProfile('홍', 'a', '', '', TODAY, 'a', { name: '홍', birth: '1990-01-01' })?.field).toBe('birth');
     expect(checkProfile('홍', 'a_1', 'x;drop', '1990-01-01', TODAY)?.field).toBe('hp');
   });
   it('photo sniff and settings whitelist', () => {

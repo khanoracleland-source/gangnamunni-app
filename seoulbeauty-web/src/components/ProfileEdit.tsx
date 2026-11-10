@@ -51,8 +51,9 @@ function Form({ data }: { data: MyProfile }) {
     setPreview(f ? URL.createObjectURL(f) : null);
   };
   const validate = (v: typeof vals): Err =>
-    !v.name.trim() ? { field: "name", message: "이름을 입력해주세요." }
-    : !v.birth ? { field: "birth", message: "올바른 생년월일을 입력해주세요." }
+    // required, but an item that is empty on file and left empty does not block saving the others (same rule as the API)
+    !v.name.trim() && data.name.trim() !== "" ? { field: "name", message: "이름을 입력해주세요." }
+    : !v.birth && data.birth !== "" ? { field: "birth", message: "올바른 생년월일을 입력해주세요." }
     : v.nick.trim() !== data.nick && nickProblem(v.nick.trim()) ? { field: "nick", message: nickProblem(v.nick.trim()) ?? "" } : null; // an unchanged (older) nickname is not re-checked
 
   /** The API saves the whole profile at once: send the current values with the changed one (and the picked photo, if any). */

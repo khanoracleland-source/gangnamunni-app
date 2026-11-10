@@ -39,9 +39,10 @@ export const HP_RE = /^[0-9+\-() ]{0,20}$/;
 
 export type ProfileCheck = { field: 'name' | 'birth' | 'nick' | 'hp'; message: string } | null;
 /** Validation order of save_all: name, birth, nick (+ the phone, which PHP did not check at all). */
-export function checkProfile(name: string, nick: string, hp: string, birth: string, today: string, currentNick?: string): ProfileCheck {
-  if (name === '' || name.length > 50) return { field: 'name', message: '이름을 입력해주세요.' };
-  if (!validBirth(birth, today)) return { field: 'birth', message: '올바른 생년월일을 입력해주세요.' };
+export function checkProfile(name: string, nick: string, hp: string, birth: string, today: string, currentNick?: string, current?: { name: string; birth: string }): ProfileCheck {
+  // Name / birth are required, but a member who has none on file yet must still be able to save the other items: an unchanged empty value passes
+  if (!(current && name === current.name && name === '') && (name === '' || name.length > 50)) return { field: 'name', message: '이름을 입력해주세요.' };
+  if (!(current && birth === current.birth && birth === '') && !validBirth(birth, today)) return { field: 'birth', message: '올바른 생년월일을 입력해주세요.' };
   // an unchanged nickname is not re-checked: older members (sign-up / social login) may have one that breaks today's rules
   const nickBad = nick === currentNick ? null : nickProblem(nick);
   if (nickBad) return { field: 'nick', message: nickBad };

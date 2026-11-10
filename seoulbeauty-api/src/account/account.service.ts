@@ -99,7 +99,7 @@ export class AccountService {
     const birth = s(input.birth).trim();
     const old = await this.member(mbId);
     const nickSame = nickIn === s(old.mb_nick);
-    const bad = checkProfile(name, nickIn, hp, birth, kstNow().slice(0, 10), s(old.mb_nick));
+    const bad = checkProfile(name, nickIn, hp, birth, kstNow().slice(0, 10), s(old.mb_nick), { name: s(old.mb_name).trim(), birth: birthToInput(old.mb_birth) });
     if (bad) throw new BadRequestException({ success: false, field: bad.field, message: bad.message });
     const nick = nickSame ? nickIn : nickIn.toLowerCase(); // Instagram-style: handles are case-insensitive, stored lower-case
     if (!nickSame) {
@@ -117,7 +117,7 @@ export class AccountService {
     const oldBirth = s(old.mb_birth).replace(/\D+/g, '');
     const newBirth = birth.replace(/-/g, '');
     const hadBirth = birthToInput(old.mb_birth) !== '';
-    const birthChanged = !hadBirth || oldBirth !== newBirth;
+    const birthChanged = hadBirth ? oldBirth !== newBirth : newBirth !== ''; // nothing on file and nothing entered: no change, no log
     if (hadBirth && birthChanged) {
       // The age limit for bookings depends on it: one change per 30 days. If the history can't be read, don't allow it (like PHP).
       let recent = 1;
