@@ -33,6 +33,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Inside the Flutter app the WebView already sits below the status bar (native SafeArea) yet Android still reports env(safe-area-inset-*):
             mark the document so the web layer does not add the inset a second time (see --sat in globals.css). */}
         <script dangerouslySetInnerHTML={{ __html: 'try{var m=function(){if(window.FlutterBridge){var d=document.documentElement;d.setAttribute("data-app","1");if(/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Macintosh/.test(navigator.userAgent)&&navigator.maxTouchPoints>1))d.setAttribute("data-ios","1")}};m();document.addEventListener("DOMContentLoaded",m);window.addEventListener("load",m)}catch(e){}' }} />
+        {/* hms.seoulbeauty.app is the patient app's host. A normal browser that opens a page there is sent to the public domain
+            (same path; the session cookie is shared: domain=.seoulbeauty.app). The app is left alone three ways: the FlutterBridge
+            channel (checked after load, it can arrive late), a WebView user agent (Android "; wv)", iOS without "Safari/") and ?app=.
+            /next/api/* never runs this script, so payment returns and social callbacks on this host are unaffected. */}
+        <script dangerouslySetInnerHTML={{ __html: 'try{(function(){if(location.hostname.toLowerCase()!=="hms.seoulbeauty.app")return;var ua=navigator.userAgent;var ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);if(/; wv\\)/.test(ua)||(ios&&!/Safari\\//.test(ua))||/[?&]app=/.test(location.search))return;var go=function(){if(window.FlutterBridge||document.documentElement.getAttribute("data-app"))return;location.replace("https://seoulbeauty.app"+location.pathname+location.search+location.hash)};var later=function(){setTimeout(go,300)};if(document.readyState==="complete")later();else window.addEventListener("load",later)})()}catch(e){}' }} />
       </head>
       <body>
         <Providers>
