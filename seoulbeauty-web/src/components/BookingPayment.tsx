@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api, ApiError, qk } from "@/lib/api";
+import { api, ApiError, assetUrl, qk } from "@/lib/api";
 import LoginPrompt from "./LoginPrompt";
 import styles from "./BookingPayment.module.css";
 
@@ -145,7 +145,7 @@ export default function BookingPayment({ id, payError }: { id: number; payError:
                 <div className={styles.logo}>
                   {data.booking.logo && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={data.booking.logo} alt={data.booking.hospitalName} />
+                    <img src={assetUrl(data.booking.logo) ?? ""} alt={data.booking.hospitalName} />
                   )}
                 </div>
                 <div className={styles.sumInfo}>
