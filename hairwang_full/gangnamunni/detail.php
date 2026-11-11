@@ -508,6 +508,7 @@ if ($current_tab === 'reviews') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo htmlspecialchars($hospital['name']); ?> | <?= site_name() ?></title>
+    <?php $og_description = (string)$hospital['name']; include __DIR__ . '/includes/og_meta.php'; ?>
     <?php echo generateFaviconLinks(); ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1923,7 +1924,7 @@ if ($current_tab === 'reviews') {
 
         if (shareBtn) {
             shareBtn.addEventListener('click', function () {
-                var shareText = '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
+                var shareText = '서울미녀\n' + window.location.href.replace(/^https?:\/\/hms\.seoulbeauty\.app(?=[:\/?#]|$)/i, 'https://seoulbeauty.app');
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(shareText).then(function () {
                         showShareToast('링크가 복사되었습니다.');

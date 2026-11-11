@@ -264,6 +264,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo term('review', '후기'); ?> | <?php echo htmlspecialchars($site_name); ?></title>
+    <?php include __DIR__ . '/includes/og_meta.php'; ?>
     <meta name="description" content="실제 <?php echo term('service', '시술'); ?> <?php echo term('review', '후기'); ?>를 확인하세요. 전/후 사진과 함께 진솔한 <?php echo term('review', '후기'); ?>를 만나보세요.">
 
     <!-- anti-flash (다크모드 깜박임 방지) -->

@@ -62,6 +62,7 @@ if (isset($connect) && $connect && function_exists('loadThemeSettings')) {
     <?php if (!empty($page_canonical)): ?>
     <link rel="canonical" href="<?php echo htmlspecialchars($page_canonical, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>
+    <?php include __DIR__ . '/og_meta.php'; ?>
     <?php if (!empty($page_naver_verification)): ?>
     <meta name="naver-site-verification" content="<?php echo htmlspecialchars($page_naver_verification, ENT_QUOTES, 'UTF-8'); ?>">
     <?php endif; ?>

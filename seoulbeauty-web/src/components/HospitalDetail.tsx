@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DetailSkeleton from "./DetailSkeleton";
 import { api, ApiError, assetUrl, PLACEHOLDER, qk, type DetailTab, type HospitalDetail as Detail } from "@/lib/api";
+import { shareUrl } from "@/lib/clipboard";
 import ReviewList from "./ReviewList";
 import WishlistButton from "./WishlistButton";
 import ConsultSheet from "./ConsultSheet";
@@ -139,7 +140,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
   };
   const back = () => (window.history.length > 1 ? router.back() : router.push("/hospitals"));
   const share = async () => {
-    const url = window.location.href;
+    const url = shareUrl();
     if (typeof navigator.share === "function") {
       // The native sheet handles it; a dismissed sheet (AbortError) is not a request to copy the link.
       try { await navigator.share({ title: h.name, url }); } catch { /* dismissed or unsupported payload */ }

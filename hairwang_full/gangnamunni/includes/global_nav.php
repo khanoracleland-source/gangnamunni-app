@@ -423,7 +423,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
     var toastTimer = null;
 
     function getShareText() {
-        return '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
+        return '서울미녀\n' + window.location.href.replace(/^https?:\/\/hms\.seoulbeauty\.app(?=[:\/?#]|$)/i, 'https://seoulbeauty.app');
     }
 
     function fallbackCopy(text) {

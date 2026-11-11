@@ -178,6 +178,7 @@ $treatment_types = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo term('consultation', '상담'); ?> 신청 | <?php echo htmlspecialchars($site_name); ?></title>
+    <?php include __DIR__ . '/includes/og_meta.php'; ?>
     <!-- anti-flash -->
     <style>
     html{background:var(--bs-body-bg, #fff);color:#212529}

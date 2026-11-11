@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, type HomeData } from "@/lib/api";
+import { shareUrl } from "@/lib/clipboard";
 import { useLoginUrl, useMe } from "@/lib/me";
 import RegionPicker from "./RegionPicker";
 import SearchOverlay, { addRecentSearch } from "./SearchOverlay";
@@ -42,9 +43,9 @@ export function useSavedRegions(key: string = REGION_KEY): string[] {
 // eslint-disable-next-line @next/next/no-img-element
 const PIN = <img className={styles.pin} src={pinIcon.src} alt="" width={20} height={20} />;
 
-/** global_nav.php share button: copies "이거 완전 괜찮은 앱이야!\n서울미녀\n<url>" and shows a toast. */
+/** global_nav.php share button: copies "서울미녀\n<url>" and shows a toast. */
 async function copyShareText(): Promise<boolean> {
-  const text = `이거 완전 괜찮은 앱이야!\n서울미녀\n${window.location.href}`;
+  const text = `서울미녀\n${shareUrl()}`;
   try {
     if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
   } catch { /* fall through */ }

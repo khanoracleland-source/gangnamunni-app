@@ -629,7 +629,7 @@ function fallbackPageShareCopy(text) {
     return copied;
 }
 function copyPageShareLink() {
-    var shareText = "이거 완전 괜찮은 앱이야!\\n서울미녀\\n" + window.location.href;
+    var shareText = "서울미녀\\n" + window.location.href.replace(/^https?:\/\/hms\.seoulbeauty\.app(?=[:\/?#]|$)/i, "https://seoulbeauty.app");
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(shareText).then(function () {
             showPageShareToast("링크가 복사되었습니다.");

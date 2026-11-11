@@ -210,6 +210,7 @@ if (($_GET['from'] ?? '') === 'notifications') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title><?php echo $page_title; ?></title>
+    <?php include __DIR__ . '/includes/og_meta.php'; ?>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/booking-sheets.css?v=<?php echo (int)@filemtime(__DIR__ . '/assets/css/booking-sheets.css'); ?>">
     <style>
@@ -938,7 +939,7 @@ function showPageShareToast(message) {
 }
 
 document.getElementById('pageShareCopyBtn').addEventListener('click', function () {
-    var shareText = '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
+    var shareText = '서울미녀\n' + window.location.href.replace(/^https?:\/\/hms\.seoulbeauty\.app(?=[:\/?#]|$)/i, 'https://seoulbeauty.app');
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(shareText).then(function () {
             showPageShareToast('링크가 복사되었습니다.');

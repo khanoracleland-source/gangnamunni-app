@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, type ContentType } from "@/lib/api";
-import { copyText } from "@/lib/clipboard";
+import { copyText, shareUrl } from "@/lib/clipboard";
 import { useRequireLogin } from "@/lib/me";
 import linkIcon from "@/assets/icons/menu-link.png";
 import blockIcon from "@/assets/icons/menu-block.png";
@@ -81,7 +81,7 @@ export default function ContentActions({ type, id, isMine, authorName, className
 
   /** "링크 복사": the page of this post/review (comments have no page of their own). */
   const copyLink = async () => {
-    const url = `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? "/next"}/${type === "review" ? "reviews" : "community"}/${id}`;
+    const url = shareUrl(`${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH ?? "/next"}/${type === "review" ? "reviews" : "community"}/${id}`);
     const ok = await copyText(url);
     const say = () => toast(ok ? "링크가 복사되었습니다." : "링크 복사에 실패했습니다.");
     if (!liveRef.current) { say(); return; } // the user already dismissed the sheet while copying

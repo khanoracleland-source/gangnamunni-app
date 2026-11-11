@@ -217,6 +217,7 @@ $has_bottom_nav = file_exists(__DIR__ . '/includes/bottom_navigation.php');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>병원 랭킹 | <?php echo htmlspecialchars($site_name); ?></title>
+    <?php include __DIR__ . '/includes/og_meta.php'; ?>
     <meta name="description" content="서울미녀 병원 랭킹 - 평점, 후기, 예약 수 기반 병원 순위를 확인하세요.">
 
     <!-- anti-flash (다크모드 깜박임 방지) -->

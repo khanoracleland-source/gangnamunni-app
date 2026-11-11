@@ -125,6 +125,7 @@ if (!function_exists('term')) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title><?php echo $page_title; ?> - <?php echo function_exists('site_name') ? site_name() : '서울미녀'; ?></title>
+    <?php include __DIR__ . '/includes/og_meta.php'; ?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <script>

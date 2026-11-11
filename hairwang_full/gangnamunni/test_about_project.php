@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>서울미녀 소개 | 서울미녀</title>
     <meta name="description" content="시술별·지역별 미용시술 정보를 확인하고 등록된 가격을 비교하는 서울미녀를 소개합니다.">
+    <?php $og_description = '시술별·지역별 미용시술 정보를 확인하고 등록된 가격을 비교하는 서울미녀를 소개합니다.'; include __DIR__ . '/includes/og_meta.php'; ?>
 
     <style>
     #treatments-scene img { pointer-events: none; }
@@ -432,7 +433,7 @@
     var toastTimer = null;
 
     function getShareText() {
-        return '이거 완전 괜찮은 앱이야!\n서울미녀\n' + window.location.href;
+        return '서울미녀\n' + window.location.href.replace(/^https?:\/\/hms\.seoulbeauty\.app(?=[:\/?#]|$)/i, 'https://seoulbeauty.app');
     }
 
     function fallbackCopy(text) {
