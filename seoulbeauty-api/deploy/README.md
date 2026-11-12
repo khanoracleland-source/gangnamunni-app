@@ -332,3 +332,41 @@ GRANT SELECT, INSERT, UPDATE (outcome, reason) ON hms_saas.gangnamunni_payment_a
 6. Not ported yet: cancellation / refund through Inicis (INIAPI), virtual account (P_NOTI_URL), points used at checkout (an order with `points_used > 0` is refused with `POINTS_NOT_SUPPORTED`), reconcile of orders that stay `pending` after an approval.
 7. Rollback: set `PG_PAYMENTS_ENABLED=0` and restart `seoulbeauty-api`: checkout is hidden at once, the preview flow remains.
 
+
+## Account security in Nest (47-kun, 2026-11-12) — `ACCOUNT_NEST_ACTIONS`
+
+Parol o'zgartirish, email o'zgartirish va 회원 탈퇴 endi Nest'ning o'zida bajarilishi mumkin (PHP `api/account_security.php`, `api/withdraw.php`, `notification_settings.php` chaqirilmaydi). Har biri alohida yoqiladi; ro'yxatda yo'q amal avvalgidek PHP'ga yuboriladi.
+
+- `password` — yangi GRANT kerak emas (password-lost GRANT'lari yetarli).
+- `email` — tasdiqlash kodi Nest xotirasida (3 daqiqa, 5 urinish), xat `SMTP_*` orqali:
+```sql
+GRANT UPDATE (mb_email) ON hms_saas.g5_member TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+```
+- `withdraw` — `.env` da `KAKAO_ADMIN_KEY` (Kakao a'zolari uchun shart; bo'lmasa 502 qaytadi, hech narsa o'chmaydi) va:
+```sql
+GRANT DELETE ON hms_saas.g5_member TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.member_sync TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_admins TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT INSERT, DELETE ON hms_saas.gangnamunni_withdrawals TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT UPDATE (status) ON hms_saas.users TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+-- social a'zoning xizmat ma'lumotlari (PHP withdraw_social bilan bir xil ro'yxat; yo'q jadval uchun GRANT xato beradi — o'sha qatorni tashlab keting)
+GRANT DELETE ON hms_saas.gangnamunni_points TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_user_actions TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_coupon_claims TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_chat_rooms TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_content_reports TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_members TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_notification_settings TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_user_agreements TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_bookings TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.hospital_reviews TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_community_comments TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.gangnamunni_community_posts TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.g5_point TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.g5_scrap TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+GRANT DELETE ON hms_saas.g5_memo TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+```
+(`gangnamunni_wishlist`, `gangnamunni_user_notifications`, `gangnamunni_community_likes`, `sso_tokens`, `g5_member_social_profiles` uchun DELETE avval berilgan.)
+
+Yoqish: `.env` → `ACCOUNT_NEST_ACTIONS=password` (keyin `,email`, keyin `,withdraw`), `systemctl restart seoulbeauty-api`. Qaytarish: qiymatni bo'shatib restart.
+PHP'dan farqlar (ataylab): kod xati ketmasa foydalanuvchiga aytiladi (PHP jim o'tardi); sayt egasi (`cf_admin`) 탈퇴 qila olmaydi; Kakao "-101 allaqachon uzilgan" javobi muvaffaqiyat hisoblanadi (yarim qolgan urinishni takrorlash mumkin bo'lsin).

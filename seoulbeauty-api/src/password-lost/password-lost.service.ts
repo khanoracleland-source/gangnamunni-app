@@ -110,7 +110,7 @@ export class PasswordLostService {
   }
 
   /** sync_hms_password_by_mapping(): only through member_sync (never by e-mail: a staff account may share the address). */
-  private async syncHmsPassword(conn: DbConn, mbId: string, plain: string): Promise<void> {
+  async syncHmsPassword(conn: DbConn, mbId: string, plain: string): Promise<void> {
     try {
       const [r] = (await conn.query("SELECT hms_user_id FROM member_sync WHERE mb_id = ? AND hms_user_id IS NOT NULL AND sync_status = 'synced' LIMIT 1", [mbId])) as any;
       const id = Number((r as any[])[0]?.hms_user_id) || 0;
@@ -122,7 +122,7 @@ export class PasswordLostService {
   }
 
   /** revoke_all_auth_credentials(): every session, remember/app token and HMS API token of the member stops working. */
-  private async revokeAll(conn: DbConn, mbId: string, keepResetMarker = false): Promise<void> {
+  async revokeAll(conn: DbConn, mbId: string, keepResetMarker = false): Promise<void> {
     if (!/^[0-9a-z_]+$/i.test(mbId)) return;
     // keepResetMarker: the reset request itself (the marker must outlive the revoke); the confirmed change clears it
     try { await conn.query(keepResetMarker ? 'UPDATE g5_member SET mb_cred_epoch = mb_cred_epoch + 1 WHERE mb_id = ?' : "UPDATE g5_member SET mb_cred_epoch = mb_cred_epoch + 1, mb_lost_certify = '' WHERE mb_id = ?", [mbId]); }

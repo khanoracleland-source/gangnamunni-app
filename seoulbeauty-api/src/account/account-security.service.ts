@@ -1,14 +1,15 @@
 import { BadRequestException, HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
-import { fullReason, isEmail, parsePhpJson, PW_MAX, PW_MIN, REASONS } from './account-security.logic';
+import { fullReason, isEmail, nestActions, parsePhpJson, PW_MAX, PW_MIN, REASONS } from './account-security.logic';
+import { AccountSecurityNativeService } from './account-security-native.service';
 import { phpFetch } from '../common/php-fetch';
 
 const s = (v: unknown) => (typeof v === 'string' ? v : '');
 interface PhpReply { status: number; json: Record<string, any> | null; /** start of the raw body, for the log when PHP did not answer with JSON */ raw?: string }
 
 /**
- * Password, e-mail and 회원 탈퇴 stay PHP code (Gnuboard hashing, credential revocation, PHP-session cert code, SMTP, Kakao unlink,
- * the table cleanup): this class is the browser-facing side, it forwards the member's own cookie to PHP and relays the answer.
+ * Password, e-mail and 회원 탈퇴: the browser-facing side (input checks, rate limit). An action listed in ACCOUNT_NEST_ACTIONS is carried
+ * out by AccountSecurityNativeService; the others are still forwarded to PHP with the member's own cookie (the path being retired).
  */
 @Injectable()
 export class AccountSecurityService {
@@ -16,7 +17,7 @@ export class AccountSecurityService {
   private readonly sessionUrl = process.env.PHP_SESSION_URL || 'https://hms.seoulbeauty.app/api/session_me.php';
   private readonly host = process.env.PHP_SESSION_HOST || '';
   private readonly attempts = new Map<string, number[]>();
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(@Inject(DB) private readonly db: Db, private readonly native: AccountSecurityNativeService) {}
 
   private apiUrl(file: string) { return new URL(file, new URL('./', this.sessionUrl)).href; }
   private siteUrl(file: string) { return new URL(file, new URL('../', this.sessionUrl)).href; }
@@ -67,6 +68,7 @@ export class AccountSecurityService {
     if (next !== confirm) throw new BadRequestException({ success: false, field: 'new_pw_confirm', message: '새 비밀번호가 일치하지 않습니다.' });
     if (next.length < PW_MIN) throw new BadRequestException({ success: false, field: 'new_pw', message: '비밀번호는 6자 이상이어야 합니다.' });
     if (next.length > PW_MAX || current.length > PW_MAX) throw new BadRequestException({ success: false, field: 'new_pw', message: `비밀번호는 ${PW_MAX}자 이하여야 합니다.` });
+    if (nestActions().has('password')) return this.native.changePassword(mbId, current, next);
     const r = await this.security(cookie, { action: 'password', current_pw: current, new_pw: next, new_pw_confirm: confirm });
     if (!r.json?.success) this.fail(r, '비밀번호를 변경하지 못했습니다.');
     return { success: true, message: String(r.json.message ?? '') };
@@ -77,6 +79,7 @@ export class AccountSecurityService {
     this.limit(`email-send:${mbId}`, 5);
     const email = s(input.new_email).trim();
     if (!isEmail(email)) throw new BadRequestException({ success: false, field: 'new_email', message: '올바른 이메일 주소를 입력해주세요.' });
+    if (nestActions().has('email')) return this.native.sendEmailCode(mbId, email);
     const r = await this.security(cookie, { action: 'email_send', new_email: email });
     if (!r.json?.success) this.fail(r, '인증 코드를 발송하지 못했습니다.');
     return { success: true, email: String(r.json.email ?? email), expiresIn: Number(r.json.expiresIn ?? 180) };
@@ -87,6 +90,7 @@ export class AccountSecurityService {
     this.limit(`email-verify:${mbId}`, 15);
     const code = s(input.code).trim();
     if (!/^\d{6}$/.test(code)) throw new BadRequestException({ success: false, field: 'code', message: '인증 코드 6자리를 입력해주세요.' });
+    if (nestActions().has('email')) return this.native.verifyEmailCode(mbId, code);
     const r = await this.security(cookie, { action: 'email_verify', code });
     if (!r.json?.success) this.fail(r, '이메일을 변경하지 못했습니다.');
     return { success: true, email: String(r.json.email ?? '') };
@@ -118,6 +122,7 @@ export class AccountSecurityService {
     const password = s(input.password);
     if (!social && !password) throw new BadRequestException({ success: false, field: 'password', message: '비밀번호를 입력해주세요.' });
     if (password.length > PW_MAX) throw new BadRequestException({ success: false, field: 'password', message: '비밀번호가 일치하지 않습니다.' });
+    if (nestActions().has('withdraw')) return this.native.withdraw(mbId, password, fullReason(input.reason, input.detail));
     const token = await this.csrf(cookie);
     if (social) {
       const r = await this.php(this.siteUrl('notification_settings.php'), cookie, {
