@@ -1,5 +1,5 @@
 import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
-import { randomInt, timingSafeEqual } from 'crypto';
+import { createHash as sha, randomInt, timingSafeEqual } from 'crypto';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { DB, DbConn, DbPool } from '../db/db.module';
@@ -24,6 +24,11 @@ export class AccountSecurityNativeService {
   /** the PHP session held this; one process, three minutes: memory is enough (a restart only means "send the code again") */
   private readonly codes = new Map<string, EmailCode>();
   constructor(@Inject(DB) private readonly db: DbPool, private readonly mail: MailService, private readonly lost: PasswordLostService) {}
+
+  /** one line per completed action (the member id only as a short hash, like the login log) */
+  private audit(event: string, mbId: string, details = ''): void {
+    this.log.log(`[auth][${event}] account=${sha('sha256').update(mbId).digest('hex').slice(0, 16)}${details ? `; ${details}` : ''}`);
+  }
 
   private async conn(): Promise<DbConn> {
     if (!this.db.getConnection) throw new Error('pool connection needed');
@@ -52,6 +57,7 @@ export class AccountSecurityNativeService {
       this.log.error(`password change: ${(e as Error).message}`);
       throw fail(500, '비밀번호를 저장하지 못했습니다.');
     } finally { conn.release(); }
+    this.audit('password_changed', mbId);
     return { success: true, message: '비밀번호가 변경되었습니다. 새 비밀번호로 다시 로그인해주세요.' };
   }
 
@@ -99,6 +105,7 @@ export class AccountSecurityNativeService {
       this.log.error(`email change: ${(e as Error).message}`);
       throw fail(500, '이메일을 저장하지 못했습니다.');
     }
+    this.audit('email_changed', mbId);
     return { success: true, email: c.email };
   }
 
@@ -179,7 +186,7 @@ export class AccountSecurityNativeService {
 
     if (profile) await this.removePhoto(id);
     this.codes.delete(mbId);
-    this.log.log(`[auth][withdrawn] kind=${profile ? s(profile.provider).toLowerCase() || 'social' : 'password'}`);
+    this.audit('withdrawn', mbId, `kind=${profile ? s(profile.provider).toLowerCase() || 'social' : 'password'}`);
     return { success: true, message: profile ? '회원 탈퇴가 완료되었습니다.' : '회원 탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.' };
   }
 
