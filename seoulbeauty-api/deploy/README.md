@@ -389,3 +389,19 @@ Kuzatish: `SELECT source, remember, COUNT(*) FROM sb_sessions WHERE expires_at >
 
 ### B2 — `NEST_SESSION_ADOPT` (51-kun davomi)
 `NEST_SESSIONS=1` ustiga `NEST_SESSION_ADOPT=1`: PHP "kirgan" degan, lekin `sb_sid` yo'q brauzerga (ilova yopib-ochilgandan keyin, B1 dan oldingi sessiyalar) `GET /v1/me` da Nest sessiyasi beriladi → keyingi so'rovlarda PHP so'ralmaydi. Faqat brauzerning same-origin so'rovida (`Sec-Fetch-Site`), hech qachon "remember" emas (3 soat harakatsizlik), logout'dan keyin 60 s berilmaydi (`sb_noadopt`). Yangi GRANT/jadval kerak emas. Log: `[auth][session_adopted] account=<hash>`. Qaytarish: qiymatni bo'shatib restart.
+
+## App native auth in Nest (D1, 54/55-kun, 2026-11-12) — `APP_AUTH_NEST`
+
+Ilova tokenlari uchun Nest endpointlari: `POST /v1/app-auth/exchange|verify|refresh|logout|bootstrap`, `GET /v1/app-auth/land?url=`. Shartnoma va `sso_tokens` formati PHP (`api/app_auth_*.php`, `api/app_logout.php`, `app_session_land.php`) bilan bir xil — PHP chiqargan token Nest'da, Nest chiqargani PHP'da ishlaydi; shifrlangan exchange payload ikki tomonda ham o'qiladi (tekshirilgan). Farq: `bootstrap` va `land` PHP sessiyasi o'rniga Nest sessiyasi (`sb_sid`) bilan ishlaydi. Do'kondagi ilova (2.1.0) bu endpointlarni chaqirmaydi — yoqish unga ta'sir qilmaydi.
+
+**Oqibat (yangi ilova, `land` Nest'da):** WebView'da faqat Nest sessiyasi (`sb_sid`) ochiladi, PHP sessiyasi emas. Shu sababli hali qolgan PHP bemor sahifalari (`booking_payment_request.php`, `chat.php`, `my_events.php` …) yangi ilovada a'zoni mehmon deb ko'radi. Next ularning hech biriga havola qilmaydi (51-kunda tekshirilgan), lekin yangi ilovani chiqarishdan oldin bunday sahifaga olib boradigan yo'l qolmaganini (push havolalari, eski chuqur havolalar) tekshirish kerak; qolganlari 50-kundagi 2-o'tishda o'chiriladi.
+Xato logi: kutilmagan xatoda faqat xato sinfi va drayver kodi yoziladi (`exchange failed: Error ER_DUP_ENTRY`), xabar matni emas — MySQL xabari xom tokenni keltirishi mumkin.
+
+1. GRANT:
+```sql
+GRANT INSERT, UPDATE (user_agent, payload, expires_at) ON hms_saas.sso_tokens TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+```
+(DELETE avval berilgan.)
+2. Kalit — PHP ishlatadigan qiymatning o'zi. Qayerdaligini topish: `grep -rn "APP_NATIVE_AUTH_KEY" /etc/httpd /etc/apache2 /etc/php* /etc/sysconfig 2>/dev/null | cut -c1-80` (qiymatni chatga yubormang). `.env` ga `APP_NATIVE_AUTH_KEY=<o'sha qiymat>`.
+3. `.env` → `APP_AUTH_NEST=1`, restart. Qaytarish: bo'shatib restart.
+Tekshiruv (tokensiz): `curl -s -X POST https://seoulbeauty.app/next/api/v1/app-auth/exchange -H 'Content-Type: application/json' -d '{"code":"x"}'` → `{"success":false,"error":"code and device_id are required"}`.

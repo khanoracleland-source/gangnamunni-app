@@ -62,17 +62,19 @@ export class NestSessionService {
   enabled(): boolean { return process.env.NEST_SESSIONS === '1'; }
 
   /** A new session for a member who has just signed in. null = not created (off, or the table is missing): the PHP session still works. */
-  async create(mbId: string, o: { remember: boolean; app: boolean; userAgent?: string; source: string; domain?: string; replaces?: string }): Promise<string | null> {
+  async create(mbId: string, o: { remember: boolean; app: boolean; userAgent?: string; source: string; domain?: string; replaces?: string; device?: string }): Promise<string | null> {
     if (!this.enabled() || !/^[0-9a-zA-Z_]{3,20}$/.test(mbId)) return null;
     try {
       const [rows] = (await this.db.query('SELECT mb_cred_epoch FROM g5_member WHERE mb_id = ? LIMIT 1', [mbId])) as any;
       const mb = (rows as any[])[0];
       if (!mb) return null;
+      // the app wipes its WebView cookies at every start and is given a new session: the one this device had is of no use to anyone
+      if (o.device) await this.dropDevice(mbId, o.device);
       const token = randomBytes(32).toString('hex');
       const life = o.remember ? (o.app ? REMEMBER_APP_SECONDS : REMEMBER_WEB_SECONDS) : IDLE_SECONDS;
       await this.db.query(
         'INSERT INTO sb_sessions (token_hash, mb_id, cred_epoch, remember, source, user_agent, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), DATE_ADD(NOW(), INTERVAL ? SECOND))',
-        [hashToken(token), mbId, Number(mb.mb_cred_epoch) || 0, o.remember ? 1 : 0, o.source.slice(0, 20), s(o.userAgent).slice(0, 255), life]);
+        [hashToken(token), mbId, Number(mb.mb_cred_epoch) || 0, o.remember ? 1 : 0, o.source.slice(0, 20), (o.device || s(o.userAgent)).slice(0, 255), life]);
       // the session this browser had before (another member, or the same one signing in again) and a little housekeeping
       for (const old of readSessionCookies(o.replaces)) { await this.db.query('DELETE FROM sb_sessions WHERE token_hash = ?', [hashToken(old)]).catch(() => undefined); this.cache.delete(hashToken(old)); }
       await this.db.query('DELETE FROM sb_sessions WHERE expires_at < NOW() LIMIT 200').catch(() => undefined);
@@ -81,6 +83,13 @@ export class NestSessionService {
       this.log.error(`session create failed: ${(e as Error).message}`);
       return null;
     }
+  }
+
+  /** The app session(s) of one device (user_agent holds the device binding for source "app"): at its next start, and at its logout. */
+  async dropDevice(mbId: string, device: string): Promise<void> {
+    if (!/^patient-app-device:[a-f0-9]{64}$/.test(device)) return;
+    await this.db.query("DELETE FROM sb_sessions WHERE mb_id = ? AND source = 'app' AND user_agent = ?", [mbId, device]).catch((e) => this.log.error(`device session delete failed: ${(e as Error).message}`));
+    this.cache.clear(); // the rows are gone by device, not by token: nothing cached may outlive them
   }
 
   /** none = no sb_sid cookie (or switched off); invalid = a cookie that no longer opens anything; ok = the signed-in member. */

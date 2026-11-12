@@ -24,6 +24,7 @@ import { LoginModule } from './login/login.module';
 import { RegisterModule } from './register/register.module';
 import { PasswordLostModule } from './password-lost/password-lost.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
+import { AppAuthModule } from './app-auth/app-auth.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -32,6 +33,7 @@ import { HealthController } from './health/health.controller';
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: Number(process.env.RATE_LIMIT_PER_MIN || 120) }]),
     DbModule,
     AuthModule,
+    AppAuthModule,
     HospitalsModule,
     WishlistModule,
     ConsultationsModule,
