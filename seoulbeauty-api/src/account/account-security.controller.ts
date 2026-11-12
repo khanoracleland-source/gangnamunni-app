@@ -8,7 +8,6 @@ import { AccountSecurityService } from './account-security.service';
 
 const nocache = (res: Response) => res.setHeader('Cache-Control', 'private, no-store');
 const uid = (req: AuthedRequest) => req.session!.user!.id;
-const cookie = (req: AuthedRequest) => req.headers.cookie || '';
 
 /** 비밀번호 / 이메일 변경 and 회원 탈퇴: the member's own account, never cached; every write needs the same-origin header. */
 @Controller('v1/account')
@@ -19,8 +18,8 @@ export class AccountSecurityController {
   @Post('password')
   async password(@Body() body: Record<string, unknown>, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
     nocache(res);
-    const r = await this.security.changePassword(uid(req), cookie(req), body ?? {});
-    this.auth.forget(req.headers.cookie); // PHP has just ended every session of this member
+    const r = await this.security.changePassword(uid(req), body ?? {});
+    this.auth.forget(req.headers.cookie); // every session of this member has just been revoked
     return r;
   }
 
@@ -37,13 +36,13 @@ export class AccountSecurityController {
   @Post('email/send')
   emailSend(@Body() body: Record<string, unknown>, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
     nocache(res);
-    return this.security.sendEmailCode(uid(req), cookie(req), body ?? {});
+    return this.security.sendEmailCode(uid(req), body ?? {});
   }
 
   @Post('email/verify')
   async emailVerify(@Body() body: Record<string, unknown>, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
     nocache(res);
-    const r = await this.security.verifyEmailCode(uid(req), cookie(req), body ?? {});
+    const r = await this.security.verifyEmailCode(uid(req), body ?? {});
     this.auth.forget(req.headers.cookie);
     return r;
   }
@@ -51,7 +50,7 @@ export class AccountSecurityController {
   @Post('withdraw')
   async withdraw(@Body() body: Record<string, unknown>, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
     nocache(res);
-    const r = await this.security.withdraw(uid(req), cookie(req), body ?? {});
+    const r = await this.security.withdraw(uid(req), body ?? {});
     this.auth.forget(req.headers.cookie);
     return r;
   }

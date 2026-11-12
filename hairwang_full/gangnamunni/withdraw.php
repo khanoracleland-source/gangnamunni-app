@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
+// api/withdraw.php was retired on 2026-11-12 (회원 탈퇴 is done by seoulbeauty-api): this page has nothing left to call, so every visit goes to the Next.js page.
+if (PHP_SAPI !== 'cli' && !headers_sent()) { header('Cache-Control: no-store'); header('Location: /next/mypage/withdraw', true, 302); exit; }
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/functions.php';
 require_login();

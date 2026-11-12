@@ -9,7 +9,7 @@ export interface PhpFetchInit {
 }
 
 /**
- * fetch() for the PHP side (api/session_me.php, session_login.php, account_security.php …).
+ * fetch() for the PHP side (api/session_me.php, session_login.php).
  *
  * The Fetch standard lists `Host` as a forbidden request header, and Node's fetch (undici) silently drops it. With
  * PHP_SESSION_URL on loopback (http://127.0.0.1/…) PHP then sees HTTP_HOST=127.0.0.1: Apache may pick another vhost and

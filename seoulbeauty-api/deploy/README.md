@@ -333,9 +333,9 @@ GRANT SELECT, INSERT, UPDATE (outcome, reason) ON hms_saas.gangnamunni_payment_a
 7. Rollback: set `PG_PAYMENTS_ENABLED=0` and restart `seoulbeauty-api`: checkout is hidden at once, the preview flow remains.
 
 
-## Account security in Nest (47-kun, 2026-11-12) — `ACCOUNT_NEST_ACTIONS`
+## Account security in Nest (47/48-kun, 2026-11-12)
 
-Parol o'zgartirish, email o'zgartirish va 회원 탈퇴 endi Nest'ning o'zida bajarilishi mumkin (PHP `api/account_security.php`, `api/withdraw.php`, `notification_settings.php` chaqirilmaydi). Har biri alohida yoqiladi; ro'yxatda yo'q amal avvalgidek PHP'ga yuboriladi.
+Parol o'zgartirish, email o'zgartirish va 회원 탈퇴 Nest'ning o'zida bajariladi (2026-11-12 jonlida tasdiqlangan: parol, email, 탈퇴 parolli/Kakao/Apple). PHP `api/account_security.php`, `api/withdraw.php` o'chirilgan, `notification_settings.php` dagi `withdraw_social` 410 qaytaradi; `ACCOUNT_NEST_ACTIONS` bayrog'i olib tashlangan (`.env` da qolsa o'qilmaydi). Yangi serverda quyidagilar kerak:
 
 - `password` — yangi GRANT kerak emas (password-lost GRANT'lari yetarli).
 - `email` — tasdiqlash kodi Nest xotirasida (3 daqiqa, 5 urinish), xat `SMTP_*` orqali:
@@ -368,5 +368,4 @@ GRANT DELETE ON hms_saas.g5_memo TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localh
 ```
 (`gangnamunni_wishlist`, `gangnamunni_user_notifications`, `gangnamunni_community_likes`, `sso_tokens`, `g5_member_social_profiles` uchun DELETE avval berilgan.)
 
-Yoqish: `.env` → `ACCOUNT_NEST_ACTIONS=password` (keyin `,email`, keyin `,withdraw`), `systemctl restart seoulbeauty-api`. Qaytarish: qiymatni bo'shatib restart.
 PHP'dan farqlar (ataylab): kod xati ketmasa foydalanuvchiga aytiladi (PHP jim o'tardi); sayt egasi (`cf_admin`) 탈퇴 qila olmaydi; Kakao "-101 allaqachon uzilgan" javobi muvaffaqiyat hisoblanadi (yarim qolgan urinishni takrorlash mumkin bo'lsin).

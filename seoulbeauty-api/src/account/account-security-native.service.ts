@@ -14,9 +14,9 @@ const fail = (status: number, message: string, field?: string) => new HttpExcept
 interface EmailCode { code: string; email: string; expire: number; tries: number }
 
 /**
- * Password, e-mail and 회원 탈퇴 done by Nest itself (no PHP call): the same rules and side effects as api/account_security.php,
- * api/withdraw.php and notification_settings.php action=withdraw_social. Which of the three run here is chosen by
- * ACCOUNT_NEST_ACTIONS (see AccountSecurityService); the callers have already validated the input shape and the rate limit.
+ * Password, e-mail and 회원 탈퇴 done by Nest itself (no PHP call): the rules and side effects of the retired PHP files
+ * api/account_security.php, api/withdraw.php and notification_settings.php action=withdraw_social (live since 2026-11-12).
+ * The caller (AccountSecurityService) has already validated the input shape and the rate limit.
  */
 @Injectable()
 export class AccountSecurityNativeService {
