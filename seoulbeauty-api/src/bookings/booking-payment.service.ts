@@ -31,7 +31,6 @@ export class BookingPaymentService {
     if (env.PG_PAYMENTS_ENABLED !== '1' || !cfg || !payDbConfigured(env)) return false;
     return memberId === undefined || inicisAllowedFor(cfg, memberId, env); // per-mode member allow-list
   }
-  static previewEnabled(): boolean { return (process.env.BOOKING_PAYMENT_PREVIEW_ENABLED ?? '1') === '1'; }
 
   private static phone(v: unknown): string {
     const d = digits(v);
@@ -144,7 +143,7 @@ export class BookingPaymentService {
       ledgerReady, orderError, gross: Math.max(0, gross),
       order: order ? { status: orderStatus, provider: s(order.provider), amount, gross, pointsUsed: pointsApplied, isTest: isTestProvider(order.provider) } : null,
       isConfirmed: status === 'confirmed', isPaid, preview: await this.hasPreview(id),
-      liveAvailable: BookingPaymentService.liveAvailable(process.env, m.id), previewAvailable: BookingPaymentService.previewEnabled(),
+      liveAvailable: BookingPaymentService.liveAvailable(process.env, m.id),
       points: { v2: expectedPoints !== null, expected: expectedPoints ?? 0, useReady: false, max: 0, balance: 0 },
     };
   }
@@ -156,44 +155,6 @@ export class BookingPaymentService {
       const v = (k: string, d: number) => (cfg[k] === undefined ? d : n(cfg[k]));
       return paymentTierPoint(gross, { t1Under: v('v2_pay_tier1_under', 50000), t1: v('v2_pay_tier1_point', 3000), t2Under: v('v2_pay_tier2_under', 100000), t2: v('v2_pay_tier2_point', 5000), t3: v('v2_pay_tier3_point', 10000) });
     } catch { return null; }
-  }
-
-  /** POST …/payment/preview: booking_payment_mock_complete.php — "결제 없이 계속하기", outside the financial ledger. */
-  async preview(m: BookingMember, id: number) {
-    const b = await this.own(m, id);
-    if (!b) throw new PaymentRefused('예약을 찾을 수 없거나 접근 권한이 없습니다.', 'BOOKING_NOT_FOUND', 404);
-    if (s(b.status) !== 'confirmed') throw new PaymentRefused('병원이 예약을 확정한 뒤에 결제할 수 있습니다.', 'BOOKING_NOT_CONFIRMED', 409);
-    try {
-      await this.createOrder(id);
-      const order = await this.order(id);
-      if (!order || !s(order.merchant_uid)) throw new Error('Payment order not found.');
-      if (['paid', 'partially_refunded'].includes(s(order.status))) return { success: true, redirect: `/mypage/bookings/${id}/payment/success` };
-      if (s(order.status) !== 'pending') throw new PaymentRefused('결제할 수 없는 주문 상태입니다.', 'INVALID_ORDER_STATE', 409);
-      if (!BookingPaymentService.previewEnabled()) throw new PaymentRefused('결제 없이 계속하기가 비활성화되었습니다.', 'PREVIEW_DISABLED', 403);
-      await this.recordPreview(id);
-      return { success: true, redirect: `/mypage/bookings/${id}/payment/success` };
-    } catch (e) {
-      if (e instanceof PaymentRefused) throw e;
-      this.log.error(`preview (booking #${id}): ${(e as Error).message}`);
-      throw new PaymentRefused('임시 결제 완료 처리에 실패했습니다. 잠시 후 다시 시도해주세요.', 'MOCK_PAYMENT_FAILED', 500);
-    }
-  }
-
-  /** booking_payment_record_preview(): the booking must still be confirmed and the order still pending (row-locked). */
-  private async recordPreview(id: number) {
-    if (!this.db.getConnection) throw new Error('pool connection needed');
-    const conn: DbConn = await this.db.getConnection();
-    try {
-      await conn.query('START TRANSACTION');
-      try {
-        const [bs] = (await conn.query('SELECT status FROM gangnamunni_bookings WHERE id = ? FOR UPDATE', [id])) as any;
-        if (s((bs as any[])[0]?.status) !== 'confirmed') throw new Error('Booking is no longer confirmed.');
-        const [os] = (await conn.query("SELECT status FROM gangnamunni_platform_payments WHERE payment_type = 'booking' AND booking_id = ? LIMIT 1", [id])) as any;
-        if (s((os as any[])[0]?.status) !== 'pending') throw new Error('Order is no longer pending.');
-        await conn.query('INSERT INTO gangnamunni_booking_payment_previews (booking_id) VALUES (?) ON DUPLICATE KEY UPDATE booking_id = booking_id', [id]);
-        await conn.query('COMMIT');
-      } catch (e) { await conn.query('ROLLBACK').catch(() => undefined); throw e; }
-    } finally { conn.release(); }
   }
 
   /** GET …/payment/success: booking_payment_success.php. */

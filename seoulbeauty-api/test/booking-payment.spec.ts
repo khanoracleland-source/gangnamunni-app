@@ -46,21 +46,18 @@ describe('booking payment API (preview only; no PG connected)', () => {
   const api = () => request(app.getHttpServer());
   const authed = (r: request.Test) => r.set('Cookie', 'sid=kim').set('X-Requested-With', 'XMLHttpRequest');
 
-  it('settings: live checkout is never available without a connected PG; preview follows its switch', () => {
+  it('settings: live checkout is never available without a connected PG', () => {
     expect(BookingPaymentService.liveAvailable()).toBe(false);
     process.env.PG_PAYMENTS_ENABLED = '1'; process.env.BOOKING_PAYMENT_METHODS = 'card, bogus';
     expect(BookingPaymentService.liveAvailable()).toBe(false);
     delete process.env.BOOKING_PAYMENT_METHODS;
-    expect(BookingPaymentService.previewEnabled()).toBe(true);
-    process.env.BOOKING_PAYMENT_PREVIEW_ENABLED = '0';
-    expect(BookingPaymentService.previewEnabled()).toBe(false);
   });
 
-  it('info: a confirmed booking without an order gets one (server price), no PG, preview offered', async () => {
+  it('info: a confirmed booking without an order gets one (server price), no PG', async () => {
     const r = await api().get('/v1/mypage/bookings/7/payment').set('Cookie', 'sid=kim').expect(200);
     expect(r.body.booking).toMatchObject({ id: 7, statusText: '결제 대기', hospitalName: 'A의원', hospitalArea: '서울 강남구', hospitalAddress: '서울 강남구 테헤란로 1', treatment: '보톡스 · 50U', bookerName: '김민', phone: '010-1234-5678', dateText: '1월 5일 (월) 오후 2:00', logo: 'l.png' });
     expect(r.body.order).toEqual({ status: 'pending', provider: '', amount: 50000, gross: 50000, pointsUsed: 0, isTest: false });
-    expect(r.body).toMatchObject({ isConfirmed: true, isPaid: false, preview: false, liveAvailable: false, previewAvailable: true, orderError: '', points: { v2: false, expected: 0 } });
+    expect(r.body).toMatchObject({ isConfirmed: true, isPaid: false, preview: false, liveAvailable: false, orderError: '', points: { v2: false, expected: 0 } });
     const ins = calls.find((c) => /INSERT INTO gangnamunni_platform_payments/.test(c.sql))!;
     expect(ins.args.slice(0, 8)).toEqual([7, 3, 'A의원', 'kim', '김민', '010-1234-5678', '보톡스 · 50U', 50000]);
     expect(ins.args[8]).toMatch(/^BK_\d{14}_7_[0-9a-f]{12}$/);
@@ -92,25 +89,12 @@ describe('booking payment API (preview only; no PG connected)', () => {
     expect(calls.filter((c) => /ROLLBACK/.test(c.sql))).toHaveLength(1);
   });
 
-  it('preview: creates the order, records the preview under a row lock, answers the success page', async () => {
-    const r = await authed(api().post('/v1/mypage/bookings/7/payment/preview')).expect(201);
-    expect(r.body).toEqual({ success: true, redirect: '/mypage/bookings/7/payment/success' });
-    expect(st.previews).toEqual([7]);
-    expect(calls.filter((c) => /FOR UPDATE/.test(c.sql))).toHaveLength(2);
-  });
-  it('preview: refusals', async () => {
-    await api().post('/v1/mypage/bookings/7/payment/preview').set('Cookie', 'sid=kim').expect(403);
-    st.booking.status = 'pending';
-    expect((await authed(api().post('/v1/mypage/bookings/7/payment/preview')).expect(409)).body.code).toBe('BOOKING_NOT_CONFIRMED');
-    st.booking.status = 'confirmed'; st.order = { id: 1, status: 'failed', merchant_uid: 'm', amount: 1 };
-    expect((await authed(api().post('/v1/mypage/bookings/7/payment/preview')).expect(409)).body.code).toBe('INVALID_ORDER_STATE');
-    st.order = { id: 1, status: 'paid', merchant_uid: 'm', amount: 1 };
-    expect((await authed(api().post('/v1/mypage/bookings/7/payment/preview')).expect(201)).body.redirect).toContain('/payment/success');
-    st.order = null; process.env.BOOKING_PAYMENT_PREVIEW_ENABLED = '0';
-    expect((await authed(api().post('/v1/mypage/bookings/7/payment/preview')).expect(403)).body.code).toBe('PREVIEW_DISABLED');
-    expect(st.previews).toEqual([]);
-    st.booking.mb_id = 'x';
+  it('"결제 없이 계속하기" is retired: the endpoint is gone and nothing records a skip', async () => {
     await authed(api().post('/v1/mypage/bookings/7/payment/preview')).expect(404);
+    expect(st.previews).toEqual([]);
+    expect(calls.some((c) => /INSERT INTO gangnamunni_booking_payment_previews/.test(c.sql))).toBe(false);
+    const r = await api().get('/v1/mypage/bookings/7/payment').set('Cookie', 'sid=kim').expect(200);
+    expect(r.body).not.toHaveProperty('previewAvailable');
   });
 
   it('success: preview, paid, test-paid, refunded, unknown', async () => {

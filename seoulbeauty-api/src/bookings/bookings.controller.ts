@@ -46,10 +46,6 @@ export class BookingsController {
   @Get(':id/payment')
   paymentInfo(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.payment.info(member(req), idParam(id)); }
 
-  @Post(':id/payment/preview')
-  @UseGuards(SameOriginGuard)
-  paymentPreview(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.payment.preview(member(req), idParam(id)); }
-
   @Post(':id/payment/inicis/prepare')
   @UseGuards(SameOriginGuard)
   paymentInicisPrepare(@Param('id') id: string, @Body() body: { device?: unknown; method?: unknown }, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.inicis.prepare(member(req), idParam(id), body?.device, body?.method); }

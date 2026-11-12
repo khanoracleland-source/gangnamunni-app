@@ -17,8 +17,9 @@ function booking_payment_live_enabled(): bool {
     return booking_payment_setting('G5_PG_PAYMENTS_ENABLED', '0') === '1';
 }
 function booking_payment_preview_enabled(): bool {
-    // Kept available during rollout at the owner's request. Set to 0 to retire it.
-    return booking_payment_setting('BOOKING_PAYMENT_PREVIEW_ENABLED', '1') === '1';
+    // "결제 없이 계속하기" was retired on 2026-11-12 (owner's decision): no setting turns it back on.
+    // booking_payment.php hides the button and booking_payment_mock_complete.php / booking_payment_record_preview() refuse.
+    return false;
 }
 function booking_payment_base_url(): string {
     $url = rtrim(booking_payment_setting('BOOKING_PAYMENT_BASE_URL'), '/');
