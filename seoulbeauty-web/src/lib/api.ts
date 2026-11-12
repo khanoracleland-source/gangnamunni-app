@@ -241,7 +241,7 @@ export interface BookingPaymentInfo {
 }
 /** POST …/payment/inicis/prepare — the signed INIPayPro parameters (the hash key never leaves the server). */
 export interface InicisPrepare { sdkUrl: string; mode: "test" | "live"; params: Record<string, string>; closePath: string }
-export interface BookingPaymentSuccess { title: string; description: string; paidFinal: boolean; preview: boolean; isPg: boolean; hospitalName: string; treatment: string; dateText: string; booker: string; bookingNo: string }
+export interface BookingPaymentSuccess { title: string; description: string; paidFinal: boolean; isPg: boolean; hospitalName: string; treatment: string; dateText: string; booker: string; bookingNo: string }
 
 /** GET /v1/legal/register-terms — bbs/register.php?view=terms */
 export interface RegisterTermsData { terms: string; privacy: string }

@@ -40,12 +40,10 @@ describe('bookings logic', () => {
     expect(paymentState('confirmed', { status: 'pending', amount: 0, provider: PG_LIVE })).toBe('');
     expect(paymentState('confirmed', { status: 'paid', amount: 100, provider: PG_SANDBOX })).toBe('test_paid');
     expect(paymentState('confirmed', { status: 'paid', amount: 100, provider: PG_LIVE })).toBe('paid');
-    expect(paymentState('confirmed', { status: 'preview', amount: 100 })).toBe('preview');
     expect(requestSteps('pending', '')).toEqual({ steps: ['예약 요청 접수', '병원 확인 중', '결제 대기', '예약 확정'], active: 1, chip: '예약 요청 접수' });
     expect(requestSteps('hospital_checking', '').chip).toBe('병원 확인 중');
     expect(requestSteps('confirmed', 'payable')).toMatchObject({ active: 3, chip: '결제 대기' });
     expect(requestSteps('confirmed', 'paid')).toMatchObject({ active: 4, chip: '예약 확정' });
-    expect(requestSteps('confirmed', 'preview').steps[3]).toBe('결제 없이 진행');
     expect(requestSteps('confirmed', 'test_paid').steps[3]).toBe('테스트 결제');
     expect(requestSteps('confirmed', 'refunded').steps[2]).toBe('환불 완료');
   });
@@ -172,8 +170,9 @@ describe('bookings API (mock DB)', () => {
     const [pending, payable, paid] = r.upcoming;
     expect(pending).toMatchObject({ action: 'change', editsLeft: 2, activeStep: 1, paid: false, treatment: '필러', price: 120000, imageUrl: 'uploads/h5.jpg' });
     expect(pending.chip).toMatch(/^예약 요청 접수 · D-\d+$/);
-    expect(payable).toMatchObject({ action: 'pay', activeStep: 4 }); // preview => "결제 없이 진행"
-    expect(payable.steps[3]).toBe('결제 없이 진행');
+    expect(payable).toMatchObject({ action: 'pay', activeStep: 3 }); // it once skipped payment (old previews row): unpaid like any other
+    expect(payable.steps[3]).toBe('예약 확정');
+    expect(payable.chip).toMatch(/^결제 대기/);
     expect(paid).toMatchObject({ action: null, activeStep: 4, paid: true });
   });
 

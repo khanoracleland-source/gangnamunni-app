@@ -67,7 +67,6 @@ export class PaymentExpireService implements OnApplicationBootstrap, OnApplicati
     try {
       if (!(await this.has("SHOW COLUMNS FROM gangnamunni_bookings LIKE 'confirmed_at'", []))) { out.skipped = 'no_column'; return out; }
       if (!(await this.has("SHOW TABLES LIKE 'gangnamunni_platform_payments'", []))) { out.skipped = 'no_payments'; return out; }
-      const previews = await this.has("SHOW TABLES LIKE 'gangnamunni_booking_payment_previews'", []);
       out.hours = await this.hours();
       const [rows] = (await this.db.query(
         `SELECT b.id, b.mb_id FROM gangnamunni_bookings b
@@ -76,7 +75,6 @@ export class PaymentExpireService implements OnApplicationBootstrap, OnApplicati
                          WHERE p.payment_type = 'booking' AND p.booking_id = b.id AND p.status = 'pending' AND p.amount > 0)
             AND NOT EXISTS (SELECT 1 FROM gangnamunni_platform_payments p
                              WHERE p.payment_type = 'booking' AND p.booking_id = b.id AND p.status IN ('paid', 'partially_refunded', 'refunded'))
-            ${previews ? 'AND NOT EXISTS (SELECT 1 FROM gangnamunni_booking_payment_previews v WHERE v.booking_id = b.id)' : ''}
           ORDER BY b.id LIMIT 200`, [out.hours])) as any;
       for (const r of rows as any[]) {
         // the member must be able to pay right now, otherwise the deadline means nothing to them

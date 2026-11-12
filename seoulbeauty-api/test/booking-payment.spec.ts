@@ -57,7 +57,7 @@ describe('booking payment API (preview only; no PG connected)', () => {
     const r = await api().get('/v1/mypage/bookings/7/payment').set('Cookie', 'sid=kim').expect(200);
     expect(r.body.booking).toMatchObject({ id: 7, statusText: '결제 대기', hospitalName: 'A의원', hospitalArea: '서울 강남구', hospitalAddress: '서울 강남구 테헤란로 1', treatment: '보톡스 · 50U', bookerName: '김민', phone: '010-1234-5678', dateText: '1월 5일 (월) 오후 2:00', logo: 'l.png' });
     expect(r.body.order).toEqual({ status: 'pending', provider: '', amount: 50000, gross: 50000, pointsUsed: 0, isTest: false });
-    expect(r.body).toMatchObject({ isConfirmed: true, isPaid: false, preview: false, liveAvailable: false, orderError: '', points: { v2: false, expected: 0 } });
+    expect(r.body).toMatchObject({ isConfirmed: true, isPaid: false, liveAvailable: false, orderError: '', points: { v2: false, expected: 0 } });
     const ins = calls.find((c) => /INSERT INTO gangnamunni_platform_payments/.test(c.sql))!;
     expect(ins.args.slice(0, 8)).toEqual([7, 3, 'A의원', 'kim', '김민', '010-1234-5678', '보톡스 · 50U', 50000]);
     expect(ins.args[8]).toMatch(/^BK_\d{14}_7_[0-9a-f]{12}$/);
@@ -74,13 +74,15 @@ describe('booking payment API (preview only; no PG connected)', () => {
     await api().get('/v1/mypage/bookings/7/payment').set('Cookie', 'sid=kim').expect(404);
     await api().get('/v1/mypage/bookings/7/payment').expect(401);
   });
-  it('info: paid order and gross/points, preview flag, expected points when v2 is on', async () => {
+  it('info: paid order and gross/points, expected points when v2 is on; an old skip row is not reported', async () => {
     st.order = { id: 1, status: 'paid', provider: PG_SANDBOX, amount: 45000, gross_amount: 50000, points_used: 5000, merchant_uid: 'm' };
     st.previews = [7];
     st.settings = { enabled: '1', v2_schema_version: '1', v2_policy_enabled: '1', schema_version: '3' };
     const r = await api().get('/v1/mypage/bookings/7/payment').set('Cookie', 'sid=kim').expect(200);
     expect(r.body.order).toEqual({ status: 'paid', provider: PG_SANDBOX, amount: 45000, gross: 50000, pointsUsed: 5000, isTest: true });
-    expect(r.body).toMatchObject({ isPaid: true, preview: true, points: { v2: true, expected: 5000 } });
+    expect(r.body).toMatchObject({ isPaid: true, points: { v2: true, expected: 5000 } });
+    expect(r.body).not.toHaveProperty('preview');
+    expect(calls.some((c) => /gangnamunni_booking_payment_previews/.test(c.sql))).toBe(false); // the table is no longer read
   });
   it('info: an order create failure is reported, not thrown', async () => {
     st.insertFails = true;
@@ -97,11 +99,11 @@ describe('booking payment API (preview only; no PG connected)', () => {
     expect(r.body).not.toHaveProperty('previewAvailable');
   });
 
-  it('success: preview, paid, test-paid, refunded, unknown', async () => {
+  it('success: unpaid (an old skip row changes nothing), paid, test-paid, refunded', async () => {
     const get = () => api().get('/v1/mypage/bookings/7/payment/success').set('Cookie', 'sid=kim').expect(200);
-    expect((await get()).body).toMatchObject({ title: '결제 확인 중', paidFinal: false, preview: false, hospitalName: 'A의원', dateText: '99.01.05 (월) 오후 2:00', booker: '김민 / 01012345678', bookingNo: '7' });
+    expect((await get()).body).toMatchObject({ title: '결제 확인 중', paidFinal: false, hospitalName: 'A의원', dateText: '99.01.05 (월) 오후 2:00', booker: '김민 / 01012345678', bookingNo: '7' });
     st.previews = [7];
-    expect((await get()).body.title).toBe('결제 없이 계속했어요');
+    expect((await get()).body).toMatchObject({ title: '결제 확인 중', paidFinal: false }); // 2026-11-12: a booking that skipped payment is simply unpaid
     st.order = { id: 1, status: 'paid', provider: PG_LIVE, amount: 1 };
     expect((await get()).body).toMatchObject({ title: '예약이 확정되었어요!', paidFinal: true, isPg: true });
     st.order.provider = PG_SANDBOX;

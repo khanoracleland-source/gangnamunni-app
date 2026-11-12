@@ -34,9 +34,6 @@ export class BookingsService {
     const rows = await this.safe('payments', async () => ((await this.db.query(
       `SELECT booking_id, status, amount, provider FROM gangnamunni_platform_payments WHERE payment_type = 'booking' AND booking_id IN (${ids.map(() => '?').join(',')})`, ids)) as any)[0] as any[], [] as any[]);
     for (const r of rows) map.set(n(r.booking_id), r);
-    const previews = await this.safe('payment previews', async () => ((await this.db.query(
-      `SELECT booking_id FROM gangnamunni_booking_payment_previews WHERE booking_id IN (${ids.map(() => '?').join(',')})`, ids)) as any)[0] as any[], [] as any[]);
-    for (const p of previews) { const r = map.get(n(p.booking_id)); if (r && s(r.status) === 'pending') r.status = 'preview'; }
     return map;
   }
 
@@ -95,7 +92,7 @@ export class BookingsService {
         const ps = paymentState(b.status, pay.get(n(b.id)));
         const st = requestSteps(s(b.status), ps);
         const editsLeft = Math.max(0, 3 - n(b.edit_count));
-        const action = s(b.status) === 'confirmed' ? (['payable', 'preview'].includes(ps) ? 'pay' : null) : 'change';
+        const action = s(b.status) === 'confirmed' ? (ps === 'payable' ? 'pay' : null) : 'change';
         upcoming.push({ ...base(b), status: s(b.status), chip: `${st.chip} · ${dday(b.booking_date)}`, steps: st.steps, activeStep: st.active, action, editsLeft, paid: ['paid', 'partially_refunded', 'test_paid'].includes(ps) });
       } else if (tab === 'cancelled') {
         const cs = cancelSteps(pay.get(n(b.id)));

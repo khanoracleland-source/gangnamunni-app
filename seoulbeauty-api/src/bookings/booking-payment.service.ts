@@ -84,9 +84,6 @@ export class BookingPaymentService {
     const [rows] = (await this.db.query("SELECT * FROM gangnamunni_platform_payments WHERE payment_type = 'booking' AND booking_id = ? LIMIT 1", [id])) as any;
     return (rows as any[])[0] ?? null;
   }
-  private async hasPreview(id: number): Promise<boolean> {
-    try { const [rows] = (await this.db.query('SELECT booking_id FROM gangnamunni_booking_payment_previews WHERE booking_id = ? LIMIT 1', [id])) as any; return (rows as any[]).length > 0; } catch { return false; }
-  }
 
   /** platform_payment_create_booking(): one pending order per booking, priced from the booking row (FOR UPDATE). */
   async createOrder(id: number) {
@@ -142,7 +139,7 @@ export class BookingPaymentService {
       },
       ledgerReady, orderError, gross: Math.max(0, gross),
       order: order ? { status: orderStatus, provider: s(order.provider), amount, gross, pointsUsed: pointsApplied, isTest: isTestProvider(order.provider) } : null,
-      isConfirmed: status === 'confirmed', isPaid, preview: await this.hasPreview(id),
+      isConfirmed: status === 'confirmed', isPaid,
       liveAvailable: BookingPaymentService.liveAvailable(process.env, m.id),
       points: { v2: expectedPoints !== null, expected: expectedPoints ?? 0, useReady: false, max: 0, balance: 0 },
     };
@@ -163,16 +160,14 @@ export class BookingPaymentService {
     if (!b) throw new NotFoundException('예약을 찾을 수 없거나 접근 권한이 없습니다.');
     let title = '결제 확인 중', description = '결제가 아직 확인되지 않았습니다. 결제 화면에서 상태를 다시 확인해주세요.', paidFinal = false;
     const order = (await this.hasTable('gangnamunni_platform_payments')) ? await this.order(id) : null;
-    const preview = await this.hasPreview(id);
     if (order && ['paid', 'partially_refunded'].includes(s(order.status))) {
       paidFinal = true;
       if (isTestProvider(order.provider)) { title = '테스트 결제 완료'; description = '테스트 결과이며 실제 결제·정산에 포함되지 않습니다.'; }
       else { title = '예약이 확정되었어요!'; description = '결제가 완료되어 예약이 최종 확정되었습니다\n예약 내역에서 상세 정보를 확인할 수 있습니다'; }
     } else if (order && s(order.status) === 'refunded') { title = '환불 완료'; description = '환불된 결제입니다. 예약 내역을 확인해주세요.'; }
-    else if (preview) { title = '결제 없이 계속했어요'; description = '실제 결제는 이루어지지 않았으며 결제·정산 내역에 포함되지 않습니다.'; }
     const treatment = s(b.treatment) || '-';
     return {
-      title, description, paidFinal, preview, isPg: !!order && isPgProvider(order.provider),
+      title, description, paidFinal, isPg: !!order && isPgProvider(order.provider),
       hospitalName: s(b.h_name) || s(b.hospital_name), treatment: [...treatment].length > 24 ? [...treatment].slice(0, 24).join('') + '...' : treatment,
       dateText: BookingPaymentService.koreanDate(b.booking_date, b.booking_time, true),
       booker: [s(b.name), digits(b.phone) || s(b.phone)].filter(Boolean).join(' / '), bookingNo: s(b.booking_no ?? b.reservation_no ?? b.id),

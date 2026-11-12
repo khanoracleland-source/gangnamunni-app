@@ -32,7 +32,7 @@ export default function BookingPaymentSuccess({ id }: { id: number }) {
               <div className={styles.infoRow}><div className={styles.label}>예약번호</div><div className={styles.value}>{data.bookingNo}</div></div>
             </section>
             <div className={styles.doneActions}>
-              {!data.paidFinal && !data.preview && <Link className={styles.previewBtn} href={`/mypage/bookings/${id}/payment`}>결제 상태 확인</Link>}
+              {!data.paidFinal && <Link className={styles.previewBtn} href={`/mypage/bookings/${id}/payment`}>결제 상태 확인</Link>}
               <Link className={`${styles.previewBtn} ${styles.previewPri}`} href="/mypage/bookings" replace>예약 내역 보기</Link>
             </div>
           </>

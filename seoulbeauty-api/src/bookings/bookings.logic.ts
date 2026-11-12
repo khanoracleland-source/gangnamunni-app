@@ -56,7 +56,7 @@ export function dday(date: unknown, today = kstNow().slice(0, 10)): string {
   return diff > 0 ? `D-${diff}` : diff === 0 ? 'D-0' : `D+${Math.abs(diff)}`;
 }
 
-export type PayState = '' | 'refunded' | 'cancelled' | 'failed' | 'paid' | 'partially_refunded' | 'test_paid' | 'preview' | 'payable' | string;
+export type PayState = '' | 'refunded' | 'cancelled' | 'failed' | 'paid' | 'partially_refunded' | 'test_paid' | 'payable' | string;
 
 /** booking_payment_display_state() + booking_payment_state(): only a confirmed booking with a payment row has one. */
 export function paymentState(bookingStatus: unknown, p: { status?: unknown; amount?: unknown; provider?: unknown } | undefined): PayState {
@@ -64,7 +64,6 @@ export function paymentState(bookingStatus: unknown, p: { status?: unknown; amou
   const status = String(p.status ?? '');
   if (['refunded', 'cancelled', 'failed'].includes(status)) return status;
   if (['paid', 'partially_refunded'].includes(status)) return isTestProvider(p.provider) ? 'test_paid' : status;
-  if (status === 'preview') return 'preview';
   return status === 'pending' && Number(p.amount ?? 0) > 0 ? 'payable' : '';
 }
 
@@ -74,8 +73,7 @@ export function requestSteps(status: unknown, pay: PayState): { steps: string[];
   let active = 1;
   if (status === 'hospital_checking') active = 2;
   else if (status === 'confirmed') {
-    active = ['paid', 'partially_refunded', 'test_paid', 'preview'].includes(pay) ? 4 : 3;
-    if (pay === 'preview') steps[3] = '결제 없이 진행';
+    active = ['paid', 'partially_refunded', 'test_paid'].includes(pay) ? 4 : 3;
     if (pay === 'test_paid') steps[3] = '테스트 결제';
     if (pay === 'refunded') steps[2] = '환불 완료';
     if (pay === 'cancelled') steps[2] = '결제 취소';
@@ -86,7 +84,7 @@ export function requestSteps(status: unknown, pay: PayState): { steps: string[];
 
 /** Cancelled card: no money taken -> "취소 처리", otherwise the refund track. */
 export function cancelSteps(payment: { status?: unknown; provider?: unknown } | undefined): { noCharge: boolean; refundComplete: boolean; steps: string[]; active: number; chip: string } {
-  const noCharge = !payment || isTestProvider(payment.provider) || ['pending', 'preview', 'failed', 'cancelled'].includes(String(payment.status ?? ''));
+  const noCharge = !payment || isTestProvider(payment.provider) || ['pending', 'failed', 'cancelled'].includes(String(payment.status ?? ''));
   const refundComplete = noCharge || String(payment?.status ?? '') === 'refunded';
   return {
     noCharge, refundComplete,

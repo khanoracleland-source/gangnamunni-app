@@ -40,7 +40,7 @@ describe('PaymentExpireService', () => {
     expect(q.sql).toMatch(/b\.status = 'confirmed' AND b\.confirmed_at IS NOT NULL AND b\.confirmed_at <= DATE_SUB\(NOW\(\), INTERVAL \? HOUR\)/);
     expect(q.sql).toMatch(/p\.status = 'pending' AND p\.amount > 0/);
     expect(q.sql).toMatch(/NOT EXISTS \(SELECT 1 FROM gangnamunni_platform_payments p[\s\S]*'paid', 'partially_refunded', 'refunded'/);
-    expect(q.sql).toMatch(/NOT EXISTS \(SELECT 1 FROM gangnamunni_booking_payment_previews/);
+    expect(q.sql).not.toMatch(/payment_previews/); // a booking that once skipped payment is unpaid like any other
     expect(calls.every((c) => /^\s*(SELECT|SHOW)/.test(c.sql))).toBe(true);
   });
   it('real run: only members who can pay are cancelled; open to everyone still skips a booking without a member', async () => {
@@ -70,11 +70,8 @@ describe('PaymentExpireService', () => {
       expect((await make({ hours: v as any }).svc.run(true, ENV('*'))).hours).toBe(want);
     }
   });
-  it('missing column / payments table: skipped; no previews table: the query has no previews clause', async () => {
+  it('missing column / payments table: skipped', async () => {
     expect((await make({ column: false }).svc.run()).skipped).toBe('no_column');
     expect((await make({ payments: false }).svc.run()).skipped).toBe('no_payments');
-    const { svc, calls } = make({ previews: false });
-    await svc.run(true, ENV('*'));
-    expect(calls.find((c) => /FROM gangnamunni_bookings b/.test(c.sql))!.sql).not.toMatch(/payment_previews/);
   });
 });
