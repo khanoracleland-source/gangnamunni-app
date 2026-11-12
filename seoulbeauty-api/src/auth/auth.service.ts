@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { phpFetch } from '../common/php-fetch';
+import { NestSessionService } from './nest-session.service';
 
 export interface SessionUser {
   id: string;
@@ -17,9 +18,9 @@ export interface Session {
 }
 
 /**
- * Session lookup delegated to PHP (api/session_me.php): Gnuboard session, remember-login
- * and account intercept rules keep living in one place while pages migrate.
- * The browser's Cookie header is forwarded as-is; the result is cached briefly per cookie.
+ * Who is signed in. With NEST_SESSIONS=1 a request that carries a valid sb_sid cookie is answered from Nest's own session
+ * (NestSessionService: no PHP call). Everything else is still asked from PHP (api/session_me.php: the Gnuboard session, the app's
+ * restored sign-in, remember-login) with the browser's Cookie header forwarded as-is; that answer is cached briefly per cookie.
  */
 @Injectable()
 export class AuthService {
@@ -29,6 +30,8 @@ export class AuthService {
   private readonly host = process.env.PHP_SESSION_HOST || '';
   private readonly ttlMs = Number(process.env.PHP_SESSION_CACHE_MS || 10_000);
   private readonly cache = new Map<string, { at: number; v: Session }>();
+  /** optional so the class can still be built bare (unit tests, scripts): without it only the PHP lookup exists */
+  constructor(@Optional() private readonly nest?: NestSessionService) {}
 
   /** Used by /health: can we reach the PHP session authority at all? */
   async ping(): Promise<boolean> {
@@ -52,11 +55,18 @@ export class AuthService {
   /** Drop the cached session of this cookie (after the member's own data changed, e.g. the nickname). */
   forget(cookie: string | undefined): void {
     if (cookie && cookie.trim()) this.cache.delete(createHash('sha256').update(cookie).digest('hex'));
+    this.nest?.forget(cookie);
   }
 
   /** `fresh` skips the cache (use before security-sensitive writes). */
   async fromCookie(cookie: string | undefined, fresh = false): Promise<Session> {
     if (!cookie || !cookie.trim()) return { loggedIn: false, user: null };
+    // Nest's own session first. "invalid" (expired, revoked, signed out elsewhere) still falls through to PHP: the browser may hold a
+    // PHP session that is alive (the app restores one at start), and PHP stays the authority for whatever Nest did not create.
+    if (this.nest) {
+      const own = await this.nest.verify(cookie, fresh);
+      if (own.kind === 'ok') return { loggedIn: true, user: own.user };
+    }
     const key = createHash('sha256').update(cookie).digest('hex');
     const hit = this.cache.get(key);
     const now = Date.now();

@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { createHmac } from 'crypto';
 import { phpFetch } from '../common/php-fetch';
+import { cookieDomainOf, NestSessionService } from '../auth/nest-session.service';
 
 export interface BridgeResult { ok: boolean; setCookies: string[]; error?: string }
 
@@ -12,6 +13,7 @@ export interface BridgeResult { ok: boolean; setCookies: string[]; error?: strin
 @Injectable()
 export class SessionBridgeService {
   private readonly log = new Logger(SessionBridgeService.name);
+  constructor(@Optional() private readonly sessions?: NestSessionService) {}
 
   private url(): string {
     const base = process.env.PHP_SESSION_URL || 'https://hms.seoulbeauty.app/api/session_me.php';
@@ -37,7 +39,13 @@ export class SessionBridgeService {
       const setCookies = typeof (res.headers as any).getSetCookie === 'function' ? (res.headers as any).getSetCookie() as string[] : [];
       const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!res.ok || !body.ok) { this.log.error(`bridge ${res.status} ${body.error ?? ''}`); return { ok: false, setCookies: [], error: body.error ?? `http ${res.status}` }; }
-      return { ok: true, setCookies };
+      // Every sign-in of the site passes here (e-mail login, sign-up, Kakao / Google / Apple): Nest's own session is opened next to the
+      // PHP one (NEST_SESSIONS=1). Its cookie goes last, with the Domain the PHP session cookie uses, so both are sent to the same hosts.
+      const own = await this.sessions?.create(mbId, {
+        remember: remember && mode === 'login', app: /(?:^|;\s*)sb_patient_app=1(?:;|$)/.test(cookie || ''), userAgent, source: social ? social.toLowerCase() : mode,
+        domain: process.env.NEST_SESSION_COOKIE_DOMAIN ?? cookieDomainOf(setCookies), replaces: cookie,
+      });
+      return { ok: true, setCookies: own ? [...setCookies, own] : setCookies };
     } catch (e) {
       this.log.error(`bridge failed: ${(e as Error).message}`);
       return { ok: false, setCookies: [], error: (e as Error).message };

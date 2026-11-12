@@ -369,3 +369,20 @@ GRANT DELETE ON hms_saas.g5_memo TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localh
 (`gangnamunni_wishlist`, `gangnamunni_user_notifications`, `gangnamunni_community_likes`, `sso_tokens`, `g5_member_social_profiles` uchun DELETE avval berilgan.)
 
 PHP'dan farqlar (ataylab): kod xati ketmasa foydalanuvchiga aytiladi (PHP jim o'tardi); sayt egasi (`cf_admin`) 탈퇴 qila olmaydi; Kakao "-101 allaqachon uzilgan" javobi muvaffaqiyat hisoblanadi (yarim qolgan urinishni takrorlash mumkin bo'lsin).
+
+## Nest sessions (51-kun, 2026-11-12) — `NEST_SESSIONS`
+
+B bosqichning 1-qismi: Nest o'z sessiyasini yuritadi (`sb_sessions` jadvali, `sb_sid` cookie). Yoqilganda kirgan foydalanuvchining so'rovlari PHP `session_me.php` ga bormaydi. Login hali PHP ko'prigi (`session_login.php`) orqali ham o'tadi — ilova native tokenlari PHP sessiyasiga muhtoj — va Nest sessiyasi shu ko'prikdan keyin ochiladi. `sb_sid` yo'q yoki yaroqsiz bo'lsa (eski sessiyalar, ilova cold-start) avvalgidek PHP so'raladi.
+
+1. Jadval (root):
+```
+mysql -u root -p hms_saas < /var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas/hairwang_full/gangnamunni/sql/sb_sessions_20261112.sql
+```
+2. GRANT:
+```sql
+GRANT INSERT, DELETE, UPDATE (last_seen_at, expires_at) ON hms_saas.sb_sessions TO 'sb_api_ro'@'127.0.0.1', 'sb_api_ro'@'localhost';
+```
+3. `.env` → `NEST_SESSIONS=1`, `systemctl restart seoulbeauty-api`. Qaytarish: qiymatni bo'shatib restart (mavjud `sb_sid` lar e'tiborsiz qoladi, hamma PHP sessiyasi bilan davom etadi).
+
+Sessiya tugaydi: muddat (remember: veb 31 kun / ilova 120 kun; aks holda 3 soat harakatsizlik), `mb_cred_epoch` o'zgarsa (parol, 탈퇴), blok/chiqish sanasi, `POST /v1/auth/logout`, PHP logout yoki PHP orqali boshqa a'zo bo'lib kirish (`hairwang_full/extend/sb_nest_session.extend.php` qatorni o'chiradi).
+Kuzatish: `SELECT source, remember, COUNT(*) FROM sb_sessions WHERE expires_at > NOW() GROUP BY source, remember;`

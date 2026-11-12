@@ -466,6 +466,8 @@ export const api = {
   changePassword: (b: { current_pw: string; new_pw: string; new_pw_confirm: string }) => send<{ success: boolean; message: string }>("POST", "/v1/account/password", b, 30000),
   sendEmailCode: (new_email: string) => send<{ success: boolean; email: string; expiresIn: number }>("POST", "/v1/account/email/send", { new_email }, 30000),
   verifyEmailCode: (code: string) => send<{ success: boolean; email: string }>("POST", "/v1/account/email/verify", { code }, 30000),
+  /** ends the API's own sign-in session (sb_sid); the PHP logout that follows ends the rest */
+  logout: () => send<{ success: boolean }>("POST", "/v1/auth/logout", {}, 8000),
   withdraw: (b: { reason: string; detail: string; password: string }) => send<{ success: boolean; message: string }>("POST", "/v1/account/withdraw", b, 60000),
   consultation: (id: number, ctx?: ServerCtx) => get<ConsultationDetail>(`/v1/mypage/consultations/${id}`, undefined, ctx),
   rerequestConsultation: (id: number, slot: string) => post<{ success: boolean }>(`/v1/mypage/consultations/${id}/rerequest`, { slot }),

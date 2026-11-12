@@ -68,6 +68,12 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
       if (name) say(`${today()} 마케팅 정보(${name}) 수신${on ? "에 동의했어요" : "을 거부했어요"}`);
     } catch (e) { set(!on); say(e instanceof ApiError && e.status === 503 && typeof e.body?.message === "string" && e.body.message ? e.body.message : "설정 저장에 실패했어요. 다시 시도해주세요"); } finally { setBusy(null); }
   };
+  /* The API's own session first (it may be off or already gone: either way the PHP logout below still runs), then the PHP logout
+     that ends the PHP session, the remember cookies and the app's tokens and comes back to the start page. */
+  const signOut = async () => {
+    try { await api.logout(); } catch { /* the PHP logout removes the same session (extend/sb_nest_session.extend.php) */ }
+    window.location.assign(phpUrl(php, "bbs/logout.php?url=%2Fnext%2F"));
+  };
   /* 07-08 탈퇴 sheet: social members have no password, so they leave right here; the others go on to the form (reason, password). */
   const leaveNow = async () => {
     if (leaving) return;
@@ -139,7 +145,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
         <div className={styles.sheet}>
           <h2 className={styles.sheetTitle}>잠시 로그아웃하시겠어요?</h2>
           <div className={styles.sheetBtns}>
-            <button type="button" className={styles.sheetBtn} onClick={() => window.location.assign(phpUrl(php, "bbs/logout.php?url=%2Fnext%2F"))}>로그아웃</button>
+            <button type="button" className={styles.sheetBtn} onClick={signOut}>로그아웃</button>
             <button type="button" className={`${styles.sheetBtn} ${styles.sheetBtnPri}`} onClick={() => sheetRef.current?.close()}>아니오</button>
           </div>
         </div>
