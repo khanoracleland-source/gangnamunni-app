@@ -23,6 +23,7 @@ import { SocialModule } from './social/social.module';
 import { LoginModule } from './login/login.module';
 import { RegisterModule } from './register/register.module';
 import { PasswordLostModule } from './password-lost/password-lost.module';
+import { MaintenanceModule } from './maintenance/maintenance.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -48,6 +49,7 @@ import { HealthController } from './health/health.controller';
     LegalModule,
     BookingModule,
     PasswordLostModule, RegisterModule, LoginModule, SocialModule,
+    MaintenanceModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

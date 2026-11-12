@@ -257,6 +257,23 @@ Needs D4a (and D4b for new members). Keys come from `g5_config` (`cf_apple_bundl
 6. NOT done: revoking the Apple token when a member withdraws (PHP does not do it either); the Flutter `NextPilot` rewrite of a
    PHP `auth/login.php?provider=apple` link (the Next login page links to Nest directly, so the app does not need it).
 
+## Push token cleanup (replaces PHP `cron_push_token_cleanup.php`, 2026-11-12)
+
+Same four idempotent steps as the PHP cron (iPhone token saved as android → ios; active token without a member older than 14 days → off;
+several active tokens of one member on one device → only the newest stays on; off for 90 days → deleted).
+
+1. Grants (the API user could only switch `pt_use`):
+   ```sql
+   GRANT UPDATE (pt_use, pt_platform), DELETE ON hms_saas.g5_push_tokens TO 'sb_api_ro'@'127.0.0.1';
+   GRANT UPDATE (pt_use, pt_platform), DELETE ON hms_saas.g5_push_tokens TO 'sb_api_ro'@'localhost';
+   ```
+2. Pull, `npm run build`. Compare first: `sudo -u sbapi npm run push-token-cleanup -- --dry-run` (changes nothing) against what the
+   PHP cron log reports; then one real run by hand: `sudo -u sbapi npm run push-token-cleanup`.
+3. `.env`: `PUSH_TOKEN_CLEANUP_ENABLED=1` (`PUSH_TOKEN_CLEANUP_HOUR=0` = 00:xx KST), `systemctl restart seoulbeauty-api`; the log shows
+   `push token cleanup: once a day in KST hour 0`. Then remove the PHP line from the crontab (`crontab -l | grep push_token_cleanup`).
+   Running both for a few days is harmless.
+4. Rollback: empty `PUSH_TOKEN_CLEANUP_ENABLED`, restart, put the crontab line back.
+
 ### Inicis card payment (INIPayPro, Nest, 2026-11-04)
 Flow: Next `결제하기` -> `POST /v1/mypage/bookings/:id/payment/inicis/prepare` (signed SDK parameters, nothing written) -> `INIPayPro.requestPayment`
 -> Inicis makes the customer's browser POST the authentication result to `POST /v1/payments/inicis/return` (public: cross-site, no session)
