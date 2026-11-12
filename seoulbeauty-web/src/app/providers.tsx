@@ -4,6 +4,7 @@ import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client
 import { usePathname, useRouter } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, qk } from "@/lib/api";
+import { fetchAllHospitals, hospitalsAllKey } from "@/lib/hospitalsAll";
 import { announceLogoutFromUrl, notifyPageChanged } from "@/lib/bridge";
 import { useMe } from "@/lib/me";
 import { countSpaNav } from "@/lib/nav";
@@ -44,11 +45,18 @@ function CacheGuard({ clearDisk }: { clearDisk: () => void }) {
 }
 
 /**
- * App start: warm the four tab screens (home, /hospitals, /community, /mypage) so tapping a tab paints from the cache at once.
- * Fills the query cache (which persists to disk by itself) and loads each route's JS. Runs once per page load, after the
- * current screen has had a head start; skipped on Data Saver. staleTime keeps it from re-fetching what the screen just fetched.
+ * App start: warm EVERY screen at once, so whichever one is opened next paints from the cache immediately (and then quietly asks the
+ * server again, as every screen does). Fills the query cache (which persists to disk by itself) and loads each route's JS.
+ * Runs once per page load, right after the first paint, all requests in parallel; skipped on Data Saver.
+ * staleTime keeps it from re-fetching what the current screen has just fetched. Screens tied to one id or one action
+ * (a hospital, a post, payment / cancel) cannot be known in advance and load when opened.
  */
-const WARM_ROUTES = ["/", "/hospitals", "/community", "/mypage"];
+const WARM_ROUTES = [
+  "/", "/hospitals", "/community", "/events", "/faq", "/qna", "/login", "/terms", "/privacy", "/community-guidelines", "/points-policy",
+  "/mypage", "/mypage/bookings", "/mypage/notifications", "/mypage/wishlist", "/mypage/consultations", "/mypage/reviews", "/mypage/points",
+  "/mypage/progress", "/mypage/community", "/mypage/profile", "/mypage/settings",
+];
+const WARM_STALE = { staleTime: 30_000 };
 function WarmUp() {
   const qc = useQueryClient();
   const router = useRouter();
@@ -56,31 +64,38 @@ function WarmUp() {
   const loggedIn = me.data ? me.data.loggedIn : undefined;
   const publicDone = useRef(false);
   const memberDone = useRef(false);
-  // fire-and-forget (no cleanup on purpose: the warm-up must finish even if the screen that started it unmounts)
-  const idle = (fn: () => void) => {
-    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
-    if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout: 1500 }); else window.setTimeout(fn, 400);
-  };
   const saveData = () => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  // fire-and-forget (no cleanup on purpose: the warm-up must finish even if the screen that started it unmounts)
   useEffect(() => {
     if (publicDone.current || saveData()) return;
     publicDone.current = true;
-    idle(() => {
-      const opt = { staleTime: 30_000 };
-      void qc.prefetchQuery({ queryKey: qk.home, queryFn: () => api.home(), ...opt });
-      void qc.prefetchQuery({ queryKey: qk.hospitals({}), queryFn: () => api.hospitals({}), ...opt });
-      void qc.prefetchQuery({ queryKey: qk.community({ tab: "latest" }), queryFn: () => api.community({ tab: "latest" }), ...opt });
+    window.setTimeout(() => {
+      const warm = <T,>(queryKey: readonly unknown[], queryFn: () => Promise<T>) => void qc.prefetchQuery({ queryKey, queryFn, ...WARM_STALE });
+      warm(qk.home, () => api.home());
+      warm(hospitalsAllKey({}), () => fetchAllHospitals({}));
+      for (const tab of ["latest", "popular", "review"]) warm(qk.community({ tab }), () => api.community({ tab }));
+      warm(qk.events("", false), () => api.events({ category: "", filter: "" }));
+      warm(qk.events("", true), () => api.events({ category: "", filter: "raffle" }));
+      warm(qk.faq, () => api.faq());
       for (const r of WARM_ROUTES) { try { router.prefetch(r); } catch { /* ignore */ } }
-    });
+    }, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (loggedIn !== true || memberDone.current || saveData()) return;
     memberDone.current = true;
-    idle(() => {
-      void qc.prefetchQuery({ queryKey: qk.mypage, queryFn: () => api.mypage(), staleTime: 30_000 });
-      void qc.prefetchInfiniteQuery({ queryKey: qk.myNotifications("all"), initialPageParam: 1, staleTime: 30_000, queryFn: ({ pageParam }) => api.myNotifications("all", pageParam as number) });
-    });
+    const warm = <T,>(queryKey: readonly unknown[], queryFn: () => Promise<T>) => void qc.prefetchQuery({ queryKey, queryFn, ...WARM_STALE });
+    warm(qk.mypage, () => api.mypage());
+    warm(qk.myBookings, () => api.myBookings());
+    warm(qk.myWishlist, () => api.myWishlist());
+    warm(qk.myConsultations, () => api.myConsultations());
+    warm(qk.myReviews, () => api.myReviews());
+    warm(qk.myPoints, () => api.myPoints());
+    warm(qk.myProgress, () => api.myProgress());
+    warm(qk.myProfile, () => api.myProfile());
+    warm(qk.notificationSettings, () => api.notificationSettings());
+    warm(qk.myCommunity("latest", 1), () => api.myCommunity({ tab: "latest", page: 1 }));
+    void qc.prefetchInfiniteQuery({ queryKey: qk.myNotifications("all"), initialPageParam: 1, ...WARM_STALE, queryFn: ({ pageParam }) => api.myNotifications("all", pageParam as number) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn]);
   return null;

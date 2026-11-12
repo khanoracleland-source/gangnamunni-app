@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, assetUrl, type Hospital, normalize, qk, type HospitalListParams, type HospitalPage, type HospitalSort, type InfeedAd } from "@/lib/api";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { assetUrl, normalize, type HospitalListParams, type HospitalSort, type InfeedAd } from "@/lib/api";
+import { fetchAllHospitals, hospitalsAllKey, type HospitalRow } from "@/lib/hospitalsAll";
 import { usePhpBase } from "@/lib/php";
 import { siteHref } from "@/lib/phpLink";
 import { fetchSlotTokens, observeImpressions, observeSlotImpressions, trackClick } from "@/lib/adTracking";
@@ -66,10 +67,12 @@ const styles = {
  * cheapest option or the treatment's average (the API's own fallback), so it is the API's sort key. Ties: rating, then id.
  * Paid slots are pinned on top for every sort except price (hospitals.service.ts, like hospital_list_data.php).
  */
-type Row = Hospital & { slotOnly?: boolean };
+type Row = HospitalRow;
 function sortHospitals(list: Row[], sort: HospitalSort): Row[] {
   const r = (h: Row) => h.rating ?? -1;
-  const price = (h: Row) => (h.treatment && h.treatment.priceMin > 0 ? h.treatment.priceMin : 2147483647);
+  // no treatment in the search: the API's price order is the hospital's own lowest price
+  const byLine = list.some((h) => h.treatment);
+  const price = (h: Row) => { const v = byLine ? (h.treatment?.priceMin ?? 0) : (h.minPrice ?? 0); return v > 0 ? v : 2147483647; };
   const cmp: Record<HospitalSort, (a: Row, b: Row) => number> = {
     manual: () => 0,
     price: (a, b) => price(a) - price(b) || r(b) - r(a),
@@ -87,31 +90,7 @@ function sortHospitals(list: Row[], sort: HospitalSort): Row[] {
   return [...ads, ...rest];
 }
 
-/**
- * Every page of the list for the treatment (sort=price: rows carry the cheapest price line), fetched in parallel, plus the paid slots:
- * the API pins them only on page 1 of a non-price sort, so one extra call (sort=rating) supplies them and they are marked on the rows here.
- */
-async function fetchAllHospitals(p: HospitalListParams): Promise<HospitalPage> {
-  // Old API (limit max 100, no `both`) must keep working while the new one is rolling out: fall back to 100 per page.
-  const run = async (size: number, maxOffset: number) => {
-    const base = { ...p, sort: "price" as const, limit: size, both: "1" as const };
-    const first = await api.hospitals({ ...base, offset: 0 });
-    const offs: number[] = [];
-    for (let o = first.items.length; o < Math.min(first.total, maxOffset + 1); o += size) offs.push(o);
-    const rest = await Promise.all(offs.map((offset) => api.hospitals({ ...base, offset })));
-    return [first, ...rest];
-  };
-  const [pages, pinned] = await Promise.all([
-    run(300, 5000).catch((e) => { if (e instanceof ApiError && e.status === 400) return run(100, 1000); throw e; }), // only the old API's "limit > 100 / offset > 1000" => 400
-    api.hospitals({ ...p, sort: "rating", limit: 20, offset: 0 }).catch(() => null), // slots are optional: never fail the list
-  ]);
-  const first = pages[0];
-  const slots = new Map((pinned?.items ?? []).filter((h) => h.adSlot).map((h) => [h.id, h]));
-  const seen = new Set<number>();
-  const items = pages.flatMap((r) => r.items).filter((h) => !seen.has(h.id) && !!seen.add(h.id)).map((h) => (slots.has(h.id) ? { ...h, adSlot: slots.get(h.id)!.adSlot } : h));
-  for (const [id, h] of slots) if (!seen.has(id)) items.push({ ...h, slotOnly: true } as Row); // a paid slot bypasses the filters, like the API
-  return { ...first, items };
-}
+const PAGE = 20; // cards added to the screen per step
 
 const SORT_ICON: Partial<Record<HospitalSort, { on: { src: string }; off: { src: string } }>> = {
   price: { on: priceOn, off: priceOff }, rating: { on: ratingOn, off: ratingOff }, popular: { on: popularOn, off: popularOff }, review: { on: reviewOn, off: reviewOff },
@@ -151,28 +130,25 @@ function InfeedCard({ ad, php, rounded }: { ad: InfeedAd; php: string; rounded?:
     : <a href={href} className={cls} data-ad-id={ad.id} onClick={onClick}>{body}</a>;
 }
 
-export default function HospitalList({ params, initial }: { params: HospitalListParams; initial?: HospitalPage }) {
+export default function HospitalList({ params }: { params: HospitalListParams }) {
   const p = normalize(params);
   const php = usePhpBase();
   const router = useRouter();
-  const qc = useQueryClient();
-  // Changing the sort / dosage keeps the current list on screen until the new one arrives (no empty flash);
+  // ALL hospitals of the filter are loaded once (one cache entry, whatever the sort) and sorted here: a sort chip never calls the API.
+  // Changing the dosage keeps the current list on screen until the new one arrives (no empty flash);
   // a different keyword / category / treatment / region starts clean.
-  // A 시술 picked from the home table: load ALL its hospitals once (any sort) and sort them here, so a sort chip never calls the API.
-  const allMode = !!p.treatment && !p.q;
-  const { data: raw, isFetching, isError, refetch, isPlaceholderData } = useQuery({
-    queryKey: allMode ? ([...qk.hospitals({ ...p, sort: "" }), "all"] as const) : qk.hospitals(p),
-    queryFn: () => (allMode ? fetchAllHospitals(p) : api.hospitals(p)),
-    initialData: allMode ? undefined : initial,
-    staleTime: allMode ? 60_000 : undefined, refetchOnMount: allMode ? true : "always", // all-list is heavy: no refetch on every mount
+  const { data: raw, isError, refetch } = useQuery({
+    queryKey: hospitalsAllKey(p),
+    queryFn: () => fetchAllHospitals(p),
+    staleTime: 60_000, refetchOnMount: true, // the full list is heavy: painted from the cache, asked again only when a minute old
     placeholderData: (prev, prevQuery) => {
       const o = prevQuery?.queryKey[1] as ReturnType<typeof normalize> | undefined;
-      if (o && o.q === p.q && o.category === p.category && o.treatment === p.treatment && o.region === p.region) return keepPreviousData(prev);
-      return allMode ? initial : undefined; // first 20 (already in server order) while the full list loads
+      return o && o.q === p.q && o.category === p.category && o.treatment === p.treatment && o.region === p.region ? keepPreviousData(prev) : undefined;
     },
   });
-  const sortKey: HospitalSort = (p.sort as HospitalSort) || (allMode ? "price" : raw?.sort) || "manual";
-  const data = raw && allMode && !isPlaceholderData ? { ...raw, items: sortHospitals(raw.items, sortKey), sort: sortKey } : raw;
+  // No sort in the URL: the API's default (price when a treatment is effective, else its manual order), known at once for a picked 시술.
+  const sortKey: HospitalSort = (p.sort as HospitalSort) || raw?.sort || (p.treatment && !p.q ? "price" : "manual");
+  const data = raw ? { ...raw, items: sortHospitals(raw.items, sortKey), sort: sortKey } : raw;
   const gridRef = useRef<HTMLDivElement>(null);
   const [slotTokens, setSlotTokens] = useState<Record<string, string>>({});
 
@@ -185,7 +161,7 @@ export default function HospitalList({ params, initial }: { params: HospitalList
     return () => { alive = false; };
   }, [bookingKey, php]);
 
-  const sortApplied: HospitalSort = (p.sort as HospitalSort) || data?.sort || "manual"; // the clicked chip lights up at once
+  const sortApplied = sortKey; // the clicked chip lights up at once
   const eff = data?.effectiveTreatment ?? null;
   // The 시술 comes from the URL, so the 05-01 layout is chosen at once (not after the answer arrives, which showed the old layout first).
   const treatPending = !data && !!p.treatment && !p.q;
@@ -206,27 +182,14 @@ export default function HospitalList({ params, initial }: { params: HospitalList
   };
   // hospitals.php: 낮은가격 only when a treatment is effective; 추천(manual) is the default otherwise.
   const sorts: HospitalSort[] = eff || treatPending ? ["price", "rating", "popular", "review"] : ["rating", "popular", "review"]; // design 03-04: no 추천 chip before a treatment is chosen
-  // The sort is done by the API (the page holds only the first 20 of `total`, so sorting them here would be wrong):
-  // fetch the other sorts quietly after the list paints, then a chip click is served from the cache.
-  const prefetchKey = data && !isFetching && !allMode ? sorts.join(",") + "|" + JSON.stringify(p) : "";
-  useEffect(() => {
-    if (!prefetchKey) return;
-    for (const s of sorts) {
-      if (s === sortApplied) continue;
-      const np = { ...p, sort: s };
-      void qc.prefetchQuery({ queryKey: qk.hospitals(np), queryFn: () => api.hospitals(np), staleTime: 60_000 });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefetchKey]);
+  // The whole list is in the cache, so a sort chip only re-orders it here (no API call). Cards are put on screen 20 at a time
+  // as the end of the list nears, so a long list does not cost a long first paint.
   const dosageOptions = data?.dosageOptions ?? [];
-  // The API serves 20 at a time: the rest load by themselves as the end of the list nears (offset paging).
-  const listKey = JSON.stringify({ ...p, sort: undefined, dosage: p.dosage }) + "|" + sortApplied;
-  const [extra, setExtra] = useState<{ key: string; items: HospitalPage["items"]; done: boolean }>({ key: "", items: [], done: false });
-  const loadingMore = useRef(false);
-  const extraItems = extra.key === listKey ? extra.items : [];
-  const baseItems = data?.items ?? [];
-  const seen = new Set(baseItems.map((h) => h.id));
-  const items = [...baseItems, ...extraItems.filter((h) => !seen.has(h.id))];
+  const listKey = JSON.stringify({ ...p, sort: undefined }) + "|" + sortApplied;
+  const [shown, setShown] = useState<{ key: string; n: number }>({ key: "", n: PAGE });
+  const count = shown.key === listKey ? shown.n : PAGE;
+  const allItems = data?.items ?? [];
+  const items = allItems.slice(0, count);
   useEffect(() => {
     if (!gridRef.current || !data) return;
     const a = observeSlotImpressions(php, gridRef.current);
@@ -234,29 +197,17 @@ export default function HospitalList({ params, initial }: { params: HospitalList
     return () => { a(); b(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raw, sortKey, slotTokens, php, items.length]);
-  const hasMore = !!data && extra.key !== listKey ? baseItems.length < data.total : !!data && !extra.done && items.length < data.total;
+  const hasMore = count < allItems.length;
   const sentinelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el || !hasMore || isFetching) return;
+    if (!el || !hasMore) return;
     const io = new IntersectionObserver((es) => {
-      if (!es[0].isIntersecting || loadingMore.current) return;
-      loadingMore.current = true;
-      const key = listKey, have = items.length;
-      api.hospitals({ ...p, sort: sortApplied === "manual" ? p.sort : sortApplied, offset: have })
-        .then((r) => setExtra((e) => {
-          const prev = e.key === key ? e.items : [];
-          const ids = new Set([...baseItems, ...prev].map((h) => h.id));
-          const add = r.items.filter((h) => !ids.has(h.id));
-          return { key, items: [...prev, ...add], done: add.length === 0 };
-        }))
-        .catch(() => setExtra((e) => ({ key, items: e.key === key ? e.items : [], done: true })))
-        .finally(() => { loadingMore.current = false; });
+      if (es[0].isIntersecting) setShown({ key: listKey, n: count + PAGE });
     }, { rootMargin: "600px 0px" });
     io.observe(el);
     return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMore, isFetching, listKey, items.length]);
+  }, [hasMore, listKey, count]);
   const infeed = data?.infeed ?? null;
   const regions = p.region.split(",").map((s) => s.trim()).filter(Boolean);
   const cond = [...(regions.length ? [regions.join(", ")] : []), ...(p.dosage ? [p.dosage + (p.dosage === "4cc" ? " 이상" : "")] : [])];
