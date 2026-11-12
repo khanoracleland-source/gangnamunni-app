@@ -122,6 +122,23 @@ describe('social controller', () => {
     const g = await request(app.getHttpServer()).get('/v1/auth/social/google/start').expect(302);
     expect(g.headers.location).toMatch(/^https:\/\/accounts\.google\.com\//);
   });
+  it('a host listed in SOCIAL_CALLBACK_HOSTS is its own callback host; any other keeps SOCIAL_CALLBACK_BASE', async () => {
+    const uri = async (path: string, host: string) => new URL((await request(app.getHttpServer()).get(path).set('Host', host).expect(302)).headers.location).searchParams.get('redirect_uri');
+    // not listed (the default): one callback host for everybody
+    expect(await uri('/v1/auth/social/google/start', 'seoulbeauty.app')).toBe('https://h.test/next/api/v1/auth/social/google/callback');
+    process.env.SOCIAL_CALLBACK_HOSTS = 'seoulbeauty.app, HMS.seoulbeauty.app';
+    try {
+      expect(await uri('/v1/auth/social/google/start', 'seoulbeauty.app')).toBe('https://seoulbeauty.app/next/api/v1/auth/social/google/callback');
+      expect(await uri('/v1/auth/social/kakao/start', 'hms.seoulbeauty.app:443')).toBe('https://hms.seoulbeauty.app/next/api/v1/auth/social/callback');
+      // a host that is not on the list (or is not a host name at all) never becomes a redirect URI
+      expect(await uri('/v1/auth/social/google/start', 'evil.test')).toBe('https://h.test/next/api/v1/auth/social/google/callback');
+      expect(await uri('/v1/auth/social/google/start', 'seoulbeauty.app.evil.test')).toBe('https://h.test/next/api/v1/auth/social/google/callback');
+      // Apple's form_post is relayed to the GET callback of the host it arrived on
+      const relay = await request(app.getHttpServer()).post('/v1/auth/social/apple/callback').set('Host', 'seoulbeauty.app').type('form').send({ code: 'c', state: 's' }).expect(303);
+      expect(relay.headers.location).toBe('https://seoulbeauty.app/next/api/v1/auth/social/apple/callback');
+    } finally { delete process.env.SOCIAL_CALLBACK_HOSTS; }
+  });
+
   it('start refuses unknown or disabled providers', async () => {
     const r = await request(app.getHttpServer()).get('/v1/auth/social/naver/start').expect(302);
     expect(r.headers.location).toBe('/next/login?social_error=unavailable');

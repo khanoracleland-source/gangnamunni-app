@@ -35,8 +35,16 @@ export class SocialService {
 
   private secret(): string { return process.env.SESSION_BRIDGE_SECRET || ''; }
   private phpBase(): string { return (process.env.SOCIAL_PHP_BASE || 'https://hms.seoulbeauty.app').replace(/\/+$/, ''); }
-  callbackUrl(p: Provider): string {
-    const base = (process.env.SOCIAL_CALLBACK_BASE || 'https://hms.seoulbeauty.app/next/api/v1/auth/social').replace(/\/+$/, '');
+  /**
+   * The redirect URI given to the provider. It must be on the host the sign-in started on: the state cookie is host-only, so a
+   * sign-in started on seoulbeauty.app and returning to hms.seoulbeauty.app finds no state ("로그인 시간이 만료되었습니다").
+   * SOCIAL_CALLBACK_HOSTS lists the hosts that may be their own callback host (each one's URIs must be registered in the Kakao,
+   * Google and Apple consoles first); any other host keeps the single SOCIAL_CALLBACK_BASE.
+   */
+  callbackUrl(p: Provider, host = ''): string {
+    const h = host.toLowerCase().replace(/:\d+$/, '');
+    const own = /^[a-z0-9.-]+$/.test(h) && (process.env.SOCIAL_CALLBACK_HOSTS || '').toLowerCase().split(',').map((v) => v.trim()).filter(Boolean).includes(h);
+    const base = own ? `https://${h}/next/api/v1/auth/social` : (process.env.SOCIAL_CALLBACK_BASE || 'https://hms.seoulbeauty.app/next/api/v1/auth/social').replace(/\/+$/, '');
     // Kakao's console rejects a redirect URI that contains "kakao": its callback has no provider in the path (the provider comes from the signed state cookie)
     return p === 'kakao' ? `${base}/callback` : `${base}/${p}/callback`;
   }
@@ -76,7 +84,7 @@ export class SocialService {
     if (!k) return { to: this.loginPage('unavailable'), cookies: [] };
     const nonce = provider === 'apple' ? randomBytes(16).toString('hex') : '';
     const st = signState(this.secret(), provider, url, Date.now(), nonce);
-    const q = new URLSearchParams({ client_id: k.id, redirect_uri: this.callbackUrl(provider), response_type: 'code', state: st.state });
+    const q = new URLSearchParams({ client_id: k.id, redirect_uri: this.callbackUrl(provider, host), response_type: 'code', state: st.state });
     let base: string;
     if (provider === 'kakao') { base = 'https://kauth.kakao.com/oauth/authorize'; q.set('scope', 'profile_nickname,account_email,name,phone_number,birthyear,birthday'); }
     else if (provider === 'apple') { base = 'https://appleid.apple.com/auth/authorize'; q.set('response_mode', 'form_post'); q.set('scope', 'name email'); q.set('nonce', nonce); }
@@ -88,8 +96,8 @@ export class SocialService {
     const res = await fetch(url, { ...init, signal: AbortSignal.timeout(15_000) });
     return res.json().catch(() => ({}));
   }
-  private async profileFor(provider: Provider, k: { id: string; secret: string }, code: string): Promise<SocialProfile | null> {
-    const form = new URLSearchParams({ grant_type: 'authorization_code', client_id: k.id, redirect_uri: this.callbackUrl(provider), code });
+  private async profileFor(provider: Provider, k: { id: string; secret: string }, code: string, host: string): Promise<SocialProfile | null> {
+    const form = new URLSearchParams({ grant_type: 'authorization_code', client_id: k.id, redirect_uri: this.callbackUrl(provider, host), code }); // the same URI the sign-in was started with
     if (k.secret) form.set('client_secret', k.secret); // Kakao: no secret configured = none sent (like Hybrid_Providers_Kakao)
     const tokenUrl = provider === 'kakao' ? 'https://kauth.kakao.com/oauth/token' : 'https://oauth2.googleapis.com/token';
     const tok = await this.fetchJson(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: form.toString() });
@@ -123,7 +131,7 @@ export class SocialService {
     if (!k) return fail('unavailable');
 
     let profile: SocialProfile | null;
-    try { profile = provider === 'apple' ? await this.appleProfileFor(cfg, k.id, q.code, s(st.n), appleName) : await this.profileFor(provider, k, q.code); } catch (e) { this.log.error(`[${provider}] ${(e as Error).message}`); profile = null; }
+    try { profile = provider === 'apple' ? await this.appleProfileFor(cfg, k.id, q.code, s(st.n), appleName, host) : await this.profileFor(provider, k, q.code, host); } catch (e) { this.log.error(`[${provider}] ${(e as Error).message}`); profile = null; }
     if (!profile || !profile.identifier) return fail('failed');
 
     const [rows] = (await this.db.query(
@@ -243,11 +251,11 @@ export class SocialService {
    * site's Lax cookies. Nothing is checked here: the posted values go into a signed 2-minute cookie and the browser is sent to the
    * GET callback, which has the state cookie, the session cookie and the app marker again.
    */
-  appleRelay(body: Record<string, unknown>): { to: string; cookies: string[] } {
+  appleRelay(body: Record<string, unknown>, host = ''): { to: string; cookies: string[] } {
     if (this.secret().length < 32) return { to: this.loginPage('unavailable'), cookies: [] };
     const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
     const value = signAppleRelay(this.secret(), { c: str(body.code, 2000), s: str(body.state, 128), e: str(body.error, 64), n: appleUserName(str(body.user, 2000)) });
-    return { to: this.callbackUrl('apple'), cookies: [`${APPLE_RELAY_COOKIE}=${value}; Max-Age=120; Path=/; HttpOnly; Secure; SameSite=Lax`] };
+    return { to: this.callbackUrl('apple', host), cookies: [`${APPLE_RELAY_COOKIE}=${value}; Max-Age=120; Path=/; HttpOnly; Secure; SameSite=Lax`] };
   }
 
   private async appleKeys(force = false): Promise<any[]> {
@@ -259,11 +267,11 @@ export class SocialService {
   }
 
   /** Code → id_token (client secret = ES256 JWT from the .p8 key), then the id_token is verified against Apple's keys and the nonce. */
-  private async appleProfileFor(cfg: Record<string, any>, clientId: string, code: string, nonce: string, name: string): Promise<SocialProfile | null> {
+  private async appleProfileFor(cfg: Record<string, any>, clientId: string, code: string, nonce: string, name: string, host = ''): Promise<SocialProfile | null> {
     let secret: string;
     try { secret = appleClientSecret({ teamId: s(cfg.cf_apple_team_id), keyId: s(cfg.cf_apple_key_id), clientId, keyPem: s(cfg.cf_apple_key_file) }); }
     catch (e) { this.log.error(`[apple] client secret failed (cf_apple_key_file?): ${(e as Error).message}`); return null; }
-    const form = new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: this.callbackUrl('apple'), client_id: clientId, client_secret: secret });
+    const form = new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: this.callbackUrl('apple', host), client_id: clientId, client_secret: secret });
     const tok = await this.fetchJson('https://appleid.apple.com/auth/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' }, body: form.toString() });
     const idToken = s(tok?.id_token);
     if (!idToken) { this.log.error(`[apple] token request failed: ${s(tok?.error)} ${s(tok?.error_description)}`.trim()); return null; }

@@ -42,9 +42,9 @@ export class SocialController {
 
   /** Apple (response_mode=form_post): a cross-site POST without the site's cookies; it is relayed to the GET callback below. */
   @Post('apple/callback')
-  appleRelay(@Body() body: Record<string, unknown>, @Res() res: Response) {
+  appleRelay(@Body() body: Record<string, unknown>, @Req() req: Request, @Res() res: Response) {
     res.setHeader('Cache-Control', 'private, no-store');
-    const r = this.svc.appleRelay(body && typeof body === 'object' ? body : {});
+    const r = this.svc.appleRelay(body && typeof body === 'object' ? body : {}, String(req.headers['x-forwarded-host'] || req.headers.host || ''));
     for (const c of r.cookies) res.append('Set-Cookie', c);
     res.redirect(303, r.to);
   }

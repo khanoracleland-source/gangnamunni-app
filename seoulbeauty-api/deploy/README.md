@@ -405,3 +405,14 @@ GRANT INSERT, UPDATE (user_agent, payload, expires_at) ON hms_saas.sso_tokens TO
 2. Kalit — PHP ishlatadigan qiymatning o'zi. Qayerdaligini topish: `grep -rn "APP_NATIVE_AUTH_KEY" /etc/httpd /etc/apache2 /etc/php* /etc/sysconfig 2>/dev/null | cut -c1-80` (qiymatni chatga yubormang). `.env` ga `APP_NATIVE_AUTH_KEY=<o'sha qiymat>`.
 3. `.env` → `APP_AUTH_NEST=1`, restart. Qaytarish: bo'shatib restart.
 Tekshiruv (tokensiz): `curl -s -X POST https://seoulbeauty.app/next/api/v1/app-auth/exchange -H 'Content-Type: application/json' -d '{"code":"x"}'` → `{"success":false,"error":"code and device_id are required"}`.
+
+## Social login on the public host — `SOCIAL_CALLBACK_HOSTS` (2026-11-12)
+
+Muammo (jonlida tasdiqlangan 16:54): `seoulbeauty.app` da (oddiy brauzer) Google/Kakao/Apple login "로그인 시간이 만료되었습니다" bilan qaytadi. Sabab: state cookie host-only, qaytish manzili esa doim `hms.seoulbeauty.app` (`SOCIAL_CALLBACK_BASE`). Ilovada (`hms`) ishlaydi.
+Yechim: `SOCIAL_CALLBACK_HOSTS` dagi xost o'zining qaytish xosti bo'ladi (login qaysi xostda boshlansa, o'sha xostga qaytadi). Ro'yxatda yo'q xost — avvalgidek `SOCIAL_CALLBACK_BASE`.
+**Tartib muhim — avval konsollar, keyin `.env`** (aks holda provayder `redirect_uri_mismatch` beradi):
+1. Kakao Developers → 카카오 로그인 → Redirect URI: `https://seoulbeauty.app/next/api/v1/auth/social/callback` (qo'shish; eskisi qoladi).
+2. Google Cloud → OAuth client → Authorized redirect URIs: `https://seoulbeauty.app/next/api/v1/auth/social/google/callback`.
+3. Apple Developer → Services ID `com.celebhospital.patient.public.web` → Domains: `seoulbeauty.app`; Return URLs: `https://seoulbeauty.app/next/api/v1/auth/social/apple/callback`.
+4. `.env`: `SOCIAL_CALLBACK_HOSTS=seoulbeauty.app` (ilova `seoulbeauty.app` ga ko'chgach `hms.seoulbeauty.app` ni qo'shish shart emas — u `SOCIAL_CALLBACK_BASE` orqali ishlayveradi), restart.
+Qaytarish: qiymatni bo'shatib restart.
