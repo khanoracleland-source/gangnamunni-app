@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, ApiError, assetUrl, qk, type CommunityItem, type CommunityList as Data } from "@/lib/api";
+import { api, ApiError, assetUrl, qk, type CommunityItem } from "@/lib/api";
 import { num, timeDisplay } from "@/lib/community";
 import ContentActions from "./ContentActions";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import { useToast } from "./Toast";
 import styles from "./CommunityList.module.css";
+import { syncLike, toggled } from "@/lib/optimistic";
 
 const ICON = (name: string) => assetUrl(`assets/icons/${name}.png?v=1`) ?? "";
 const href = (tab: string, page: number) => {
@@ -41,12 +42,13 @@ export default function MyCommunity() {
 
   const like = useMutation({
     mutationFn: (it: CommunityItem) => api.toggleCommunityLike(it.id),
+    // cache first (this list, the main lists and the post's own screen), then the server; an error puts the old value back
+    onMutate: async (it) => { await qc.cancelQueries({ queryKey: ["community"] }); const t = toggled(it.liked, it.likeCount); syncLike(qc, "post", it.id, t.liked, t.count); },
     onSuccess: (r, it) => {
-      qc.setQueryData<Data>(key, (p) => p && { ...p, items: p.items.map((i) => (i.id === it.id ? { ...i, liked: r.liked, likeCount: r.count } : i)) });
-      void qc.invalidateQueries({ queryKey: ["community"], predicate: (q) => q.queryKey[1] !== "mine", refetchType: "none" }); // the main list shows the new like state when revisited
+      syncLike(qc, "post", it.id, r.liked, r.count);
       say(r.liked ? "좋아요 반영되었습니다." : "좋아요 취소되었습니다.");
     },
-    onError: () => say("좋아요 처리 중 오류가 발생했습니다."),
+    onError: (_e, it) => { syncLike(qc, "post", it.id, it.liked, it.likeCount); say("좋아요 처리 중 오류가 발생했습니다."); },
   });
 
   return (

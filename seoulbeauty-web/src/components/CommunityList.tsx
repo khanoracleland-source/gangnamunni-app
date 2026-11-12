@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, assetUrl, qk, type CommunityItem, type CommunityList as Data, type CommunityListParams, type CommunityTab } from "@/lib/api";
+import { syncLike, toggled } from "@/lib/optimistic";
 import { useLoginUrl, useMe, useRequireLogin } from "@/lib/me";
 import ContentActions from "./ContentActions";
 import { useToast } from "./Toast";
@@ -59,8 +60,11 @@ export default function CommunityList({ params, initial }: { params: Required<Pi
 
   const like = useMutation({
     mutationFn: (it: CommunityItem) => (it.kind === "review" ? api.toggleReviewLike(it.id) : api.toggleCommunityLike(it.id)),
+    // cache first (every cached copy of the item), then the server; an error puts the old value back
+    onMutate: async (it) => { await qc.cancelQueries({ queryKey: ["community"] }); const t = toggled(it.liked, it.likeCount); syncLike(qc, it.kind, it.id, t.liked, t.count); },
+    onError: (_e, it) => syncLike(qc, it.kind, it.id, it.liked, it.likeCount),
     onSuccess: (r, it) => {
-      qc.setQueryData<Data>(key, (p) => p && { ...p, items: p.items.map((i) => (i.kind === it.kind && i.id === it.id ? { ...i, liked: r.liked, likeCount: r.count } : i)) });
+      syncLike(qc, it.kind, it.id, r.liked, r.count);
       say(r.liked ? "좋아요 반영되었습니다." : "좋아요 취소되었습니다.");
     },
   });

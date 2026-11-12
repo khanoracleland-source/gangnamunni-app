@@ -23,7 +23,7 @@ const readRatio = () => {
 
 export default function Home({ initial }: { initial?: HomeData }) {
   const php = usePhpBase();
-  const { data, isError, refetch } = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: initial, staleTime: 60_000, refetchOnMount: true }); // rarely changes: painted from the cache and asked again only when older than this (the app-start warm-up refreshes it anyway)
+  const { data, isError, refetch } = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: initial });
   const rootRef = useRef<HTMLDivElement>(null);
   const [adRatio, setAdRatio] = useState(readRatio);
   const learnRatio = (img: HTMLImageElement) => {

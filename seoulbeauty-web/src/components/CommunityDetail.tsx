@@ -7,6 +7,7 @@ import { useToast } from "./Toast";
 import { api, ApiError, assetUrl, qk, type CommunityPost } from "@/lib/api";
 import { useLoginUrl, useMe, useRequireLogin } from "@/lib/me";
 import { commentAge, num, shortDate } from "@/lib/community";
+import { kstNow, syncLike, toggled } from "@/lib/optimistic";
 import ContentActions from "./ContentActions";
 import styles from "./CommunityDetail.module.css";
 
@@ -77,16 +78,55 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
 
   const likePost = useMutation({
     mutationFn: () => api.toggleCommunityLike(id),
-    onSuccess: (r) => { patch((p) => ({ ...p, liked: r.liked, likeCount: r.count })); touchLists(); },
+    // cache first (this screen and the post's row in every cached list), then the server; an error puts the old value back
+    onMutate: async () => {
+      await Promise.all([qc.cancelQueries({ queryKey: qk.communityPost(id) }), qc.cancelQueries({ queryKey: ["community"] })]);
+      const prev = qc.getQueryData<CommunityPost>(qk.communityPost(id));
+      if (prev) { const t = toggled(prev.liked, prev.likeCount); syncLike(qc, "post", id, t.liked, t.count); }
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) syncLike(qc, "post", id, ctx.prev.liked, ctx.prev.likeCount); },
+    onSuccess: (r) => syncLike(qc, "post", id, r.liked, r.count),
   });
+  const setComment = (cid: number, liked: boolean, likeCount: number) => patch((p) => ({ ...p, comments: p.comments.map((c) => (c.id === cid ? { ...c, liked, likeCount } : c)) }));
   const likeComment = useMutation({
     mutationFn: (v: { cid: number; liked: boolean }) => api.setCommunityCommentLike(id, v.cid, v.liked),
-    onSuccess: (r, v) => patch((p) => ({ ...p, comments: p.comments.map((c) => (c.id === v.cid ? { ...c, liked: r.liked, likeCount: r.count } : c)) })),
+    onMutate: async (v) => {
+      await qc.cancelQueries({ queryKey: qk.communityPost(id) });
+      const prev = qc.getQueryData<CommunityPost>(qk.communityPost(id))?.comments.find((c) => c.id === v.cid);
+      if (prev) setComment(v.cid, v.liked, Math.max(0, prev.likeCount + (v.liked === prev.liked ? 0 : v.liked ? 1 : -1)));
+      return { prev };
+    },
+    onError: (_e, v, ctx) => { if (ctx?.prev) setComment(v.cid, ctx.prev.liked, ctx.prev.likeCount); },
+    onSuccess: (r, v) => setComment(v.cid, r.liked, r.count),
   });
   const submit = useMutation({
     mutationFn: (v: { content: string; parentId: number }) => api.addCommunityComment(id, v.content, v.parentId),
-    onSuccess: async (r) => {
+    // The comment is shown at once (a temporary negative id, after its parent's replies or at the end: the API's thread order) and
+    // the field is cleared; the server's list then replaces it. An error takes it out again and gives the text back.
+    onMutate: async (v) => {
+      await qc.cancelQueries({ queryKey: qk.communityPost(id) });
+      const tempId = -Date.now();
+      const u = me.data?.user;
+      patch((p) => {
+        const list = [...p.comments];
+        let at = list.length;
+        const pi = v.parentId ? list.findIndex((c) => c.id === v.parentId) : -1;
+        if (pi >= 0) { at = pi + 1; while (at < list.length && list[at].parentId === v.parentId) at++; }
+        list.splice(at, 0, { id: tempId, parentId: v.parentId, authorName: u?.nickname || u?.name || "", content: v.content, createdAt: kstNow(), likeCount: 0, liked: false, isMine: true });
+        return { ...p, comments: list, commentCount: p.commentCount + 1 };
+      });
+      const draft = { text, replyTo };
       setText(""); setReplyTo(null);
+      scrollTo.current = tempId;
+      return { tempId, draft };
+    },
+    onError: (_e, _v, ctx) => {
+      if (!ctx) return;
+      patch((p) => ({ ...p, comments: p.comments.filter((c) => c.id !== ctx.tempId), commentCount: Math.max(0, p.commentCount - 1) }));
+      setText(ctx.draft.text); setReplyTo(ctx.draft.replyTo);
+    },
+    onSuccess: async (r) => {
       await qc.invalidateQueries({ queryKey: qk.communityPost(id) });
       touchLists();
       scrollTo.current = r.id;
@@ -111,7 +151,7 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
     void requireLogin(() => likePost.mutateAsync()).catch(() => say("좋아요 처리 중 오류가 발생했습니다."));
   };
   const onLikeComment = (cid: number, liked: boolean) => {
-    if (busy[cid]) return;
+    if (busy[cid] || cid < 0) return; // a comment still on its way to the server has no id to like
     setBusy((b) => ({ ...b, [cid]: true }));
     void requireLogin(() => likeComment.mutateAsync({ cid, liked: !liked }))
       .catch(() => say("좋아요 처리에 실패했습니다. 다시 시도해주세요."))
@@ -190,7 +230,8 @@ export default function CommunityDetail({ id, initial }: { id: number; initial?:
                 <span className={styles.cauthor}>{c.authorName}</span>
                 <span className={styles.cage} suppressHydrationWarning>{commentAge(c.createdAt)}</span>
                 <time className={styles.cdate}>{shortDate(c.createdAt)}</time>
-                <ContentActions type="comment" id={c.id} isMine={c.isMine} authorName={c.authorName} className={styles.cmore} onDone={(w) => (w === "blocked" ? afterAction(w) : say("신고가 접수되었습니다."))} />
+                {/* a comment still on its way to the server (temporary negative id) has nothing to delete or report yet */}
+                {c.id > 0 && <ContentActions type="comment" id={c.id} isMine={c.isMine} authorName={c.authorName} className={styles.cmore} onDone={(w) => (w === "blocked" ? afterAction(w) : say("신고가 접수되었습니다."))} />}
               </div>
               <div className={styles.ctext}>{c.content}</div>
               <div className={styles.tools}>

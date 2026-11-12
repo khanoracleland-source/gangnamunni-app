@@ -140,7 +140,6 @@ export default function HospitalList({ params }: { params: HospitalListParams })
   const { data: raw, isError, refetch } = useQuery({
     queryKey: hospitalsAllKey(p),
     queryFn: () => fetchAllHospitals(p),
-    staleTime: 60_000, refetchOnMount: true, // the full list is heavy: painted from the cache, asked again only when a minute old
     placeholderData: (prev, prevQuery) => {
       const o = prevQuery?.queryKey[1] as ReturnType<typeof normalize> | undefined;
       return o && o.q === p.q && o.category === p.category && o.treatment === p.treatment && o.region === p.region ? keepPreviousData(prev) : undefined;

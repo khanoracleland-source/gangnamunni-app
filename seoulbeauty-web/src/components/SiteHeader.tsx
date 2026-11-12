@@ -79,7 +79,7 @@ export default function SiteHeader({ mode = "nav", q: initialQ = "", home, showS
   const regions = useSavedRegions(regionKey);
   // Region groups + popular keywords come with the home payload (cached 60 s; shared with the home page).
   // Loaded as soon as the header mounts (shared with the home page / WarmUp cache, no refetch for 5 min): the panel then opens with its data at once.
-  const homeQ = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: home, staleTime: 5 * 60_000, refetchOnMount: false });
+  const homeQ = useQuery({ queryKey: qk.home, queryFn: () => api.home(), initialData: home, staleTime: 5 * 60_000, refetchOnMount: false, refetchInterval: false }); // the header is on every screen: it only reads the cache, the home screen itself keeps it fresh
 
   const showToast = useToast();
 

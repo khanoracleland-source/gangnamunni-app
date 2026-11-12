@@ -8,7 +8,7 @@ import styles from "./Support.module.css";
 
 /** faq.php: category tabs + an accordion (several answers can be open at once). */
 export default function Faq({ initial, cat }: { initial?: FaqData; cat: string }) {
-  const { data, isError, refetch } = useQuery({ queryKey: qk.faq, queryFn: () => api.faq(), initialData: initial, staleTime: 5 * 60_000, refetchOnMount: true }); // rarely changes: painted from the cache and asked again only when older than this (the app-start warm-up refreshes it anyway)
+  const { data, isError, refetch } = useQuery({ queryKey: qk.faq, queryFn: () => api.faq(), initialData: initial });
   const [picked, setPicked] = useState<string | null>(null);
   const [open, setOpen] = useState<Record<number, boolean>>({});
   // First tab unless ?cat= names an existing one (faq.php).

@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useInfiniteQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type MyNotification, type MyNotificationsPage, type NotiFilter, type NotiIcon } from "@/lib/api";
 import { meKey } from "@/lib/me";
+import { restore, snapshot } from "@/lib/optimistic";
 import LoginPrompt from "./LoginPrompt";
 import MyHeader from "./MyHeader";
 import styles from "./MyPages.module.css";
@@ -28,8 +29,9 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
     queryKey: key, queryFn: ({ pageParam }) => api.myNotifications(type, pageParam), initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
     initialData: initial && initialType === type ? { pages: [initial], pageParams: [1] } : undefined,
-    // cache first: a filter that was opened (or prefetched) shows at once and is asked again only when 60 s old
-    staleTime: 60_000, refetchOnMount: true, refetchOnWindowFocus: true,
+    // cache first: a filter that was opened (or prefetched) shows at once; how often it is asked again is set centrally
+    // (app/providers.tsx: 30 s old on open, a 30 s timer only while one page is loaded) plus on return to the foreground
+    refetchOnWindowFocus: true,
     retry: false, enabled: !anon,
   });
   const loggedOut = anon || (q.error instanceof ApiError && q.error.status === 401);
@@ -41,13 +43,16 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
   const unread = pages[0]?.unread ?? 0;
 
   // After the visible list is in, quietly load the other filters' first page: a chip tap is then served from the cache.
+  // Once per opening of the screen: `loaded` also flips on every timed refresh, which must not ask for the other three filters again.
   const loaded = !!q.data && !q.isFetching;
+  const warmed = useRef(false);
   useEffect(() => {
-    if (!loaded || anon || loggedOut) return;
+    if (!loaded || anon || loggedOut || warmed.current) return;
+    warmed.current = true;
     for (const t of TABS) {
       if (t.key === type) continue;
       void qc.prefetchInfiniteQuery({
-        queryKey: qk.myNotifications(t.key), initialPageParam: 1, staleTime: 60_000,
+        queryKey: qk.myNotifications(t.key), initialPageParam: 1, staleTime: 30_000,
         queryFn: ({ pageParam }) => api.myNotifications(t.key, pageParam as number),
       });
     }
@@ -64,35 +69,41 @@ export default function MyNotifications({ initial, initialType, anon }: { initia
   useLayoutEffect(() => { measure(); }, [measure, type, loggedOut]);
   useEffect(() => { window.addEventListener("resize", measure); return () => window.removeEventListener("resize", measure); }, [measure]);
 
-  /** Every filter's cached list shows the same rows: update them all, then refresh the header dot. */
-  const patchAll = (fn: (p: MyNotificationsPage) => MyNotificationsPage) => {
-    qc.setQueriesData<Cache>({ queryKey: ["mypage", "notifications"] }, (old) => (old ? { ...old, pages: old.pages.map(fn) } : old));
-    qc.invalidateQueries({ queryKey: meKey });
-  };
+  /** Every filter's cached list shows the same rows: update them all. Cache first; the server is told after, and an error puts the lists back. */
+  const NOTI_KEY = ["mypage", "notifications"];
+  const patchAll = (fn: (p: MyNotificationsPage) => MyNotificationsPage) =>
+    qc.setQueriesData<Cache>({ queryKey: NOTI_KEY }, (old) => (old ? { ...old, pages: old.pages.map(fn) } : old));
+  const refreshDot = () => { void qc.invalidateQueries({ queryKey: meKey }); }; // the header's unread dot, once the server knows
 
   const open = (n: MyNotification) => {
     if (!n.isRead) {
       patchAll((p) => ({ ...p, unread: Math.max(0, p.unread - 1), items: p.items.map((i) => (i.id === n.id ? { ...i, isRead: true } : i)) }));
-      api.notificationRead(n.id).catch(() => {});
+      api.notificationRead(n.id).then(refreshDot).catch(() => {});
     }
     if (n.openUrl) router.push(n.openUrl);
   };
   const readAll = async () => {
     if (busy || unread === 0) return;
     setBusy(true);
+    await qc.cancelQueries({ queryKey: NOTI_KEY });
+    const snap = snapshot(qc, NOTI_KEY);
+    patchAll((p) => ({ ...p, unread: 0, items: p.items.map((i) => ({ ...i, isRead: true })) }));
     try {
       await api.notificationsReadAll();
-      patchAll((p) => ({ ...p, unread: 0, items: p.items.map((i) => ({ ...i, isRead: true })) }));
+      refreshDot();
       say("모든 알림을 읽음 처리했습니다.");
-    } catch { say("처리 중 오류가 발생했습니다."); } finally { setBusy(false); }
+    } catch { restore(qc, snap); say("처리 중 오류가 발생했습니다."); } finally { setBusy(false); }
   };
   const remove = async (n: MyNotification) => {
+    await qc.cancelQueries({ queryKey: NOTI_KEY });
+    const snap = snapshot(qc, NOTI_KEY);
+    patchAll((p) => ({ ...p, total: Math.max(0, p.total - 1), unread: n.isRead ? p.unread : Math.max(0, p.unread - 1), items: p.items.filter((i) => i.id !== n.id) }));
     try {
       const r = await api.notificationDelete(n.id);
-      if (!r.success) { say("삭제할 수 없습니다."); return; }
-      patchAll((p) => ({ ...p, total: Math.max(0, p.total - 1), unread: n.isRead ? p.unread : Math.max(0, p.unread - 1), items: p.items.filter((i) => i.id !== n.id) }));
+      if (!r.success) { restore(qc, snap); say("삭제할 수 없습니다."); return; }
+      refreshDot();
       say("알림을 삭제했습니다.");
-    } catch { say("네트워크 오류가 발생했습니다."); }
+    } catch { restore(qc, snap); say("네트워크 오류가 발생했습니다."); }
   };
 
   return (

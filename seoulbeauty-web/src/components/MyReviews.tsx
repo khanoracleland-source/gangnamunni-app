@@ -30,15 +30,19 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
   const loggedOut = anon || (error instanceof ApiError && error.status === 401);
   const remove = async () => {
     if (confirm === null || busy) return;
-    setBusy(true);
+    // the review leaves the list at once, then the server is told; an error puts it back
+    const rid = confirm;
+    setBusy(true); setConfirm(null);
+    await qc.cancelQueries({ queryKey: qk.myReviews });
+    const prev = qc.getQueryData<typeof data>(qk.myReviews);
+    qc.setQueryData<typeof data>(qk.myReviews, (d) => d && { ...d, done: d.done.filter((r) => r.id !== rid) });
     try {
-      await api.deleteReview(confirm);
-      setConfirm(null);
-      void qc.invalidateQueries({ queryKey: qk.mypage });
-      await refetch();
+      await api.deleteReview(rid);
+      void qc.invalidateQueries({ queryKey: qk.mypage }); // every 마이페이지 list (this one too: the booking is writable again)
     } catch (err) {
-      say(err instanceof ApiError && err.status === 404 ? "이미 삭제된 후기예요." : "삭제하지 못했습니다. 다시 시도해주세요.");
-      setConfirm(null);
+      const gone = err instanceof ApiError && err.status === 404;
+      if (!gone && prev) qc.setQueryData(qk.myReviews, prev);
+      say(gone ? "이미 삭제된 후기예요." : "삭제하지 못했습니다. 다시 시도해주세요.");
     } finally {
       setBusy(false);
     }

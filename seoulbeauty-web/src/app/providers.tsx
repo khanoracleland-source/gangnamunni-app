@@ -15,14 +15,37 @@ import { CACHE_BUSTER, CACHE_MAX_AGE, createIdbPersister, isMemberQuery, restore
  * The "Redux store": a page visited once renders instantly from cache; public data is also kept on disk (IndexedDB)
  * so a cold start of the app paints from the cache first and refreshes in the background. gcTime >= maxAge (persist rule).
  */
+/**
+ * When the cache is refreshed:
+ *  - ONCE (the default): at app start (WarmUp) or on the first open, then never by a timer. Afterwards it changes only when the
+ *    member does something: the cache is written first, then the server is told (lib/optimistic.ts).
+ *  - LIVE: data an admin or a hospital can change on the server (ads, hospitals, prices, events, FAQ, booking / consultation /
+ *    review status, points, notifications) and what other members write (community). The screen that is open asks again every
+ *    30 seconds, and opening a screen whose copy is older than that asks at once. The answer is compared with the cached JSON
+ *    (structural sharing): unchanged = no re-render.
+ *    Two LIVE screens cost more than one small request, so they are asked less often:
+ *      · the hospital list is the WHOLE list (several parallel requests, a count per row): no 30 s timer; a copy older than a
+ *        minute is refreshed when the list is opened, and an open list asks again every 5 minutes;
+ *      · notifications are an infinite list and a refetch asks for every loaded page again: the timer runs only while one page is
+ *        loaded (scrolled further, it waits for the next open or for the app coming back to the foreground).
+ *  - OWN: under a LIVE root, but only the member changes it (profile, notification settings, 찜 list): ONCE again.
+ * A query with its own options (forms, payment, cancel: staleTime 0) keeps them.
+ */
+const LIVE = { staleTime: 30_000, refetchInterval: 30_000, refetchOnMount: true } as const;
+const ONCE = { staleTime: Infinity, refetchInterval: false } as const;
+const LIVE_HEAVY = { staleTime: 60_000, refetchInterval: 5 * 60_000, refetchOnMount: true } as const;
+const onePageOnly = (q: { state: { data?: unknown } }) => (((q.state.data as { pages?: unknown[] } | undefined)?.pages?.length ?? 0) <= 1 ? 30_000 : false);
+const LIVE_ROOTS = ["home", "hospitals", "hospital", "searchView", "treatments", "doctors", "reviews", "reviewDetail", "events", "event", "faq", "legal", "community", "communityPost", "mypage"];
+const OWN_KEYS = [qk.myProfile, qk.notificationSettings, qk.myWishlist];
 function makeClient() {
-  return new QueryClient({
-    defaultOptions: {
-      // Opening a screen: paint from the cache at once AND always ask the server ("always" ignores staleTime on mount).
-      // The answer is compared with the cached JSON (structural sharing): unchanged = no re-render; changed = the screen and the cache update.
-      queries: { staleTime: 0, refetchOnMount: "always", gcTime: CACHE_MAX_AGE, retry: 1, refetchOnWindowFocus: false },
-    },
+  const qc = new QueryClient({
+    defaultOptions: { queries: { ...ONCE, gcTime: CACHE_MAX_AGE, retry: 1, refetchOnWindowFocus: false } },
   });
+  for (const root of LIVE_ROOTS) qc.setQueryDefaults([root], LIVE);
+  qc.setQueryDefaults(["hospitals"], LIVE_HEAVY);
+  qc.setQueryDefaults(["mypage", "notifications"], { refetchInterval: onePageOnly });
+  for (const key of OWN_KEYS) qc.setQueryDefaults(key, ONCE); // registered after the roots: the later match wins
+  return qc;
 }
 
 /**

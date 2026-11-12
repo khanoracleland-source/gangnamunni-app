@@ -8,6 +8,7 @@ import { useRequireLogin } from "@/lib/me";
 import SupportHeader from "./SupportHeader";
 import { useToast } from "./Toast";
 import styles from "./Support.module.css";
+import { syncLike, toggled } from "@/lib/optimistic";
 
 const ICON = (name: string) => assetUrl(`assets/icons/${name}.png?v=1`) ?? "";
 const num = (n: number) => n.toLocaleString("ko-KR");
@@ -21,10 +22,15 @@ export default function ReviewDetail({ id, initial }: { id: number; initial?: De
   const say = useToast();
   const like = useMutation({
     mutationFn: () => api.toggleReviewLike(id),
-    onSuccess: (r) => {
-      qc.setQueryData<Detail>(qk.reviewDetail(id), (p) => (p ? { ...p, liked: r.liked, likeCount: r.count } : p));
-      void qc.invalidateQueries({ queryKey: ["community"] });
+    // cache first (this screen and the review's row in the community lists), then the server; an error puts the old value back
+    onMutate: async () => {
+      await Promise.all([qc.cancelQueries({ queryKey: qk.reviewDetail(id) }), qc.cancelQueries({ queryKey: ["community"] })]);
+      const prev = qc.getQueryData<Detail>(qk.reviewDetail(id));
+      if (prev) { const t = toggled(prev.liked, prev.likeCount); syncLike(qc, "review", id, t.liked, t.count); }
+      return { prev };
     },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) syncLike(qc, "review", id, ctx.prev.liked, ctx.prev.likeCount); },
+    onSuccess: (r) => syncLike(qc, "review", id, r.liked, r.count),
   });
   const onLike = () => {
     if (like.isPending) return;

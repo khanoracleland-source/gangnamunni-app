@@ -14,6 +14,14 @@ export default function MyWishlist({ initial, anon }: { initial?: { items: MyWis
   const { data, error, refetch } = useQuery({ queryKey: qk.myWishlist, queryFn: () => api.myWishlist(), initialData: initial, retry: false, enabled: !anon });
   const remove = useMutation({
     mutationFn: (hospitalId: number) => api.toggleWishlist(hospitalId),
+    // the row leaves the list at once, then the server is told; an error puts the list back
+    onMutate: async (hospitalId) => {
+      await qc.cancelQueries({ queryKey: qk.myWishlist });
+      const prev = qc.getQueryData<{ items: MyWishlistItem[] }>(qk.myWishlist);
+      qc.setQueryData<{ items: MyWishlistItem[] }>(qk.myWishlist, (w) => w && { items: w.items.filter((i) => i.hospitalId !== hospitalId) });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => { if (ctx?.prev) qc.setQueryData(qk.myWishlist, ctx.prev); },
     onSuccess: (r, hospitalId) => {
       // toggle: removed when it comes back unwishlisted; if it was re-added by mistake, reload the list instead
       syncWishlist(qc, hospitalId, { wishlisted: r.wishlisted, count: r.count });
