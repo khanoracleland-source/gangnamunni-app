@@ -31,7 +31,7 @@ export class LoginService {
     const on = Number(c.cf_social_login_use) > 0;
     const list = s(c.cf_social_servicelist).split(',').map((x) => x.trim().toLowerCase());
     const has = (...k: string[]) => k.every((x) => s(c[x]) !== '');
-    const nest = (process.env.SOCIAL_NEST_PROVIDERS || '').split(',').map((x) => x.trim().toLowerCase()).filter((x) => x === 'kakao' || x === 'google');
+    const nest = (process.env.SOCIAL_NEST_PROVIDERS || '').split(',').map((x) => x.trim().toLowerCase()).filter((x) => x === 'kakao' || x === 'google' || x === 'apple');
     return {
       nest,
       kakao: on && list.includes('kakao') && has('cf_kakao_rest_key'),

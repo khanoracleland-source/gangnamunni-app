@@ -5,7 +5,7 @@ import { cookieValue } from '../login/login.logic';
 import { PENDING_COOKIE } from './social-register.logic';
 import { SocialService, STATE_COOKIE } from './social.service';
 
-/** 소셜 로그인 (Kakao / Google): browser redirects, never cached. */
+/** 소셜 로그인 (Kakao / Google / Apple): browser redirects, never cached. */
 @Controller('v1/auth/social')
 export class SocialController {
   constructor(private readonly svc: SocialService) {}
@@ -38,6 +38,15 @@ export class SocialController {
   @Get('callback')
   callbackAuto(@Query() q: { code?: string; state?: string; error?: string }, @Req() req: Request, @Res() res: Response) {
     return this.callback(this.svc.providerFromState(cookieValue(req.headers.cookie || '', STATE_COOKIE)), q, req, res);
+  }
+
+  /** Apple (response_mode=form_post): a cross-site POST without the site's cookies; it is relayed to the GET callback below. */
+  @Post('apple/callback')
+  appleRelay(@Body() body: Record<string, unknown>, @Res() res: Response) {
+    res.setHeader('Cache-Control', 'private, no-store');
+    const r = this.svc.appleRelay(body && typeof body === 'object' ? body : {});
+    for (const c of r.cookies) res.append('Set-Cookie', c);
+    res.redirect(303, r.to);
   }
 
   @Get(':provider/callback')

@@ -15,11 +15,11 @@ export function socialNick(displayName: string): string {
   return displayName.replace(/[^0-9a-zA-Z가-힣]/g, '');
 }
 
-/** The e-mail a social profile registers with (register_member.php): verified e-mail, else e-mail, else a Kakao placeholder. */
+/** The e-mail a social profile registers with (register_member.php): verified e-mail, else e-mail, else a placeholder (Kakao and Apple: PHP names it `kakao_<sid>` for both). */
 export function profileEmail(p: SocialProfile, provider: Provider): string {
   const email = (p.emailVerified || p.email || '').trim().toLowerCase();
   if (email) return email;
-  return provider === 'kakao' ? `kakao_${convertId(p.identifier, provider)}@social.local` : '';
+  return provider === 'google' ? '' : `kakao_${convertId(p.identifier, provider)}@social.local`;
 }
 
 /** valid_mb_email(): a plain address of at most 100 characters. */

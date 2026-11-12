@@ -6,9 +6,22 @@ import { SessionBridgeService } from '../src/session-bridge/session-bridge.servi
 import { SocialModule } from '../src/social/social.module';
 import { MailService } from '../src/mail/mail.service';
 import { googleProfile, kakaoMemberUpdates, kakaoProfile, normalizeKakaoPhone, readState, signState } from '../src/social/social.logic';
+import { createPublicKey, generateKeyPairSync, sign as cryptoSign, verify as cryptoVerify } from 'crypto';
+import { APPLE_RELAY_COOKIE, appleClientSecret, appleProfile, appleUserName, readAppleRelay, signAppleRelay, verifyAppleIdToken } from '../src/social/apple.logic';
 import { adler32, candidates, convertId, profileEmail, readPending, signPending, socialNick, validEmail } from '../src/social/social-register.logic';
 
 const SECRET = 'x'.repeat(40);
+
+// Apple test material: our own .p8-style EC key (client secret) and an RSA key that plays Apple's signing key
+const appleEc = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+const APPLE_PEM = appleEc.privateKey.export({ type: 'pkcs8', format: 'pem' }) as string;
+const appleRsa = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const APPLE_JWK = { ...(appleRsa.publicKey.export({ format: 'jwk' }) as any), kid: 'K1', alg: 'RS256', use: 'sig' };
+const b64u = (v: any) => Buffer.from(typeof v === 'string' ? v : JSON.stringify(v)).toString('base64url');
+function idToken(claims: Record<string, any>, kid = 'K1', key = appleRsa.privateKey): string {
+  const head = b64u({ alg: 'RS256', kid }); const body = b64u({ iss: 'https://appleid.apple.com', aud: 'app.web', exp: Math.floor(Date.now() / 1000) + 600, ...claims });
+  return `${head}.${body}.${cryptoSign('RSA-SHA256', Buffer.from(`${head}.${body}`), key).toString('base64url')}`;
+}
 
 describe('social logic', () => {
   it('kakao profile and member updates', () => {
@@ -71,11 +84,11 @@ describe('social controller', () => {
     if (/FROM gangnamunni_hospitals/.test(sql)) return [[]];
     if (/FROM g5_member_social_profiles WHERE mb_id = \? AND provider = 'kakao'/.test(sql)) return [[]];
     if (/INSERT INTO g5_member \(/.test(sql)) { inserted.push({ sql, args }); return [{ affectedRows: 1 }]; }
-    if (/FROM g5_config/.test(sql)) return [[{ cf_register_level: 2, cf_prohibit_id: 'admin,root', cf_prohibit_email: '', cf_title: 'T', cf_email_mb_super_admin: 0, cf_admin_email: '', cf_use_email_certify: certify, cf_social_login_use: 1, cf_social_servicelist: 'kakao,google,Apple', cf_kakao_rest_key: 'rk', cf_kakao_client_secret: kakaoSecret, cf_google_clientid: 'gid', cf_google_secret: 'gs' }]];
+    if (/FROM g5_config/.test(sql)) return [[{ cf_register_level: 2, cf_prohibit_id: 'admin,root', cf_prohibit_email: '', cf_title: 'T', cf_email_mb_super_admin: 0, cf_admin_email: '', cf_use_email_certify: certify, cf_social_login_use: 1, cf_social_servicelist: 'kakao,google,Apple', cf_kakao_rest_key: 'rk', cf_kakao_client_secret: kakaoSecret, cf_google_clientid: 'gid', cf_google_secret: 'gs', cf_apple_team_id: 'TEAM', cf_apple_key_id: 'KEYID', cf_apple_bundle_id: 'app.web', cf_apple_key_file: APPLE_PEM.replace(/\n/g, '\r\n') }]];
     if (/FROM g5_member_social_profiles mp JOIN/.test(sql)) return [linked ? [linked] : []];
     return [[]];
   };
-  const stateFor = (p: 'kakao' | 'google', url = '/next/mypage') => signState(SECRET, p, url);
+  const stateFor = (p: 'kakao' | 'google' | 'apple', url = '/next/mypage') => signState(SECRET, p, url);
   const mockFetch = (profile: any) => {
     global.fetch = (async (u: any, init?: any) => {
       const url = String(u);
@@ -110,8 +123,11 @@ describe('social controller', () => {
     expect(g.headers.location).toMatch(/^https:\/\/accounts\.google\.com\//);
   });
   it('start refuses unknown or disabled providers', async () => {
-    const r = await request(app.getHttpServer()).get('/v1/auth/social/apple/start').expect(302);
+    const r = await request(app.getHttpServer()).get('/v1/auth/social/naver/start').expect(302);
     expect(r.headers.location).toBe('/next/login?social_error=unavailable');
+    // Apple is a known provider that is not switched on here: the PHP flow keeps it
+    const a = await request(app.getHttpServer()).get('/v1/auth/social/apple/start').expect(302);
+    expect(a.headers.location).toBe('https://h.test/auth/login.php?provider=apple&php=1');
   });
   it('start sends a provider that is not on Nest to the PHP flow (php=1)', async () => {
     const saved = process.env.SOCIAL_NEST_PROVIDERS;
@@ -309,5 +325,160 @@ describe('social controller', () => {
     await request(app.getHttpServer()).post('/v1/auth/social/register').set('X-Requested-With', 'XMLHttpRequest').set('Cookie', `sb_social_pending=${pending}`)
       .send({ name: 'Hana Kim', email: 'taken@x.com', agreeTerms: true, agreePrivacy: true }).expect(409);
     expect(inserted).toHaveLength(0); expect(bridge).toHaveLength(0);
+  });
+
+  describe('apple', () => {
+    let saved: string | undefined; let appleTokens: any = {}; let keyFetches = 0; let ipN = 0; // one address per sign-in: the callback is limited per IP
+    const mockApple = () => {
+      global.fetch = (async (u: any, init?: any) => {
+        const url = String(u);
+        if (/auth\/token/.test(url)) { tokenBodies.push(String(init?.body)); return { json: async () => appleTokens } as any; }
+        if (/auth\/keys/.test(url)) { keyFetches++; return { json: async () => ({ keys: [APPLE_JWK] }) } as any; }
+        return { json: async () => ({}) } as any;
+      }) as any;
+    };
+    /** start → Apple's cross-site POST → the relayed GET callback, like a browser does it. */
+    const flow = async (form: (state: string, nonce: string) => Record<string, string>, extraCookie = '') => {
+      const st = await request(app.getHttpServer()).get('/v1/auth/social/apple/start?url=/next/mypage').expect(302);
+      const loc = new URL(st.headers.location);
+      const stateCookie = String(st.headers['set-cookie']).match(/sb_social_state=([^;]+)/)![1];
+      const nonce = loc.searchParams.get('nonce')!;
+      const post = await request(app.getHttpServer()).post('/v1/auth/social/apple/callback').type('form').send(form(loc.searchParams.get('state')!, nonce)).expect(303);
+      expect(post.headers.location).toBe('https://h.test/next/api/v1/auth/social/apple/callback');
+      const relay = String(post.headers['set-cookie']).match(/sb_apple_cb=([^;]+)/)![1];
+      return { go: request(app.getHttpServer()).get('/v1/auth/social/apple/callback').set('Host', 'h.test').set('X-Forwarded-For', `7.7.7.${++ipN}`).set('Cookie', `sb_social_state=${stateCookie}; sb_apple_cb=${relay}${extraCookie}`) }; // wrapped: a supertest request is thenable
+    };
+    beforeEach(() => { saved = process.env.SOCIAL_NEST_PROVIDERS; process.env.SOCIAL_NEST_PROVIDERS = 'kakao,google,apple'; appleTokens = {}; mockApple(); });
+    afterEach(() => { process.env.SOCIAL_NEST_PROVIDERS = saved; });
+
+    it('start: form_post, name + e-mail scope, a nonce that is also in the signed state', async () => {
+      const r = await request(app.getHttpServer()).get('/v1/auth/social/apple/start?url=/next/mypage').expect(302);
+      const loc = new URL(r.headers.location);
+      expect(loc.origin + loc.pathname).toBe('https://appleid.apple.com/auth/authorize');
+      expect(loc.searchParams.get('client_id')).toBe('app.web');
+      expect(loc.searchParams.get('redirect_uri')).toBe('https://h.test/next/api/v1/auth/social/apple/callback');
+      expect(loc.searchParams.get('response_mode')).toBe('form_post');
+      expect(loc.searchParams.get('scope')).toBe('name email');
+      const cookie = String(r.headers['set-cookie']).match(/sb_social_state=([^;]+)/)![1];
+      const st = readState(SECRET, cookie)!;
+      expect(st.p).toBe('apple');
+      expect(st.n).toMatch(/^[0-9a-f]{32}$/);
+      expect(loc.searchParams.get('nonce')).toBe(st.n);
+    });
+    it('the POST checks nothing and stores only bounded values; no relay cookie = state error', async () => {
+      const post = await request(app.getHttpServer()).post('/v1/auth/social/apple/callback').type('form').send({ code: 'c'.repeat(5000), state: 's', user: 'not json' }).expect(303);
+      const relay = readAppleRelay(SECRET, String(post.headers['set-cookie']).match(/sb_apple_cb=([^;]+)/)![1])!;
+      expect(relay.c).toHaveLength(2000); expect(relay.n).toBe('');
+      expect(String(post.headers['set-cookie'])).toMatch(/Max-Age=120; Path=\/; HttpOnly; Secure; SameSite=Lax/);
+      const st = stateFor('apple');
+      const r = await request(app.getHttpServer()).get(`/v1/auth/social/apple/callback?code=c&state=${st.state}`).set('Cookie', `sb_social_state=${st.value}`).expect(302);
+      expect(r.headers.location).toBe('/next/login?social_error=state'); // the query string is never trusted for Apple
+      expect(bridge).toHaveLength(0);
+    });
+    it('a linked member is signed in: ES256 client secret, verified id_token, bridge as Apple, app marker kept', async () => {
+      linked = { mb_id: 'apple_8407085f', mb_intercept_date: '', mb_leave_date: '' };
+      const r = await (await flow((state, nonce) => { appleTokens = { id_token: idToken({ sub: '000123.abc', email: 'a@privaterelay.appleid.com', email_verified: 'true', nonce }) }; return { code: 'CODE', state }; }, '; sb_patient_app=1')).go.expect(302);
+      expect(r.headers.location).toBe('/next/mypage');
+      expect(bridge[0].slice(0, 3)).toEqual(['apple_8407085f', 'login', true]);
+      expect(bridge[0][5]).toBe('Apple');
+      expect(String(r.headers['set-cookie'])).toMatch(/PHPSESSID=abc/);
+      expect(String(r.headers['set-cookie'])).toMatch(/sb_apple_cb=; Max-Age=0/);
+      expect(calls.find((c) => /FROM g5_member_social_profiles mp JOIN/.test(c.sql))!.args).toEqual(['apple', '000123.abc']);
+      const body = new URLSearchParams(tokenBodies[0]);
+      expect(body.get('code')).toBe('CODE'); expect(body.get('client_id')).toBe('app.web');
+      const [h, p, sig] = body.get('client_secret')!.split('.');
+      expect(JSON.parse(Buffer.from(h, 'base64url').toString())).toEqual({ typ: 'JWT', alg: 'ES256', kid: 'KEYID' });
+      expect(JSON.parse(Buffer.from(p, 'base64url').toString())).toMatchObject({ iss: 'TEAM', sub: 'app.web', aud: 'https://appleid.apple.com' });
+      expect(cryptoVerify('sha256', Buffer.from(`${h}.${p}`), { key: appleEc.publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(sig, 'base64url'))).toBe(true);
+      expect(calls.some((c) => /UPDATE g5_member SET/.test(c.sql))).toBe(false); // no Kakao-style member sync
+    });
+    it('refused: wrong nonce, foreign signature, other audience, expired, no id_token, cancelled, wrong state', async () => {
+      const other = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
+      const cases: ((state: string, nonce: string) => Record<string, string>)[] = [
+        (state) => { appleTokens = { id_token: idToken({ sub: 's', nonce: 'f'.repeat(32) }) }; return { code: 'c', state }; },
+        (state, nonce) => { appleTokens = { id_token: idToken({ sub: 's', nonce }, 'K1', other) }; return { code: 'c', state }; },
+        (state, nonce) => { appleTokens = { id_token: idToken({ sub: 's', nonce, aud: 'someone.else' }) }; return { code: 'c', state }; },
+        (state, nonce) => { appleTokens = { id_token: idToken({ sub: 's', nonce, exp: 1 }) }; return { code: 'c', state }; },
+        (state) => { appleTokens = { error: 'invalid_grant' }; return { code: 'c', state }; },
+      ];
+      for (const c of cases) { const r = await (await flow(c)).go.expect(302); expect(r.headers.location).toBe('/next/login?social_error=failed'); }
+      let r = await (await flow((state) => ({ error: 'user_cancelled_authorize', state }))).go.expect(302);
+      expect(r.headers.location).toBe('/next/login?social_error=denied');
+      r = await (await flow((_s, nonce) => { appleTokens = { id_token: idToken({ sub: 's', nonce }) }; return { code: 'c', state: 'forged' }; })).go.expect(302);
+      expect(r.headers.location).toBe('/next/login?social_error=state');
+      expect(bridge).toHaveLength(0);
+    });
+    it('sign-up flag on: a new Apple member is created at once with the posted name (no e-mail linking)', async () => {
+      process.env.SOCIAL_NEST_REGISTER = '1';
+      linked = null; memberByEmail = { mb_id: 'sb_old', mb_intercept_date: '', mb_leave_date: '' };
+      const r = await (await flow((state, nonce) => { appleTokens = { id_token: idToken({ sub: 'sub-9', email: 'New@X.com', email_verified: true, nonce }) }; return { code: 'c', state, user: JSON.stringify({ name: { firstName: '길동', lastName: '홍' }, email: 'new@x.com' }) }; })).go.expect(302);
+      expect(r.headers.location).toBe('/index.php');
+      expect(inserted).toHaveLength(1);
+      expect(inserted[0].args[0]).toBe(convertId('sub-9', 'apple'));
+      expect(inserted[0].args[2]).toBe('홍길동');
+      expect(inserted[0].args[4]).toBe('new@x.com');
+      expect(bridge[0].slice(0, 2)).toEqual([convertId('sub-9', 'apple'), 'register']);
+      expect(bridge[0][5]).toBe('Apple');
+      expect(calls.some((c) => /INSERT INTO g5_member_social_profiles/.test(c.sql))).toBe(true);
+    });
+    it('sign-up: Apple sends no name and no e-mail → the Gnuboard id as the name and the PHP placeholder address', async () => {
+      process.env.SOCIAL_NEST_REGISTER = '1';
+      linked = null;
+      await (await flow((state, nonce) => { appleTokens = { id_token: idToken({ sub: 'sub-10', nonce }) }; return { code: 'c', state }; })).go.expect(302);
+      const id = convertId('sub-10', 'apple');
+      expect(inserted[0].args[2]).toBe(id);
+      expect(inserted[0].args[4]).toBe(`kakao_${id}@social.local`);
+    });
+    it('Apple keys are cached and fetched again only for an unknown key id', async () => {
+      const before = keyFetches;
+      await (await flow((state, nonce) => { appleTokens = { id_token: idToken({ sub: 's', nonce }) }; return { code: 'c', state }; })).go.expect(302);
+      expect(keyFetches).toBe(before); // cached by the earlier tests
+      await (await flow((state, nonce) => { appleTokens = { id_token: idToken({ sub: 's', nonce }, 'ROTATED') }; return { code: 'c', state }; })).go.expect(302);
+      expect(keyFetches).toBe(before + 1);
+    });
+  });
+});
+
+describe('apple logic', () => {
+  it('client secret verifies with the key pair and tolerates CRLF / literal \\n in the stored key', () => {
+    for (const pem of [APPLE_PEM, APPLE_PEM.replace(/\n/g, '\r\n'), APPLE_PEM.trim().replace(/\n/g, '\\n')]) {
+      const [h, p, sig] = appleClientSecret({ teamId: 'T', keyId: 'K', clientId: 'C', keyPem: pem }, 1_000_000).split('.');
+      expect(cryptoVerify('sha256', Buffer.from(`${h}.${p}`), { key: appleEc.publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(sig, 'base64url'))).toBe(true);
+      expect(JSON.parse(Buffer.from(p, 'base64url').toString())).toEqual({ iss: 'T', iat: 1000, exp: 1300, aud: 'https://appleid.apple.com', sub: 'C' });
+    }
+    expect(() => appleClientSecret({ teamId: 'T', keyId: 'K', clientId: 'C', keyPem: 'not a key' })).toThrow();
+  });
+  it('id_token: only RS256 from a published key, with issuer, audience, expiry, nonce and sub', () => {
+    const want = { clientId: 'app.web', nonce: 'n'.repeat(32) };
+    const ok = verifyAppleIdToken(idToken({ sub: 'S', email: 'e@x.com', email_verified: 'true', nonce: want.nonce }), [APPLE_JWK], want);
+    expect(ok).toEqual({ ok: true, claims: { sub: 'S', email: 'e@x.com', emailVerified: true } });
+    const err = (t: string, keys: any[] = [APPLE_JWK], w = want) => { const r = verifyAppleIdToken(t, keys, w); return r.ok ? '' : r.error; };
+    expect(err('a.b')).toBe('format');
+    expect(err(idToken({ sub: 'S', nonce: want.nonce }, 'OTHER'))).toBe('kid');
+    expect(err(idToken({ sub: 'S', nonce: want.nonce }), [])).toBe('kid');
+    expect(err(idToken({ sub: 'S', nonce: want.nonce, iss: 'https://evil.test' }))).toBe('iss');
+    expect(err(idToken({ sub: 'S', nonce: want.nonce }), [APPLE_JWK], { clientId: 'app.web', nonce: '' })).toBe('nonce');
+    expect(err(idToken({ sub: 'S' }))).toBe('nonce');
+    expect(err(idToken({ nonce: want.nonce }))).toBe('sub');
+    // alg "none" and an HS256 token signed with the public key are not accepted
+    const none = `${b64u({ alg: 'none', kid: 'K1' })}.${b64u({ iss: 'https://appleid.apple.com', aud: 'app.web', exp: 9e9, sub: 'S', nonce: want.nonce })}.`;
+    expect(err(none)).toBe('alg');
+    const tampered = idToken({ sub: 'S', nonce: want.nonce }).split('.'); tampered[1] = b64u({ iss: 'https://appleid.apple.com', aud: 'app.web', exp: 9e9, sub: 'ADMIN', nonce: want.nonce });
+    expect(err(tampered.join('.'))).toBe('signature');
+    expect(createPublicKey({ key: APPLE_JWK, format: 'jwk' }).type).toBe('public');
+  });
+  it('name, profile and relay cookie', () => {
+    expect(appleUserName(JSON.stringify({ name: { firstName: 'Gil\ndong', lastName: 'Hong' } }))).toBe('HongGildong');
+    expect(appleUserName('{"name":null}')).toBe(''); expect(appleUserName('junk')).toBe('');
+    expect(appleUserName(JSON.stringify({ name: { firstName: 'x'.repeat(300) } }))).toHaveLength(100);
+    const p = appleProfile({ sub: 'S', email: 'e@x.com', emailVerified: false }, '');
+    expect(p.identifier).toBe('S'); expect(p.username).toBe(convertId('S', 'apple')); expect(p.emailVerified).toBe('');
+    expect(profileEmail(p, 'apple')).toBe('e@x.com');
+    const v = signAppleRelay(SECRET, { c: 'code', s: 'st', e: '', n: '홍길동' }, 1000);
+    expect(readAppleRelay(SECRET, v, 2000)).toMatchObject({ c: 'code', s: 'st', n: '홍길동' });
+    expect(readAppleRelay(SECRET, v, 200_000)).toBeNull();
+    expect(readAppleRelay('y'.repeat(40), v, 2000)).toBeNull();
+    expect(readAppleRelay(SECRET, v.slice(0, -2) + 'AA', 2000)).toBeNull();
+    expect(APPLE_RELAY_COOKIE).toBe('sb_apple_cb');
   });
 });

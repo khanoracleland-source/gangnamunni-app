@@ -233,6 +233,30 @@ variable empty the PHP flow (`/auth/login.php?provider=…` → `plugin/social/r
    - NOT ported: the member icon download from the provider photo, the shop sign-up coupon (`de_member_reg_coupon_*`).
 4. Rollback: empty `SOCIAL_NEST_REGISTER`, restart `seoulbeauty-api`.
 
+## D4c — Apple sign-in on Nest (2026-11-12)
+
+Needs D4a (and D4b for new members). Keys come from `g5_config` (`cf_apple_bundle_id` = the Services ID, `cf_apple_team_id`,
+`cf_apple_key_id`, `cf_apple_key_file` = the .p8 text): no new `.env` secret, no new grant, no PHP change
+(`api/session_login.php` already accepts `social=Apple`).
+
+1. Apple Developer → Identifiers → Services IDs → `com.celebhospital.patient.public.web` → Sign In with Apple → Configure →
+   Return URLs: ADD `https://hms.seoulbeauty.app/next/api/v1/auth/social/apple/callback` (keep the old
+   `/hairwang/plugin/social/…` URL: it is the rollback). Done 2026-11-12.
+2. Pull, `cd seoulbeauty-api && npm run build`, add `apple` to `SOCIAL_NEST_PROVIDERS` (`kakao,google,apple`),
+   `systemctl restart seoulbeauty-api`. `GET /next/api/v1/auth/login-options` then lists `apple` in `nest` and the Next login
+   button goes to `/next/api/v1/auth/social/apple/start` (no web rebuild needed).
+3. Flow: start (state + nonce in the signed `sb_social_state` cookie) → Apple → cross-site `POST …/apple/callback`
+   (`response_mode=form_post`; it carries none of the site's Lax cookies, so it only stores code/state/name in the signed 2-minute
+   `sb_apple_cb` cookie and answers 303) → `GET …/apple/callback` (state check, token exchange with an ES256 client secret, id_token
+   verified against `appleid.apple.com/auth/keys`: RS256, iss, aud, exp, nonce) → linked member: session through the bridge;
+   new profile: member created at once like Kakao (name = the name Apple posts on the first sign-in, else the member id;
+   e-mail = Apple's, else the PHP placeholder `kakao_apple_<hash>@social.local`). No linking by e-mail (PHP does that for Kakao only).
+4. Check after the restart: `journalctl -u seoulbeauty-api | grep -E "\[apple\]|provider=apple"` — a sign-in logs
+   `[auth][social_login_success] provider=apple`; `id_token rejected: <reason>` / `client secret failed` name the cause of a failure.
+5. Rollback: remove `apple` from `SOCIAL_NEST_PROVIDERS`, restart `seoulbeauty-api` (the button goes back to the PHP flow).
+6. NOT done: revoking the Apple token when a member withdraws (PHP does not do it either); the Flutter `NextPilot` rewrite of a
+   PHP `auth/login.php?provider=apple` link (the Next login page links to Nest directly, so the app does not need it).
+
 ### Inicis card payment (INIPayPro, Nest, 2026-11-04)
 Flow: Next `결제하기` -> `POST /v1/mypage/bookings/:id/payment/inicis/prepare` (signed SDK parameters, nothing written) -> `INIPayPro.requestPayment`
 -> Inicis makes the customer's browser POST the authentication result to `POST /v1/payments/inicis/return` (public: cross-site, no session)

@@ -103,8 +103,8 @@ describe('POST /v1/auth/login', () => {
   it('login options follow the Gnuboard social settings', async () => {
     const r = await request(app.getHttpServer()).get('/v1/auth/login-options').expect(200);
     expect(r.body).toEqual({ nest: [], kakao: true, google: false, apple: true });
-    process.env.SOCIAL_NEST_PROVIDERS = 'kakao, apple,google';
-    expect((await request(app.getHttpServer()).get('/v1/auth/login-options')).body.nest).toEqual(['kakao', 'google']);
+    process.env.SOCIAL_NEST_PROVIDERS = 'kakao, apple,google,naver';
+    expect((await request(app.getHttpServer()).get('/v1/auth/login-options')).body.nest).toEqual(['kakao', 'apple', 'google']);
     delete process.env.SOCIAL_NEST_PROVIDERS;
     expect(r.headers['cache-control']).toContain('s-maxage=30');
   });

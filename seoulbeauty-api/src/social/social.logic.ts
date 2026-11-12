@@ -1,8 +1,8 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 
-export type Provider = 'kakao' | 'google';
-export const PROVIDERS: Provider[] = ['kakao', 'google'];
-export const PHP_NAME: Record<Provider, 'Kakao' | 'Google'> = { kakao: 'Kakao', google: 'Google' };
+export type Provider = 'kakao' | 'google' | 'apple';
+export const PROVIDERS: Provider[] = ['kakao', 'google', 'apple'];
+export const PHP_NAME: Record<Provider, 'Kakao' | 'Google' | 'Apple'> = { kakao: 'Kakao', google: 'Google', apple: 'Apple' };
 export const isProvider = (v: string): v is Provider => (PROVIDERS as string[]).includes(v);
 
 export interface SocialProfile {
@@ -71,10 +71,11 @@ export function kakaoMemberUpdates(p: SocialProfile, nowYear: number): Record<st
 export const objectSha = (p: SocialProfile): string => createHash('sha1').update(JSON.stringify(p)).digest('hex');
 
 /** OAuth state kept in a signed, short-lived cookie: nothing to store on the server and it survives a restart. */
-export interface StatePayload { p: Provider; s: string; u: string; e: number }
-export function signState(secret: string, p: Provider, url: string, now = Date.now()): { value: string; state: string } {
+/** `n`: the OpenID nonce of an Apple sign-in (it must come back inside the id_token). */
+export interface StatePayload { p: Provider; s: string; u: string; e: number; n?: string }
+export function signState(secret: string, p: Provider, url: string, now = Date.now(), nonce = ''): { value: string; state: string } {
   const state = randomBytes(24).toString('hex');
-  const body = Buffer.from(JSON.stringify({ p, s: state, u: url, e: now + 600_000 } satisfies StatePayload)).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ p, s: state, u: url, e: now + 600_000, ...(nonce ? { n: nonce } : {}) } satisfies StatePayload)).toString('base64url');
   return { value: `${body}.${mac(secret, body)}`, state };
 }
 const mac = (secret: string, body: string): string => createHmac('sha256', `social-state|${secret}`).update(body).digest('base64url');
