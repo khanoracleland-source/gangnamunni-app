@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 내 예약 조회 페이지
  * - 전화번호 기반 예약 조회

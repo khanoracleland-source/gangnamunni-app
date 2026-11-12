@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 이용약관 (Terms of Service) — Apple Guideline 1.2 UGC Safety 대응
  * 불쾌 콘텐츠 무관용 정책 + 사용자 의무 + 위반 시 조치 명시

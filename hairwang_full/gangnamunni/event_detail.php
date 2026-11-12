@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 이벤트 상세 페이지 (공개)
  * - gangnamunni_events 상세 정보 표시

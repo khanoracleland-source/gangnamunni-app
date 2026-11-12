@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 경과 후기 상세: 회차별 경과 기록 추가 → 작성 완료(검수 요청) (#포인트제도 v2)
  */

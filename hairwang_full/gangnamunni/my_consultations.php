@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 마이페이지 > 상담 내역 (07-40)
  * gangnamunni_consultations.mb_id 로 연결된 회원의 상담 신청 목록.

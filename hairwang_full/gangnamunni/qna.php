@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 require_once __DIR__ . '/includes/init.php';
 
 // 고객센터 디자인·기능 개편 전까지 Q&A 서비스를 임시 중지한다.

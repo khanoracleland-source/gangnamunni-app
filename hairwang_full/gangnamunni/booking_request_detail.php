@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 예약 요청 상세 — my_bookings.php 의 예약상세 전용 읽기 화면.
  * 예약 변경/취소 기능이 있는 booking_detail.php 와 분리한다.

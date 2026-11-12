@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 후기 작성 페이지 (프론트엔드)
  * - 로그인 필수 (Gnuboard 회원)

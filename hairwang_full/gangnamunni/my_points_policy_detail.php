@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 포인트 적립 유형별 상세 정책 (포인트 정책 > 적립 유형별 세부 정책 > 각 항목)
  * ?type=progress|photo|receipt|first|payment

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 커뮤니티 가이드라인 (Community Guidelines) — Apple Guideline 1.2 UGC Safety
  * 허용/금지 콘텐츠 기준 + 신고/차단 안내 + 제재 단계

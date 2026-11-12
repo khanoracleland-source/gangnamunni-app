@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 // Turbo Drive (new app versions only): injects the Turbo tags into <head>. See includes/turbo_boot.php
 if (is_file(__DIR__ . '/includes/turbo_boot.php')) { require_once __DIR__ . '/includes/turbo_boot.php'; sb_turbo_boot(); }
 /**

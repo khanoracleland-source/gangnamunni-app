@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * [05-42] 예약 변경 페이지
  * booking.php 의 예약 화면(날짜/시간/옵션 변경)을 재사용하되,

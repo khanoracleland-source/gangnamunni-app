@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 내 경과 후기 목록 + 새 경과 후기 시작 (#포인트제도 v2)
  * 스위치: v2_progress_enabled (꺼져 있으면 '준비 중')

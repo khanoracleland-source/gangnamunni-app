@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * Seoul Beauty (서울미녀) - 개인정보처리방침 / Privacy Policy
  * 공개 페이지 (로그인 불필요)

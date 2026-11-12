@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 바비톡 스타일 병원 상세 페이지
  * 모든 데이터는 DB에서 동적으로 로드

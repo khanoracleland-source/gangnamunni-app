@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * 내 알림 (My Notifications) - 사용자 알림 목록 페이지
  * 로그인 필수, 필터/읽음처리/더보기 AJAX

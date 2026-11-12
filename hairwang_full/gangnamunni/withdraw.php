@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 require_once __DIR__ . '/includes/init.php';
 require_once __DIR__ . '/includes/functions.php';
 require_login();

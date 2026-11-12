@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../includes/next_redirect.php'; // old page -> its Next.js page (switch: data/next_redirect.on)
 /**
  * ============================================================================
  * 서울미녀 커스텀 회원가입 (이메일 인증)
