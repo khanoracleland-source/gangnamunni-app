@@ -4,7 +4,7 @@ import request from 'supertest';
 import { DB } from '../src/db/db.module';
 import { AuthModule } from '../src/auth/auth.module';
 import { AuthService } from '../src/auth/auth.service';
-import { clearDomains, cookieDomainOf, hashToken, IDLE_SECONDS, NestSessionService, readSessionCookie, REMEMBER_APP_SECONDS, REMEMBER_WEB_SECONDS, sessionCookie } from '../src/auth/nest-session.service';
+import { clearDomains, cookieDomainOf, hashToken, IDLE_SECONDS, NestSessionService, readSessionCookie, readSessionCookies, REMEMBER_APP_SECONDS, REMEMBER_WEB_SECONDS, sessionCookie } from '../src/auth/nest-session.service';
 import { SessionBridgeService } from '../src/session-bridge/session-bridge.service';
 
 const T = 'a'.repeat(64);
@@ -16,6 +16,8 @@ describe('nest session helpers', () => {
     expect(readSessionCookie('sb_sid=abc')).toBe('');
     expect(readSessionCookie(`xsb_sid=${T}`)).toBe('');
     expect(readSessionCookie(undefined)).toBe('');
+    const U = 'b'.repeat(64);
+    expect(readSessionCookies(`sb_sid=${T}; a=1; sb_sid=bad; sb_sid=${U}; sb_sid=${T}`)).toEqual([T, U]);
   });
   it('cookie text, the domain PHP uses, and the domains cleared at sign-out', () => {
     expect(sessionCookie(T, null, '')).toBe(`sb_sid=${T}; Path=/; HttpOnly; Secure; SameSite=Lax`);
@@ -68,9 +70,9 @@ describe('nest sessions (NEST_SESSIONS)', () => {
     app = mod.createNestApplication();
     await app.init();
   });
-  afterAll(async () => { global.fetch = realFetch; delete process.env.NEST_SESSIONS; delete process.env.SESSION_BRIDGE_SECRET; await app.close(); });
+  afterAll(async () => { global.fetch = realFetch; delete process.env.NEST_SESSIONS; delete process.env.NEST_SESSION_ADOPT; delete process.env.SESSION_BRIDGE_SECRET; await app.close(); });
   beforeEach(() => {
-    process.env.NEST_SESSIONS = '1';
+    process.env.NEST_SESSIONS = '1'; delete process.env.NEST_SESSION_ADOPT;
     rows = new Map(); sql = []; phpCalls = 0; dbDown = false;
     member = { mb_no: 42, mb_id: 'kim', mb_name: '김', mb_nick: 'n', mb_level: 2, mb_hp: '010', mb_cred_epoch: 3, mb_leave_date: '', mb_intercept_date: '' };
     (svc() as any).cache.clear(); (app.get(AuthService) as any).cache.clear();
@@ -167,9 +169,49 @@ describe('nest sessions (NEST_SESSIONS)', () => {
     const r = await request(app.getHttpServer()).post('/v1/auth/logout').set({ Cookie: `sb_sid=${t}`, 'X-Requested-With': 'XMLHttpRequest', Host: 'hms.seoulbeauty.app' }).expect(200);
     expect(rows.size).toBe(0);
     const set = r.headers['set-cookie'] as unknown as string[];
-    expect(set).toEqual(['sb_sid=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax', 'sb_sid=; Path=/; Domain=.seoulbeauty.app; Max-Age=0; HttpOnly; Secure; SameSite=Lax']);
+    expect(set).toEqual(['sb_sid=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax', 'sb_noadopt=1; Path=/; Max-Age=60; HttpOnly; Secure; SameSite=Lax', 'sb_sid=; Path=/; Domain=.seoulbeauty.app; Max-Age=0; HttpOnly; Secure; SameSite=Lax']);
     expect((await app.get(AuthService).fromCookie(`sb_sid=${t}`)).loggedIn).toBe(false);
     await request(app.getHttpServer()).post('/v1/auth/logout').set('X-Requested-With', 'XMLHttpRequest').expect(200);
+  });
+
+  it('two sb_sid cookies: a stale one does not hide the valid one; sign-out removes both rows', async () => {
+    const good = token((await svc().create('kim', { remember: true, app: false, source: 'login' }))!);
+    const stale = token((await svc().create('kim', { remember: true, app: false, source: 'login' }))!);
+    rows.get(hashToken(stale))!.left_s = 0;
+    expect((await app.get(AuthService).fromCookie(`sb_sid=${stale}; sb_sid=${good}`)).user?.id).toBe('kim');
+    expect(phpCalls).toBe(0);
+    await svc().destroy(`sb_sid=${stale}; sb_sid=${good}`);
+    expect(rows.size).toBe(0);
+  });
+
+  it('adoption: /v1/me gives a PHP-born sign-in its Nest session once, only to a same-origin browser fetch', async () => {
+    const me = (h: Record<string, string>) => request(app.getHttpServer()).get('/v1/me').set({ Cookie: 'PHPSESSID=php-kim', ...h });
+    member = { ...member!, mb_id: 'phpkim', mb_no: 7 };
+    // its own switch: NEST_SESSIONS alone adopts nothing
+    expect((await me({ 'Sec-Fetch-Site': 'same-origin' }).expect(200)).headers['set-cookie']).toBeUndefined();
+    process.env.NEST_SESSION_ADOPT = '1';
+    // just signed out here (the PHP logout has not run yet): not adopted back
+    expect((await request(app.getHttpServer()).get('/v1/me').set({ Cookie: 'PHPSESSID=php-kim; sb_noadopt=1', 'Sec-Fetch-Site': 'same-origin' }).expect(200)).headers['set-cookie']).toBeUndefined();
+    // a server-side call (no Sec-Fetch-Site) or a cross-site one: answered, nothing created
+    expect((await me({}).expect(200)).headers['set-cookie']).toBeUndefined();
+    expect((await me({ 'Sec-Fetch-Site': 'cross-site' }).expect(200)).headers['set-cookie']).toBeUndefined();
+    expect(rows.size).toBe(0);
+    const r = await me({ 'Sec-Fetch-Site': 'same-origin' }).expect(200);
+    expect(r.body.loggedIn).toBe(true);
+    const set = (r.headers['set-cookie'] as unknown as string[])[0];
+    expect(set).toMatch(/^sb_sid=[a-f0-9]{64}; Path=\/; HttpOnly; Secure; SameSite=Lax$/); // never "remember"
+    expect([...rows.values()]).toEqual([expect.objectContaining({ mb_id: 'phpkim', remember: 0, left_s: IDLE_SECONDS })]);
+    // from now on the cookie answers; PHP is not asked and nothing more is created
+    phpCalls = 0;
+    const again = await request(app.getHttpServer()).get('/v1/me').set({ Cookie: `PHPSESSID=php-kim; sb_sid=${token(set)}`, 'Sec-Fetch-Site': 'same-origin' }).expect(200);
+    expect(again.headers['set-cookie']).toBeUndefined();
+    expect(phpCalls).toBe(0);
+    expect(rows.size).toBe(1);
+    // a visitor is never given a session; switched off, nobody is
+    expect((await request(app.getHttpServer()).get('/v1/me').set('Sec-Fetch-Site', 'same-origin').expect(200)).headers['set-cookie']).toBeUndefined();
+    process.env.NEST_SESSIONS = '0'; (app.get(AuthService) as any).cache.clear();
+    expect((await me({ 'Sec-Fetch-Site': 'same-origin' }).expect(200)).headers['set-cookie']).toBeUndefined();
+    expect(rows.size).toBe(1);
   });
 
   it('the session bridge opens a Nest session after the PHP one, on the same cookie domain, last in the list', async () => {

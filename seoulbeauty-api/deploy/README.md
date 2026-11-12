@@ -386,3 +386,6 @@ GRANT INSERT, DELETE, UPDATE (last_seen_at, expires_at) ON hms_saas.sb_sessions 
 
 Sessiya tugaydi: muddat (remember: veb 31 kun / ilova 120 kun; aks holda 3 soat harakatsizlik), `mb_cred_epoch` o'zgarsa (parol, 탈퇴), blok/chiqish sanasi, `POST /v1/auth/logout`, PHP logout yoki PHP orqali boshqa a'zo bo'lib kirish (`hairwang_full/extend/sb_nest_session.extend.php` qatorni o'chiradi).
 Kuzatish: `SELECT source, remember, COUNT(*) FROM sb_sessions WHERE expires_at > NOW() GROUP BY source, remember;`
+
+### B2 — `NEST_SESSION_ADOPT` (51-kun davomi)
+`NEST_SESSIONS=1` ustiga `NEST_SESSION_ADOPT=1`: PHP "kirgan" degan, lekin `sb_sid` yo'q brauzerga (ilova yopib-ochilgandan keyin, B1 dan oldingi sessiyalar) `GET /v1/me` da Nest sessiyasi beriladi → keyingi so'rovlarda PHP so'ralmaydi. Faqat brauzerning same-origin so'rovida (`Sec-Fetch-Site`), hech qachon "remember" emas (3 soat harakatsizlik), logout'dan keyin 60 s berilmaydi (`sb_noadopt`). Yangi GRANT/jadval kerak emas. Log: `[auth][session_adopted] account=<hash>`. Qaytarish: qiymatni bo'shatib restart.
