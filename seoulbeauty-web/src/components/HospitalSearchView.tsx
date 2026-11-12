@@ -3,7 +3,6 @@ import Loading from "./Loading";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, assetUrl, PLACEHOLDER, qk, type SearchView } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
 import { addrDistrict } from "./HospitalCard";
 import starIcon from "@/assets/icons/star.png";
 import trophyIcon from "@/assets/icons/trophy.png";
@@ -28,7 +27,6 @@ const SORTS = [["price", "낮은가격"], ["rating", "평점"], ["popular", "인
 const label = (v: number | null, u: string | null) => (v && v > 0 && u ? ` ${String(Number(v.toFixed(2)))}${u}` : "");
 
 export default function HospitalSearchView({ hid, q, tcat, sort, initial }: { hid: number; q: string; tcat: number; sort: string; initial?: SearchView }) {
-  const php = usePhpBase();
   const { data, isError, refetch } = useQuery({ queryKey: qk.searchView(hid), queryFn: () => api.searchView(hid), initialData: initial });
   if (!data) {
     return <div className={styles.empty}>{isError ? <>불러오지 못했습니다. <button className={styles.link} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>;
@@ -53,7 +51,6 @@ export default function HospitalSearchView({ hid, q, tcat, sort, initial }: { hi
   const rows = s === "price" ? [...filtered].sort((a, b) => (a.price > 0 ? a.price : Infinity) - (b.price > 0 ? b.price : Infinity)) : filtered;
   const img = assetUrl(h.thumbnailUrl) || PLACEHOLDER;
   const district = addrDistrict(h.address);
-  const ret = encodeURIComponent(`/next/hospitals?q=${encodeURIComponent(q)}&hid=${hid}`);
   return (
     <section>
       <Link href={`/hospitals/${hid}`} className={styles.card}>
@@ -89,13 +86,13 @@ export default function HospitalSearchView({ hid, q, tcat, sort, initial }: { hi
       ) : rows.map((r) => {
         const per = r.price > 0 && r.dosageValue && r.dosageValue > 0 && r.dosageUnit && r.dosageUnit !== "회" ? `1${r.dosageUnit}당 ${Math.round(r.price / r.dosageValue).toLocaleString("ko-KR")}원` : "";
         return (
-          <a key={r.id} className={styles.row} href={phpUrl(php, `detail.php?id=${hid}&treatment_id=${r.id}&treatment=${encodeURIComponent(r.name)}&return_url=${ret}`)}>
+          <Link key={r.id} className={styles.row} href={`/hospitals/${hid}?treatment_id=${r.id}`}>
             <div className={styles.b}>
               <div className={styles.n}>{r.name}{label(r.dosageValue, r.dosageUnit)}</div>
               {r.price > 0 && <div className={styles.p}><b>{r.price.toLocaleString("ko-KR")}<small>원</small></b>{per && <em>{per}</em>}</div>}
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1A1718" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "0 0 16px" }}><path d="M9 5l7 7-7 7" /></svg>
-          </a>
+          </Link>
         );
       })}
     </section>

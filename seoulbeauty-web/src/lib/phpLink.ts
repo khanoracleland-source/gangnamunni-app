@@ -30,8 +30,14 @@ export function nextPathFor(link: string): string | null {
     }
     case "detail.php": {
       const id = posInt(p.get("id")); const tab = p.get("tab") ?? "";
-      if (!id || !only(p, ["id", "tab", "from"]) || (tab !== "" && !["home", "events", "reviews", "doctors"].includes(tab))) return null;
-      return `/hospitals/${id}${tab !== "" && tab !== "home" ? `?tab=${tab}` : ""}`;
+      // treatment_id: the 홈 tab opens with that treatment's price options; `treatment` (its name) and `return_url` are PHP-only helpers
+      const tid = p.get("treatment_id"); const treatment = tid === null ? null : posInt(tid);
+      if (!id || !only(p, ["id", "tab", "from", "treatment_id", "treatment", "return_url"]) || (tab !== "" && !["home", "events", "reviews", "doctors"].includes(tab))) return null;
+      if (tid !== null ? !treatment : p.has("treatment")) return null; // a bad id, or a name without an id (PHP matches by name), stays on PHP
+      const q = new URLSearchParams();
+      if (tab !== "" && tab !== "home") q.set("tab", tab);
+      if (treatment) q.set("treatment_id", String(treatment));
+      return `/hospitals/${id}${q.size ? `?${q}` : ""}`;
     }
     case "events.php": {
       const filter = p.get("filter") ?? "";
