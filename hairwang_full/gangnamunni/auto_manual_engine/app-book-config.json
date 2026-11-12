@@ -239,7 +239,7 @@
         {
           "key": "register",
           "label": "회원가입",
-          "url": "register_wizard.php",
+          "url": "auth/register.php",
           "description": "신규 회원 가입 폼",
           "checks": [
             "noPhpError",

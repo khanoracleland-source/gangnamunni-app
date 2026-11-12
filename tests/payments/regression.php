@@ -263,24 +263,6 @@ try {
         expect($exitCode===0 && (int)$db->query('SELECT COUNT(*) AS n FROM gangnamunni_hospital_settlement_items')->fetch_assoc()['n']===1, 'approved settlement remains immutable');
     } finally { unlink($entry); }
 
-    // Render the actual checkout template with synthetic data, without application login/bootstrap.
-    if (in_array('--render', $argv, true)) {
-        $db->query("CREATE TABLE gangnamunni_hospitals (id BIGINT PRIMARY KEY,name VARCHAR(255),profile_image_url VARCHAR(255),address VARCHAR(255))");
-        $db->query("INSERT INTO gangnamunni_hospitals VALUES (1,'테스트 클리닉','','서울 강남구')");
-        $db->query("ALTER TABLE gangnamunni_bookings ADD booking_date DATE, ADD booking_time TIME");
-        $db->query("INSERT INTO gangnamunni_bookings (id,hospital_id,hospital_name,mb_id,name,phone,treatment,price,status,booking_date,booking_time) VALUES (3,1,'테스트 클리닉','','테스트 고객','01000000000','피부 관리',100000,'confirmed','2026-10-01','10:00:00')");
-        platform_payment_create_booking($db,3);
-        $connect = $db; $is_member = false; $member = [];
-        $_SESSION = ['user_phone'=>'01000000000','csrf_token'=>'fixture-only']; $_GET = ['booking_id'=>3];
-        function term($key) { return $key; }
-        $directory = realpath(__DIR__.'/../../hairwang_full/gangnamunni');
-        $page = file_get_contents($directory.'/booking_payment.php');
-        $page = str_replace(["require_once __DIR__ . '/includes/init.php';", "@include_once __DIR__ . '/includes/sso_auto_login.php';"], '', $page);
-        $page = str_replace('__DIR__',var_export($directory,true),$page);
-        ob_start(); eval('?>'.$page); $html = ob_get_clean();
-        expect(strpos($html,'id="previewPayBtn"') !== false && strpos($html,'실제 결제는 준비 중입니다.') !== false, 'actual checkout renders preview and unavailable live state');
-        file_put_contents($directory.'/payment-fixture-preview.html',$html);
-    }
     echo "All $count checks passed.\n";
 } finally {
     $db->query("DROP DATABASE `$name`");

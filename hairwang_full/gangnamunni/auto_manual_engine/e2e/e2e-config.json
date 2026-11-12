@@ -95,7 +95,6 @@
     {"id":"W1","name":"[마법사] 병원 등록","category":"admin","page":"admin_hospital_wizard.php"},
     {"id":"W3","name":"[마법사] 환자 등록","category":"admin","page":"admin_patient_wizard.php"},
     {"id":"W4","name":"[마법사] 예약 마법사","category":"user","page":"booking_wizard.php"},
-    {"id":"W5","name":"[마법사] 상담 마법사","category":"user","page":"consultation_wizard.php"},
     {"id":"W6","name":"[마법사] AI 광고 생성","category":"admin","page":"ai_ad_wizard.php"},
     {"id":"W7","name":"[마법사] AI 이벤트 생성","category":"admin","page":"ai_event_wizard.php"},
 

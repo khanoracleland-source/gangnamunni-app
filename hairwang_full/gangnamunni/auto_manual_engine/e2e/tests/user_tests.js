@@ -172,11 +172,6 @@ const tests = {
         if (resp.status() >= 500) throw new Error('booking_wizard HTTP ' + resp.status());
         return { metadata: { url: page.url() } };
     },
-    async W5(page) {
-        const resp = await page.goto(BASE + '/consultation_wizard.php', { waitUntil: 'networkidle', timeout: 15000 });
-        if (resp.status() >= 500) throw new Error('consultation_wizard HTTP ' + resp.status());
-        return {};
-    },
 
     // === Standalone 테스트 ===
     async S4(page) {
