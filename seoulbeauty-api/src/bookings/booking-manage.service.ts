@@ -159,6 +159,41 @@ export class BookingManageService {
     return { success: true, message: message || '예약이 취소되었습니다.', refund_status: refundStatus };
   }
 
+  /**
+   * cron_booking_payment_expire.php, one booking: a confirmed booking whose payment order is still unpaid is cancelled by the system
+   * (cancelled_by = 'system', so it does not count as a member cancellation / no-show). Everything is re-read under the payment lock:
+   * a booking that was paid, cancelled or changed in the meantime is left alone (false). The caller decides who is past the deadline.
+   */
+  async expireUnpaid(id: number, deadlineHours = 24): Promise<boolean> {
+    const order = await this.order(id);
+    if (!order || s(order.status) !== 'pending') return false;
+    const withCancelledBy = await this.hasCol('gangnamunni_bookings', 'cancelled_by');
+    let done = false; let mbId = '';
+    await this.withLock(order, async (conn) => {
+      await conn.query('START TRANSACTION');
+      try {
+        const [cur] = (await conn.query('SELECT status, mb_id, hms_appointment_id FROM gangnamunni_bookings WHERE id = ? FOR UPDATE', [id])) as any;
+        const b = (cur as any[])[0];
+        const fresh = await this.order(id); // an approval that finished just before the lock was taken
+        if (!b || s(b.status) !== 'confirmed' || !fresh || s(fresh.status) !== 'pending') { await conn.query('ROLLBACK'); return; }
+        const [res] = (await conn.query(
+          `UPDATE gangnamunni_bookings SET status = 'cancelled', cancel_reason = ?, cancelled_at = NOW(), updated_at = NOW(), refund_status = 'not_applicable'${withCancelledBy ? ", cancelled_by = 'system'" : ''}
+           WHERE id = ? AND status = 'confirmed'`, ['결제 기한 만료(자동 취소)', id])) as any;
+        if (n((res as any).affectedRows) !== 1) throw new Error('booking_update_failed');
+        if (n(b.hms_appointment_id)) await conn.query('UPDATE appointments SET is_completed = 2, updated_at = NOW() WHERE id = ?', [n(b.hms_appointment_id)]);
+        await conn.query('COMMIT');
+        done = true; mbId = s(b.mb_id);
+      } catch (e) { await conn.query('ROLLBACK').catch(() => undefined); throw e; }
+    });
+    if (!done) return false;
+    await this.releaseHold(id, '결제 기한 만료 포인트 복구');
+    // like every other cancellation: the booking earn (if any) is taken back
+    if (mbId) { try { await this.points.revokeEarn('booking', id, '결제 기한 만료 회수'); } catch (e) { this.log.error(`point clawback (booking #${id}): ${(e as Error).message}`); } }
+    // 설정 > 예약 · 결제 알림: "결제 기한이 지나 예약이 취소되었어요" (awaited: the one-shot CLI must not exit before it is sent)
+    try { await this.member.booking(id, 'payment_expired', { deadlineHours }); } catch (e) { this.log.error(`expiry notice (booking #${id}): ${(e as Error).message}`); }
+    return true;
+  }
+
   /** GET …/change-info: what booking_change.php preselects in the booking screen. */
   async changeInfo(m: BookingMember, id: number) {
     const b = await this.own(m, id);

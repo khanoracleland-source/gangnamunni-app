@@ -5,6 +5,7 @@ import request from 'supertest';
 import { DB } from '../src/db/db.module';
 import { AuthModule } from '../src/auth/auth.module';
 import { BookingsModule } from '../src/bookings/bookings.module';
+import { BookingManageService } from '../src/bookings/booking-manage.service';
 import { cancelDeadline, noshowCancelPreview } from '../src/booking/booking.logic';
 import { PG_LIVE, PG_SANDBOX, registerFixturePg } from './pg-fixture';
 registerFixturePg();
@@ -39,6 +40,7 @@ describe('booking cancel / change API', () => {
     if (/SHOW TABLES/.test(sql)) return [[{ t: 1 }]];
     if (/FROM gangnamunni_bookings WHERE id = \? LIMIT 1/.test(sql)) return [args[0] === 7 ? [st.booking] : []];
     if (/SELECT status FROM gangnamunni_bookings/.test(sql)) return [[{ status: st.booking.status }]];
+    if (/SELECT status, mb_id, hms_appointment_id FROM gangnamunni_bookings/.test(sql)) return [[{ status: st.lockedStatus ?? st.booking.status, mb_id: st.booking.mb_id, hms_appointment_id: st.booking.hms_appointment_id }]];
     if (/FROM gangnamunni_platform_payments/.test(sql)) return [st.order ? [st.order] : []];
     if (/FROM gangnamunni_point_settings/.test(sql)) return [Object.entries(st.settings).map(([skey, sval]) => ({ skey, sval }))];
     if (/FROM gangnamunni_point_payment_holds/.test(sql)) return [st.hold ? [st.hold] : []];
@@ -56,7 +58,7 @@ describe('booking cancel / change API', () => {
     }) as any;
     const conn = { query: async (sql: string, args: any[] = []) => respond(sql, args), release: () => undefined };
     @Global() @Module({ providers: [{ provide: DB, useValue: { query: async (sql: string, args: any[] = []) => respond(sql, args), getConnection: async () => conn } }], exports: [DB] }) class FakeDb {}
-    const mod = await Test.createTestingModule({ imports: [FakeDb, AuthModule, BookingsModule] }).overrideProvider(MemberNotifyService).useValue({ bookingLater: (...a: any[]) => { memberNotified.push(a); } }).compile();
+    const mod = await Test.createTestingModule({ imports: [FakeDb, AuthModule, BookingsModule] }).overrideProvider(MemberNotifyService).useValue({ bookingLater: (...a: any[]) => { memberNotified.push(a); }, booking: async (...a: any[]) => { memberNotified.push(a); return {}; } }).compile();
     app = mod.createNestApplication();
     await app.init();
   });
@@ -179,5 +181,50 @@ describe('booking cancel / change API', () => {
     expect(up.sql).toContain('treatment = ?');
     expect(up.args).toEqual(['2099-01-06', '11:00', '필러', '변경: 2099-01-05 10:00:00 → 2099-01-06 11:00 / 시술: 보톡스 · 50U → 필러', 7]);
     expect(sqls(/UPDATE appointments SET opd_date/)[0].args).toEqual(['2099-01-06 11:00:00', 55]);
+  });
+
+  describe('expireUnpaid (결제 기한 자동 취소)', () => {
+    const svc = () => app.get(BookingManageService, { strict: false });
+    const pending = () => ({ id: 1, provider: null, status: 'pending', amount: 50000, refunded_amount: 0, merchant_uid: 'm1' });
+    it('cancels a confirmed booking with an unpaid order as the system, under the payment lock', async () => {
+      st.booking.status = 'confirmed'; st.booking.hms_appointment_id = 55; st.order = pending();
+      expect(await svc().expireUnpaid(7, 12)).toBe(true);
+      expect(sqls(/GET_LOCK/)[0].args[0]).toMatch(/^payment:[0-9a-f]{48}$/);
+      expect(sqls(/FOR UPDATE/)).toHaveLength(1);
+      const up = sqls(/SET status = 'cancelled'/)[0];
+      expect(up.sql).toContain("cancelled_by = 'system'");
+      expect(up.sql).toContain("refund_status = 'not_applicable'");
+      expect(up.sql).toMatch(/WHERE id = \? AND status = 'confirmed'/);
+      expect(up.args).toEqual(['결제 기한 만료(자동 취소)', 7]);
+      expect(sqls(/UPDATE appointments SET is_completed = 2/)[0].args).toEqual([55]);
+      expect(sqls(/COMMIT/)).toHaveLength(1);
+      expect(sqls(/RELEASE_LOCK/)).toHaveLength(1);
+      expect(memberNotified).toEqual([[7, 'payment_expired', { deadlineHours: 12 }]]);
+    });
+    it('leaves a booking alone when there is no unpaid order', async () => {
+      st.booking.status = 'confirmed';
+      expect(await svc().expireUnpaid(7)).toBe(false); // no order at all
+      st.order = { ...pending(), status: 'paid' };
+      expect(await svc().expireUnpaid(7)).toBe(false); // paid
+      expect(sqls(/SET status = 'cancelled'/)).toHaveLength(0);
+      expect(sqls(/GET_LOCK/)).toHaveLength(0);
+      expect(memberNotified).toEqual([]);
+    });
+    it('re-checks inside the lock: a booking that is no longer confirmed is not touched', async () => {
+      st.booking.status = 'confirmed'; st.order = pending(); st.lockedStatus = 'cancelled';
+      expect(await svc().expireUnpaid(7)).toBe(false);
+      expect(sqls(/SET status = 'cancelled'/)).toHaveLength(0);
+      expect(sqls(/ROLLBACK/)).toHaveLength(1);
+      expect(sqls(/RELEASE_LOCK/)).toHaveLength(1);
+      expect(memberNotified).toEqual([]);
+    });
+    it('a busy lock or a failed UPDATE throws, nothing is committed and nobody is notified', async () => {
+      st.booking.status = 'confirmed'; st.order = pending(); st.lockOk = 0;
+      await expect(svc().expireUnpaid(7)).rejects.toThrow();
+      st.lockOk = 1; st.affected = 0;
+      await expect(svc().expireUnpaid(7)).rejects.toThrow('booking_update_failed');
+      expect(sqls(/COMMIT/)).toHaveLength(0);
+      expect(memberNotified).toEqual([]);
+    });
   });
 });

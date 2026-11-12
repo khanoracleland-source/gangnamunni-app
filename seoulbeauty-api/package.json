@@ -9,7 +9,8 @@
     "start:dev": "node --env-file-if-exists=.env -r ts-node/register src/main.ts",
     "test": "jest",
     "visit-reminder": "node --env-file-if-exists=.env dist/visit-reminder.cli.js",
-    "push-token-cleanup": "node --env-file-if-exists=.env dist/push-token-cleanup.cli.js"
+    "push-token-cleanup": "node --env-file-if-exists=.env dist/push-token-cleanup.cli.js",
+    "payment-expire": "node --env-file-if-exists=.env dist/payment-expire.cli.js"
   },
   "engines": {
     "node": ">=22.9"

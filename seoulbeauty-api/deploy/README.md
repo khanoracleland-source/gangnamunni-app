@@ -257,6 +257,25 @@ Needs D4a (and D4b for new members). Keys come from `g5_config` (`cf_apple_bundl
 6. NOT done: revoking the Apple token when a member withdraws (PHP does not do it either); the Flutter `NextPilot` rewrite of a
    PHP `auth/login.php?provider=apple` link (the Next login page links to Nest directly, so the app does not need it).
 
+## 결제 기한 자동 취소 (payment deadline, 2026-11-12)
+
+The job of PHP `cron_booking_payment_expire.php` (which was never in the server's crontab): a booking the hospital confirmed is
+cancelled by the system when it is still unpaid `payment_deadline_hours` (admin setting, default 24) after the confirmation. The member
+gets "결제 기한이 지나 예약이 취소되었어요" (설정 > 예약 · 결제 알림) and the 내 예약 screen shows the expiry notice.
+
+Narrower than the PHP cron on purpose: only a booking with a `pending` payment order (amount > 0) whose member can pay right now
+(`PG_PAYMENTS_ENABLED=1`, Inicis configured, member in `INICIS_LIVE_MEMBERS` / `*`) is cancelled. No order, "결제 없이 계속하기", a paid
+order, a booking without a member, or checkout closed for that member = left alone (listed as `not_payable`).
+
+1. Needs `gangnamunni_bookings.confirmed_at` (`hairwang_full/gangnamunni/sql/booking_payment_deadline_20261022.sql`; it starts the clock
+   of already-confirmed bookings at the moment it is run, so nothing is cancelled at once). No new grant (the booking UPDATE columns,
+   `appointments` and the payment tables are already granted for the member's own cancel).
+2. Pull, `npm run build`. ALWAYS look first: `sudo -u sbapi npm run payment-expire -- --dry-run` (changes nothing) prints the bookings
+   it would cancel and those it leaves alone.
+3. `.env`: `PAYMENT_EXPIRE_ENABLED=1` (`PAYMENT_EXPIRE_INTERVAL_MIN=10`), `systemctl restart seoulbeauty-api`; the log shows
+   `결제 기한 자동 취소: every 10 min` and one `cancelled booking #N` line per cancellation.
+4. Rollback: empty `PAYMENT_EXPIRE_ENABLED`, restart. A cancelled booking is not restored by that.
+
 ## Push token cleanup (replaces PHP `cron_push_token_cleanup.php`, 2026-11-12)
 
 Same four idempotent steps as the PHP cron (iPhone token saved as android → ios; active token without a member older than 14 days → off;
