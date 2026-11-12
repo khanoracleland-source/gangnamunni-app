@@ -6,10 +6,10 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, qk } from "@/lib/api";
 import { fetchAllHospitals, hospitalsAllKey } from "@/lib/hospitalsAll";
 import { announceLogoutFromUrl, notifyPageChanged } from "@/lib/bridge";
-import { useMe } from "@/lib/me";
+import { meKey, useMe } from "@/lib/me";
 import { countSpaNav } from "@/lib/nav";
 import { ToastProvider } from "@/components/Toast";
-import { CACHE_BUSTER, CACHE_MAX_AGE, createIdbPersister, restorePersonal, shouldPersist } from "@/lib/persist";
+import { CACHE_BUSTER, CACHE_MAX_AGE, createIdbPersister, isMemberQuery, restorePrivate, shouldPersist } from "@/lib/persist";
 
 /**
  * The "Redux store": a page visited once renders instantly from cache; public data is also kept on disk (IndexedDB)
@@ -25,7 +25,12 @@ function makeClient() {
   });
 }
 
-/** Another member (or a logout) on this device: drop everything cached, memory and disk. */
+/**
+ * Whose cache is this? Another member (or a logout) on this device: drop everything cached, memory and disk. The same member: the
+ * private entries (bookings, consultations…) held back on the disk are put into the cache only now. `me` cannot be asked at all
+ * (offline, API down): nobody is confirmed, so whatever carries a member's marks leaves the memory and the private entries stay
+ * unseen on the disk; when `me` answers later, the rules above apply.
+ */
 function CacheGuard({ clearDisk }: { clearDisk: () => void }) {
   const qc = useQueryClient();
   const me = useMe();
@@ -37,67 +42,81 @@ function CacheGuard({ clearDisk }: { clearDisk: () => void }) {
       const same = prev === null || prev === uid;
       // resetQueries (not removeQueries): the screens that are open keep their observers and refetch for the new member
       if (!same) { void qc.resetQueries({ predicate: (q) => q.queryKey[0] !== "me" }); clearDisk(); }
-      restorePersonal(qc, same); // the member's own disk entries come back only now that `me` has confirmed who is signed in
+      restorePrivate(qc, same);
       localStorage.setItem("sb-cache-uid", uid);
-    } catch { /* storage blocked */ }
+    } catch {
+      // storage blocked: the previous member is unknown, so nothing of a member may stay
+      restorePrivate(qc, false);
+      void qc.resetQueries({ predicate: isMemberQuery });
+    }
   }, [uid, qc, clearDisk]);
+  const unknown = me.isError && !me.data;
+  useEffect(() => {
+    if (unknown) void qc.resetQueries({ predicate: isMemberQuery });
+  }, [unknown, qc]);
   return null;
 }
 
 /**
- * App start: warm EVERY screen at once, so whichever one is opened next paints from the cache immediately (and then quietly asks the
- * server again, as every screen does). Fills the query cache (which persists to disk by itself) and loads each route's JS.
- * Runs once per page load, right after the first paint, all requests in parallel; skipped on Data Saver.
- * staleTime keeps it from re-fetching what the current screen has just fetched. Screens tied to one id or one action
- * (a hospital, a post, payment / cancel) cannot be known in advance and load when opened.
+ * App start: refresh the caches in three steps, each starting as soon as the one before has answered:
+ *   1. the home screen;
+ *   2. the four tab screens (home is done; /hospitals, /community, /mypage);
+ *   3. every other screen, all at once.
+ * So the screens most likely to be opened next are never queued behind the rest. Fills the query cache (which persists to disk by
+ * itself) and loads each route's JS. Runs once per page load, right after the first paint; skipped on Data Saver.
+ * staleTime keeps it from re-fetching what the current screen has just fetched. A failed request does not stop the chain
+ * (prefetchQuery never rejects). Screens tied to one id or one action (a hospital, a post, payment / cancel) load when opened.
  */
-const WARM_ROUTES = [
-  "/", "/hospitals", "/community", "/events", "/faq", "/qna", "/login", "/terms", "/privacy", "/community-guidelines", "/points-policy",
-  "/mypage", "/mypage/bookings", "/mypage/notifications", "/mypage/wishlist", "/mypage/consultations", "/mypage/reviews", "/mypage/points",
+const TAB_ROUTES = ["/", "/hospitals", "/community", "/mypage"];
+const OTHER_ROUTES = [
+  "/events", "/faq", "/qna", "/login", "/terms", "/privacy", "/community-guidelines", "/points-policy",
+  "/mypage/bookings", "/mypage/notifications", "/mypage/wishlist", "/mypage/consultations", "/mypage/reviews", "/mypage/points",
   "/mypage/progress", "/mypage/community", "/mypage/profile", "/mypage/settings",
 ];
 const WARM_STALE = { staleTime: 30_000 };
 function WarmUp() {
   const qc = useQueryClient();
   const router = useRouter();
-  const me = useMe();
-  const loggedIn = me.data ? me.data.loggedIn : undefined;
-  const publicDone = useRef(false);
-  const memberDone = useRef(false);
-  const saveData = () => (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true;
+  const done = useRef(false);
   // fire-and-forget (no cleanup on purpose: the warm-up must finish even if the screen that started it unmounts)
   useEffect(() => {
-    if (publicDone.current || saveData()) return;
-    publicDone.current = true;
-    window.setTimeout(() => {
-      const warm = <T,>(queryKey: readonly unknown[], queryFn: () => Promise<T>) => void qc.prefetchQuery({ queryKey, queryFn, ...WARM_STALE });
-      warm(qk.home, () => api.home());
-      warm(hospitalsAllKey({}), () => fetchAllHospitals({}));
-      for (const tab of ["latest", "popular", "review"]) warm(qk.community({ tab }), () => api.community({ tab }));
-      warm(qk.events("", false), () => api.events({ category: "", filter: "" }));
-      warm(qk.events("", true), () => api.events({ category: "", filter: "raffle" }));
-      warm(qk.faq, () => api.faq());
-      for (const r of WARM_ROUTES) { try { router.prefetch(r); } catch { /* ignore */ } }
-    }, 0);
+    if (done.current || (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true) return;
+    done.current = true;
+    const warm = <T,>(queryKey: readonly unknown[], queryFn: () => Promise<T>) => qc.prefetchQuery({ queryKey, queryFn, ...WARM_STALE });
+    const routes = (list: string[]) => { for (const r of list) { try { router.prefetch(r); } catch { /* ignore */ } } };
+    const run = async () => {
+      // 1. home (the sign-in state is asked alongside: step 2 needs it for /mypage)
+      const me = qc.fetchQuery({ queryKey: meKey, queryFn: () => api.me(), staleTime: 20_000 }).catch(() => null);
+      await warm(qk.home, () => api.home());
+      // 2. the tab screens
+      routes(TAB_ROUTES);
+      const member = (await me)?.loggedIn === true;
+      await Promise.all([
+        warm(hospitalsAllKey({}), () => fetchAllHospitals({})),
+        warm(qk.community({ tab: "latest" }), () => api.community({ tab: "latest" })),
+        member ? warm(qk.mypage, () => api.mypage()) : null,
+      ]);
+      // 3. everything else, in parallel
+      routes(OTHER_ROUTES);
+      for (const tab of ["popular", "review"]) void warm(qk.community({ tab }), () => api.community({ tab }));
+      void warm(qk.events("", false), () => api.events({ category: "", filter: "" }));
+      void warm(qk.events("", true), () => api.events({ category: "", filter: "raffle" }));
+      void warm(qk.faq, () => api.faq());
+      if (!member) return;
+      void warm(qk.myBookings, () => api.myBookings());
+      void warm(qk.myWishlist, () => api.myWishlist());
+      void warm(qk.myConsultations, () => api.myConsultations());
+      void warm(qk.myReviews, () => api.myReviews());
+      void warm(qk.myPoints, () => api.myPoints());
+      void warm(qk.myProgress, () => api.myProgress());
+      void warm(qk.myProfile, () => api.myProfile());
+      void warm(qk.notificationSettings, () => api.notificationSettings());
+      void warm(qk.myCommunity("latest", 1), () => api.myCommunity({ tab: "latest", page: 1 }));
+      void qc.prefetchInfiniteQuery({ queryKey: qk.myNotifications("all"), initialPageParam: 1, ...WARM_STALE, queryFn: ({ pageParam }) => api.myNotifications("all", pageParam as number) });
+    };
+    window.setTimeout(() => void run(), 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => {
-    if (loggedIn !== true || memberDone.current || saveData()) return;
-    memberDone.current = true;
-    const warm = <T,>(queryKey: readonly unknown[], queryFn: () => Promise<T>) => void qc.prefetchQuery({ queryKey, queryFn, ...WARM_STALE });
-    warm(qk.mypage, () => api.mypage());
-    warm(qk.myBookings, () => api.myBookings());
-    warm(qk.myWishlist, () => api.myWishlist());
-    warm(qk.myConsultations, () => api.myConsultations());
-    warm(qk.myReviews, () => api.myReviews());
-    warm(qk.myPoints, () => api.myPoints());
-    warm(qk.myProgress, () => api.myProgress());
-    warm(qk.myProfile, () => api.myProfile());
-    warm(qk.notificationSettings, () => api.notificationSettings());
-    warm(qk.myCommunity("latest", 1), () => api.myCommunity({ tab: "latest", page: 1 }));
-    void qc.prefetchInfiniteQuery({ queryKey: qk.myNotifications("all"), initialPageParam: 1, ...WARM_STALE, queryFn: ({ pageParam }) => api.myNotifications("all", pageParam as number) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggedIn]);
   return null;
 }
 

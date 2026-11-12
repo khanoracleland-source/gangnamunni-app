@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DetailSkeleton from "./DetailSkeleton";
-import { api, ApiError, assetUrl, PLACEHOLDER, qk, type DetailTab, type HospitalDetail as Detail } from "@/lib/api";
+import { api, ApiError, assetUrl, PLACEHOLDER, qk, type DetailTab, type HospitalDetail as Detail, type HospitalPage } from "@/lib/api";
 import { shareUrl } from "@/lib/clipboard";
 import ReviewList from "./ReviewList";
 import WishlistButton from "./WishlistButton";
@@ -99,10 +99,18 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
   const [hoursOpen, setHoursOpen] = useState(false);
   const showToast = useToast();
   const now = useNow();
-  const { data: h, error, isError, refetch } = useQuery({
+  const { data: h, error, isError, refetch, isPlaceholderData } = useQuery({
     queryKey: qk.hospital(id),
     queryFn: () => api.hospital(id),
     initialData: initial,
+    // Opened from a list: the card's own row (name, photo, rating, address…) paints at once; photos / features arrive with the answer.
+    placeholderData: () => {
+      for (const [, page] of qc.getQueriesData<HospitalPage>({ queryKey: ["hospitals"] })) {
+        const row = page?.items?.find((x) => x.id === id);
+        if (row) return { ...row, images: [], features: [] };
+      }
+      return undefined;
+    },
     retry: (n: number, e: unknown) => !(e instanceof ApiError && (e.status === 404 || e.status === 400)) && n < 1,
   });
   // every tab's data is fetched as soon as the page is open, so a tab opens with its content already there (no skeleton flash)
@@ -260,7 +268,8 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
             </div>
           )}
           {/* design 05-04: map right under the address (detail.php 오시는 길) */}
-          {(!!h.address || (!!h.latitude && !!h.longitude)) && <HospitalMap hospital={h} />}
+          {/* not on the list row shown first: it has no map provider, so the map would be drawn with OSM and then swapped */}
+          {!isPlaceholderData && (!!h.address || (!!h.latitude && !!h.longitude)) && <HospitalMap hospital={h} />}
           {h.introduction && (
             <>
               <h2 className={styles.secTitle}>병원소개</h2>

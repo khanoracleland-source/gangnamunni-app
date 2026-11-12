@@ -1,60 +1,94 @@
-import { get, set, del } from "idb-keyval";
+import { del, delMany, get, getMany, keys, setMany } from "idb-keyval";
 import type { PersistedClient, Persister } from "@tanstack/react-query-persist-client";
 import { hydrate, type Query, type QueryClient } from "@tanstack/react-query";
 
-/** Bump to drop every persisted cache (shape changes). The build id also invalidates it on each deploy. */
-const KEY = "sb-query-cache-v1";
-export const CACHE_BUSTER = `${process.env.NEXT_PUBLIC_BUILD_ID || "dev"}`;
+/**
+ * Bump CACHE_VERSION to drop every persisted cache: do it whenever the shape of a persisted API answer changes in a way the screens
+ * cannot read (a renamed / removed field). A deploy alone does NOT drop it any more, so the first open after a release still paints
+ * from the disk; every screen asks the server again anyway, which brings added fields in by itself.
+ */
+const CACHE_VERSION = "2";
+export const CACHE_BUSTER = CACHE_VERSION;
 export const CACHE_MAX_AGE = 24 * 60 * 60_000;
 
 /**
- * What goes to disk: public data and the member's own data. Everything that depends on WHO is signed in (the member's pages, wishlist
- * marks, likes, 응모 state, blocked authors) is PERSONAL: it is not put back into the cache at start-up. It is restored only after
- * `me` confirms that the signed-in member is the one who wrote it (restorePersonal, called by CacheGuard), so another member on the
- * same device never sees it. Not persisted at all: "me" and the payment/cancel screens (short-lived, tied to one action).
+ * What goes to disk, in three classes:
+ *  - PUBLIC (home, faq, events…): the same for everyone; restored at start-up.
+ *  - MARKED (hospital / community / event screens): public content that also carries the member's own marks (찜, likes, "my post",
+ *    응모 state). Restored at start-up so a cold start paints the tab screens at once; CacheGuard drops it as soon as `me` shows
+ *    another member or a signed-out session, and also when `me` cannot be asked at all (offline, API down).
+ *  - PRIVATE (everything under "mypage": bookings, consultations, points, profile…, and the member's own post list): NEVER put back
+ *    before `me` has confirmed that the signed-in member is the one who wrote it (restorePrivate, called by CacheGuard). While `me`
+ *    has not answered — or fails — it stays on the disk, unseen.
+ * Not persisted at all: "me" and the payment/cancel screens (short-lived, tied to one action).
  */
 const PUBLIC = new Set(["home", "reviews", "treatments", "doctors", "faq", "events", "legal", "login-options"]);
-const PERSONAL = new Set(["mypage", "hospitals", "hospital", "searchView", "community", "communityPost", "event", "reviewDetail"]);
-const PERSISTED = new Set([...PUBLIC, ...PERSONAL]);
+const MARKED = new Set(["hospitals", "hospital", "searchView", "community", "communityPost", "event", "reviewDetail"]);
+const isPrivateKey = (k: readonly unknown[]): boolean => k[0] === "mypage" || (k[0] === "community" && k[1] === "mine");
+/** Carries something of the signed-in member (marks or private data): dropped from memory when the member cannot be confirmed. */
+export const isMemberQuery = (q: Query): boolean => MARKED.has(String(q.queryKey[0])) || isPrivateKey(q.queryKey);
+
+export const shouldPersist = (q: Query): boolean =>
+  q.state.status === "success" && (PUBLIC.has(String(q.queryKey[0])) || MARKED.has(String(q.queryKey[0])) || isPrivateKey(q.queryKey));
 
 type DQuery = PersistedClient["clientState"]["queries"][number];
-let heldPersonal: DQuery[] = []; // read from disk, waiting for `me`
+interface Meta { timestamp: number; buster: string; hashes: string[] }
+const OLD_KEY = "sb-query-cache-v1"; // the former single blob: removed on the first start
+const META = "sb-qc-meta";
+const entryKey = (hash: string) => `sb-qc:${hash}`;
+let heldPrivate: DQuery[] = []; // read from the disk, waiting for `me`
 
-export const shouldPersist = (q: Query): boolean => q.state.status === "success" && PERSISTED.has(String(q.queryKey[0]));
-
-/** IndexedDB persister (async, no 5 MB localStorage cap); writes are coalesced to one per second. */
+/**
+ * IndexedDB persister (async, no 5 MB localStorage cap). One record per query plus a small index (META), so a change writes only
+ * the queries whose data changed instead of serialising the whole cache (the full hospital list alone is hundreds of rows).
+ * Writes are coalesced to one per second.
+ */
 export function createIdbPersister(): Persister {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let pending: PersistedClient | null = null;
+  let written = new Map<string, number>(); // queryHash -> dataUpdatedAt of the copy on disk
   const flush = () => {
     timer = null;
     const c = pending; pending = null;
-    if (c) set(KEY, c).catch(() => {});
+    if (!c) return;
+    const queries = c.clientState.queries;
+    // private entries still waiting for `me` are not in the cache yet: they must not be taken for removed ones and deleted from the disk
+    const live = new Set([...queries, ...heldPrivate].map((q) => q.queryHash));
+    const changed = queries.filter((q) => written.get(q.queryHash) !== q.state.dataUpdatedAt);
+    const gone = [...written.keys()].filter((h) => !live.has(h));
+    const meta: Meta = { timestamp: c.timestamp, buster: c.buster, hashes: [...live] };
+    const target = written; // a clear (removeClient) in between swaps the map: late results must not mark the new one
+    setMany([...changed.map((q): [string, unknown] => [entryKey(q.queryHash), q]), [META, meta]])
+      .then(() => { for (const q of changed) target.set(q.queryHash, q.state.dataUpdatedAt); })
+      .catch(() => {});
+    if (gone.length) delMany(gone.map(entryKey)).then(() => { for (const h of gone) target.delete(h); }).catch(() => {});
   };
   return {
-    persistClient: (c) => {
-      // personal entries still waiting for `me` must not be lost from the disk by a write that happens before it answers
-      if (heldPersonal.length) {
-        const have = new Set(c.clientState.queries.map((q) => q.queryHash));
-        c = { ...c, clientState: { ...c.clientState, queries: [...c.clientState.queries, ...heldPersonal.filter((q) => !have.has(q.queryHash))] } };
-      }
-      pending = c; if (!timer) timer = setTimeout(flush, 1000);
-    },
+    persistClient: (c) => { pending = c; if (!timer) timer = setTimeout(flush, 1000); },
     restoreClient: async () => {
       try {
-        const c = await get<PersistedClient>(KEY);
-        if (!c) return undefined;
-        heldPersonal = c.clientState.queries.filter((q) => PERSONAL.has(String(q.queryKey[0])));
-        return { ...c, clientState: { ...c.clientState, queries: c.clientState.queries.filter((q) => !PERSONAL.has(String(q.queryKey[0]))) } };
+        del(OLD_KEY).catch(() => {});
+        const meta = await get<Meta>(META);
+        if (!meta) return undefined;
+        const queries = (await getMany<DQuery>(meta.hashes.map(entryKey))).filter((q): q is DQuery => !!q);
+        written = new Map(queries.map((q) => [q.queryHash, q.state.dataUpdatedAt]));
+        heldPrivate = queries.filter((q) => isPrivateKey(q.queryKey));
+        return { timestamp: meta.timestamp, buster: meta.buster, clientState: { mutations: [], queries: queries.filter((q) => !isPrivateKey(q.queryKey)) } };
       } catch { return undefined; }
     },
-    removeClient: async () => { pending = null; heldPersonal = []; try { await del(KEY); } catch { /* private mode */ } },
+    removeClient: async () => {
+      pending = null; written = new Map(); heldPrivate = [];
+      try {
+        const all = (await keys()).filter((k): k is string => typeof k === "string" && k.startsWith("sb-qc"));
+        await delMany([...all, OLD_KEY]);
+      } catch { /* private mode */ }
+    },
   };
 }
 
-/** `me` answered and the member is the one who wrote the disk cache: put the personal entries back. Anyone else: they are dropped. */
-export function restorePersonal(qc: QueryClient, sameMember: boolean): void {
-  const held = heldPersonal; heldPersonal = [];
+/** `me` answered and the member is the one who wrote the disk cache: put the private entries back. Anyone else: they are dropped. */
+export function restorePrivate(qc: QueryClient, sameMember: boolean): void {
+  const held = heldPrivate; heldPrivate = [];
   if (!sameMember || !held.length) return;
   hydrate(qc, { mutations: [], queries: held });
 }

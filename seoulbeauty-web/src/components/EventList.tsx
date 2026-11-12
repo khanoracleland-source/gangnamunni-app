@@ -95,6 +95,7 @@ export default function EventList({ category, raffle, initial }: { category: str
     queryKey: qk.events(category, raffle),
     queryFn: () => api.events({ category, filter: raffle ? "raffle" : "" }),
     initialData: initial,
+    staleTime: 60_000, refetchOnMount: true, // rarely changes: painted from the cache and asked again only when older than this (the app-start warm-up refreshes it anyway)
   });
   return (
     <div>
