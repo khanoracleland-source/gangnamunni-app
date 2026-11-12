@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, type Hospital, normalize, qk, type HospitalListParams, type HospitalPage, type HospitalSort, type InfeedAd } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
+import { usePhpBase } from "@/lib/php";
+import { siteHref } from "@/lib/phpLink";
 import { fetchSlotTokens, observeImpressions, observeSlotImpressions, trackClick } from "@/lib/adTracking";
 import HospitalCard, { addrDistrict } from "./HospitalCard";
 import priceOn from "@/assets/icons/sort-price.png";
@@ -128,7 +129,7 @@ function josa(w: string): string {
 
 function InfeedCard({ ad, php, rounded }: { ad: InfeedAd; php: string; rounded?: boolean }) {
   const img = assetUrl(ad.imageUrl);
-  const href = ad.hospitalId ? `/hospitals/${ad.hospitalId}` : ad.linkUrl.startsWith("http") || ad.linkUrl.startsWith("/") || ad.linkUrl === "#" ? ad.linkUrl : phpUrl(php, ad.linkUrl);
+  const href = ad.hospitalId ? `/hospitals/${ad.hospitalId}` : siteHref(php, ad.linkUrl);
   const district = addrDistrict(ad.subtitle);
   const body = (
     <>

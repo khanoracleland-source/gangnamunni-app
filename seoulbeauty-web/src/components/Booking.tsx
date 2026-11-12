@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type BookingChangeInfo, type BookingContext, type BookingOption, type BookingPackage, type BookingRefusal, type BookingRequest, type NoshowInfo } from "@/lib/api";
 import { bookableDays, dday, fmtDay, formatDateTime, koTopic, parseDay, priceRange, timeSlots, won, WEEKDAYS } from "@/lib/booking";
-import { phpUrl, usePhpBase } from "@/lib/php";
+import { BASE_PATH } from "@/lib/phpLink";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import LoginPrompt from "./LoginPrompt";
 import styles from "./Booking.module.css";
@@ -101,7 +101,6 @@ function weekGrid(days: string[], today: string): string[][] {
 function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingContext; p: BookingParams; title: string; back: string; leave: () => void; change?: BookingChangeInfo }) {
   const qc = useQueryClient();
   const router = useRouter();
-  const php = usePhpBase();
   const today = ctx.now.slice(0, 10);
   const days = bookableDays(ctx.hours, today);
 
@@ -440,7 +439,7 @@ function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingConte
       {stage === "consent" && <Consent onGo={() => { consented.current = true; setStage("confirm"); }} />}
 
       {refusal && (
-        <Refusal r={refusal} php={php} hospitalId={ctx.hospital.id} onClose={closeRefusal} onProceed={proceedFlag}
+        <Refusal r={refusal} hospitalId={ctx.hospital.id} onClose={closeRefusal} onProceed={proceedFlag}
           onPickOne={() => { closeRefusal(); setSheet(true); }}
           onSplit={(names, pairs) => {
             closeRefusal();
@@ -612,8 +611,8 @@ function NoshowSheet({ info, onOk }: { info: NoshowInfo; onOk: () => void }) {
   );
 }
 
-function Refusal({ r, php, hospitalId, onClose, onProceed, onPickOne, onSplit }: {
-  r: BookingRefusal; php: string; hospitalId: number; onClose: () => void; onProceed: (k: "dup" | "rev") => void; onPickOne: () => void; onSplit: (names: string[], pairs: string[][]) => void;
+function Refusal({ r, hospitalId, onClose, onProceed, onPickOne, onSplit }: {
+  r: BookingRefusal; hospitalId: number; onClose: () => void; onProceed: (k: "dup" | "rev") => void; onPickOne: () => void; onSplit: (names: string[], pairs: string[][]) => void;
 }) {
   const ok = (close: CloseThen, pri = true) => <button type="button" className={`${styles.act} ${pri ? styles.actPri : ""}`} onClick={() => close()}>확인했어요</button>;
   switch (r.code) {
@@ -628,7 +627,7 @@ function Refusal({ r, php, hospitalId, onClose, onProceed, onPickOne, onSplit }:
     case "duplicate_booking":
       return (
         <Sheet onClose={onClose} title="이미 예약된 시술이 있어요" desc={<>같은 시술을 한 번 더 예약하시려면<br />“새로 예약”을 선택해 주세요.</>}
-          actions={(close) => <><a className={styles.act} href={phpUrl(php, `booking_change.php?booking_id=${r.existing.id}`)}>기존 예약 변경</a><button type="button" className={`${styles.act} ${styles.actPri}`} onClick={() => close(() => onProceed("dup"))}>새로 예약</button></>}>
+          actions={(close) => <><a className={styles.act} href={`${BASE_PATH}/booking?change=${r.existing.id}`}>기존 예약 변경</a><button type="button" className={`${styles.act} ${styles.actPri}`} onClick={() => close(() => onProceed("dup"))}>새로 예약</button></>}>
           <div className={styles.exist}><div className={styles.existName}>{r.existing.treatment}{r.existing.hospital_name ? ` · ${r.existing.hospital_name}` : ""}</div><div className={styles.existWhen}>{r.existing.schedule}{r.existing.status ? ` · ${r.existing.status}` : ""}</div></div>
         </Sheet>
       );

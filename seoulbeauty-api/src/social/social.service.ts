@@ -190,7 +190,7 @@ export class SocialService {
     const minted = await this.bridge.mint(mbId, 'register', false, ctx.cookie, ctx.userAgent, PHP_NAME[provider]);
     this.log.log(`[auth][social_register_success] provider=${provider}; ip=${ctx.ip}${minted.ok ? '' : '; session=failed'}`);
     if (!minted.ok) return { kind: 'redirect', to: this.loginPage('failed'), cookies: clear };
-    return { kind: 'redirect', to: '/index.php', cookies: [...clear, ...minted.setCookies] }; // the PHP home shows the welcome-point notice
+    return { kind: 'redirect', to: '/next', cookies: [...clear, ...minted.setCookies] }; // the Next.js home (the PHP home was only needed for its welcome-point notice; points are off)
   }
 
   /** GET …/social/pending: what the sign-up form shows (never the profile identifier). */

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, ApiError, assetUrl, qk, type MypageSummary } from "@/lib/api";
 import { useMe } from "@/lib/me";
 import { phpUrl, usePhpBase } from "@/lib/php";
+import { siteHref } from "@/lib/phpLink";
 import { observeImpressions, trackClick } from "@/lib/adTracking";
 import Carousel from "./Carousel";
 import LoginPrompt from "./LoginPrompt";
@@ -102,7 +103,7 @@ export default function Mypage({ initial, anon }: { initial?: MypageSummary; ano
               <Carousel auto={data.ads.autoScroll} label="광고">
                 {data.ads.items.map((ad) => {
                   const img = assetUrl(ad.imageUrl);
-                  const href = ad.linkUrl.startsWith("http") || ad.linkUrl.startsWith("/") || ad.linkUrl === "#" ? ad.linkUrl : phpUrl(php, ad.linkUrl);
+                  const href = siteHref(php, ad.linkUrl);
                   return (
                     <a key={ad.id} href={href} className={styles.ad} data-ad-id={ad.id} onClick={() => trackClick(php, ad.id, href)}>
                       {img ? (

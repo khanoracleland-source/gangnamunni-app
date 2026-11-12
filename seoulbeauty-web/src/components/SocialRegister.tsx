@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api, assetUrl } from "@/lib/api";
 import { meKey, useMe } from "@/lib/me";
-import { phpUrl, usePhpBase } from "@/lib/php";
+import { BASE_PATH } from "@/lib/phpLink";
 import styles from "./AuthPages.module.css";
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError ? (e.body?.message as string | undefined) : undefined) || fallback;
@@ -11,7 +11,6 @@ const errText = (e: unknown, fallback: string) => (e instanceof ApiError ? (e.bo
 /** plugin/social/register_member.php (Google): the profile comes from the signed cookie set by the callback; terms + name + e-mail → account. */
 export default function SocialRegister() {
   const qc = useQueryClient();
-  const php = usePhpBase();
   const me = useMe();
   const pending = useQuery({ queryKey: ["social-pending"], queryFn: () => api.socialPending(), staleTime: 0, gcTime: 0, retry: false });
   const [name, setName] = useState("");
@@ -39,8 +38,9 @@ export default function SocialRegister() {
       const r = await api.socialRegister({ name: name.trim(), email: email.trim(), agreeTerms: terms, agreePrivacy: privacy });
       if (r.loggedIn) {
         await qc.invalidateQueries({ queryKey: meKey });
-        window.location.assign(phpUrl(php, "index.php")); // full load: the new PHP session cookie must be used by every page; the home shows the welcome points
+        window.location.assign(BASE_PATH || "/"); // full load: the new PHP session cookie must be used by every page
       } else {
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full load on purpose
         window.location.assign(login);
       }
       return;

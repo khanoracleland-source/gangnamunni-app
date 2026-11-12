@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, assetUrl, formatWon, qk, type HomeAd, type HomeData } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
+import { usePhpBase } from "@/lib/php";
+import { siteHref } from "@/lib/phpLink";
+import footerLogo from "@/assets/images/logo_of_footer.png";
 import { observeImpressions, trackClick } from "@/lib/adTracking";
 import Carousel from "./Carousel";
 import SiteHeader from "./SiteHeader";
@@ -47,7 +49,7 @@ export default function Home({ initial }: { initial?: HomeData }) {
   const showAds = settings.adShowIndex && ads.length > 0;
   const adSlides = (list: HomeAd[], onFirstLoad?: (img: HTMLImageElement) => void) => list.map((ad, i) => {
     const img = assetUrl(ad.imageUrl);
-    const href = ad.linkUrl.startsWith("http") || ad.linkUrl.startsWith("/") || ad.linkUrl === "#" ? ad.linkUrl : phpUrl(php, ad.linkUrl);
+    const href = siteHref(php, ad.linkUrl);
     return (
       <a key={ad.id} href={href} className={styles.ad} data-ad-id={ad.id} onClick={() => trackClick(php, ad.id, href)}>
         {img ? (
@@ -88,7 +90,7 @@ export default function Home({ initial }: { initial?: HomeData }) {
         <section className={styles.section}>
           <Carousel auto={settings.promoAutoScroll} label="프로모션">
             {promos.map((p) => (
-              <a key={p.id} href={p.linkUrl.startsWith("http") || p.linkUrl.startsWith("/") || p.linkUrl === "#" ? p.linkUrl : phpUrl(php, p.linkUrl)} className={styles.promo} style={{ background: p.background }}>
+              <a key={p.id} href={siteHref(php, p.linkUrl)} className={styles.promo} style={{ background: p.background }}>
                 <div className={styles.promoTitle}>{p.icon ? `${p.icon} ` : ""}{p.title}</div>
                 {p.subtitle && <div className={styles.promoSub}>{p.subtitle}</div>}
               </a>
@@ -136,14 +138,14 @@ export default function Home({ initial }: { initial?: HomeData }) {
       <footer className={styles.company} aria-label="회사 정보">
         <div className={styles.companyLogo}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={phpUrl(php, "assets/images/logo_of_footer.png")} alt="서울미녀" />
+          <img src={footerLogo.src} alt="서울미녀" />
         </div>
         <p>셀럽몰 주식회사 | 대표자: 최서진</p>
         <p>서울특별시 강남구 선릉로 612, 4층(삼성동, 한일빌딩)</p>
         <p>사업자등록번호: 308-81-44202</p>
         <p>통신판매업신고: 2018-서울강남-01913호</p>
         <p>고객센터 E-mail: <a href="mailto:info@seoulbeauty.app">info@seoulbeauty.app</a></p>
-        <a className={styles.linkUnder} href={phpUrl(php, "qna.php")}>고객센터 문의하기</a>
+        <Link className={styles.linkUnder} href="/qna">고객센터 문의하기</Link>
         <nav className={styles.companyLinks} aria-label="회사 정책">
           <Link href="/terms">이용약관</Link>
           <Link href="/terms">위치기반서비스 이용약관</Link>

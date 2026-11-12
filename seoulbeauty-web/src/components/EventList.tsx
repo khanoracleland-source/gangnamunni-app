@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api, assetUrl, formatWon, qk, type EventList as Data, type EventSummary, type PageAd } from "@/lib/api";
-import { phpUrl, usePhpBase } from "@/lib/php";
+import { usePhpBase } from "@/lib/php";
+import { siteHref } from "@/lib/phpLink";
 import { observeImpressions, trackClick } from "@/lib/adTracking";
 import Carousel from "./Carousel";
 import styles from "./EventList.module.css";
@@ -67,7 +68,7 @@ function AdBanner({ ads, auto }: { ads: PageAd[]; auto: boolean }) {
       <Carousel auto={auto} intervalMs={4000} label="광고">
         {ads.map((ad, i) => {
           const img = assetUrl(ad.imageUrl);
-          const to = ad.linkUrl.startsWith("http") || ad.linkUrl.startsWith("/") || ad.linkUrl === "#" ? ad.linkUrl : phpUrl(php, ad.linkUrl);
+          const to = siteHref(php, ad.linkUrl);
           return (
             <a key={ad.id} href={to} className={styles.adLink} data-ad-id={ad.id} onClick={() => trackClick(php, ad.id, to)}>
               {img ? (

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError, api } from "@/lib/api";
 import { meKey, useMe } from "@/lib/me";
-import { phpUrl, usePhpBase } from "@/lib/php";
+import { BASE_PATH } from "@/lib/phpLink";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import styles from "./Register.module.css";
 
@@ -22,7 +22,6 @@ const NONE: Agree = { age: false, terms: false, privacy: false, marketing: false
 export default function Register() {
   const router = useRouter();
   const qc = useQueryClient();
-  const php = usePhpBase();
   const me = useMe();
   const [f, setF] = useState({ email: "", code: "", password: "", password2: "" });
   const [show, setShow] = useState({ pw: false, pw2: false });
@@ -66,7 +65,8 @@ export default function Register() {
         await qc.invalidateQueries({ queryKey: meKey });
         window.location.replace("/next/register/profile"); // full load: the new PHP session cookie must be used by every page; 이름 / 생년월일 / 휴대폰 come next
       } else {
-        window.location.assign(phpUrl(php, "auth/login.php"));
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full load on purpose
+        window.location.assign(`${BASE_PATH}/login`);
       }
       return;
     } catch (err) {
@@ -75,13 +75,13 @@ export default function Register() {
     }
     sending.current = false; setBusy(false);
   };
-  const login = phpUrl(php, "auth/login.php");
+  const login = `${BASE_PATH}/login`;
   const tick = (k: keyof Agree) => (e: React.ChangeEvent<HTMLInputElement>) => setAgree((p) => ({ ...p, [k]: e.target.checked }));
 
   return (
     <div className={styles.page}>
       <div className={styles.head}>
-        <button type="button" className={styles.back} aria-label="뒤로 가기" onClick={() => { if (window.history.length > 1) router.back(); else window.location.assign(login); }}>
+        <button type="button" className={styles.back} aria-label="뒤로 가기" onClick={() => { if (window.history.length > 1) router.back(); else router.push("/login"); }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
         </button>
       </div>

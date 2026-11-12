@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { api, assetUrl, type SearchSuggest } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
+import { nextPathFor } from "@/lib/phpLink";
 import RegionPicker from "./RegionPicker";
 import styles from "./SearchOverlay.module.css";
 
@@ -49,14 +50,10 @@ function Highlight({ text, q }: { text: string; q: string }) {
   return <>{text.slice(0, i)}<b>{text.slice(i, i + q.length)}</b>{text.slice(i + q.length)}</>;
 }
 
-/** Suggest hrefs are PHP-style; `hospitals.php?q|dosage|hid` is served by the Next list, anything else stays in PHP. */
-const NEXT_LIST_PARAMS = new Set(["q", "dosage", "hid", "treatment", "region", "sort", "category"]);
+/** Suggest hrefs are PHP-style; a page that exists in Next.js (hospital list / detail, events …) is opened there, anything else stays in PHP. */
 function mapHref(php: string, href: string): { href: string; next: boolean } {
-  const m = /^hospitals\.php(?:\?(.*))?$/.exec(href);
-  if (m) {
-    const p = new URLSearchParams(m[1] || "");
-    if ([...p.keys()].every((k) => NEXT_LIST_PARAMS.has(k))) return { href: `/hospitals${p.toString() ? `?${p}` : ""}`, next: true };
-  }
+  const next = nextPathFor(href);
+  if (next !== null) return { href: next, next: true };
   return { href: phpUrl(php, href), next: false };
 }
 

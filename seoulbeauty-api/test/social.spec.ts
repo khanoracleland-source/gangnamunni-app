@@ -245,7 +245,7 @@ describe('social controller', () => {
     process.env.SOCIAL_NEST_REGISTER = '1';
     linked = null; mockFetch({ id: 5, kakao_account: { profile: { nickname: 'Nick' }, name: '홍길동', phone_number: '+82 10-1111-2222', email: 'k@x.com' } });
     const r = await cb('kakao', stateFor('kakao')).expect(302);
-    expect(r.headers.location).toBe('/index.php');
+    expect(r.headers.location).toBe('/next');
     expect(inserted).toHaveLength(1);
     expect(inserted[0].args[0]).toBe(convertId('5', 'kakao'));
     expect(inserted[0].args[2]).toBe('홍길동');
@@ -412,7 +412,7 @@ describe('social controller', () => {
       process.env.SOCIAL_NEST_REGISTER = '1';
       linked = null; memberByEmail = { mb_id: 'sb_old', mb_intercept_date: '', mb_leave_date: '' };
       const r = await (await flow((state, nonce) => { appleTokens = { id_token: idToken({ sub: 'sub-9', email: 'New@X.com', email_verified: true, nonce }) }; return { code: 'c', state, user: JSON.stringify({ name: { firstName: '길동', lastName: '홍' }, email: 'new@x.com' }) }; })).go.expect(302);
-      expect(r.headers.location).toBe('/index.php');
+      expect(r.headers.location).toBe('/next');
       expect(inserted).toHaveLength(1);
       expect(inserted[0].args[0]).toBe(convertId('sub-9', 'apple'));
       expect(inserted[0].args[2]).toBe('홍길동');

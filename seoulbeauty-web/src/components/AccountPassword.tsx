@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import { api, ApiError, type MyProfile } from "@/lib/api";
 import { announceLogout } from "@/lib/bridge";
-import { phpUrl, usePhpBase } from "@/lib/php";
+import { BASE_PATH } from "@/lib/phpLink";
 import AccountGate from "./AccountGate";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import styles from "./MyPages.module.css";
@@ -10,7 +10,6 @@ import styles from "./MyPages.module.css";
 type Err = { field: string; message: string } | null;
 
 function Form({ profile }: { profile: MyProfile }) {
-  const php = usePhpBase();
   const [cur, setCur] = useState("");
   const [next, setNext] = useState("");
   const [again, setAgain] = useState("");
@@ -32,7 +31,8 @@ function Form({ profile }: { profile: MyProfile }) {
       await api.changePassword({ current_pw: cur, new_pw: next, new_pw_confirm: again });
       // The server ended every session of this member (this one too): drop the app's tokens and sign in again.
       announceLogout();
-      window.location.assign(phpUrl(php, "auth/login.php?pw_changed=1"));
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full load on purpose
+      window.location.assign(`${BASE_PATH}/login?pw_changed=1`);
     } catch (e) {
       setErr(e instanceof ApiError && e.status !== 401 ? { field: e.field ?? "form", message: e.message } : { field: "form", message: "변경하지 못했어요. 잠시 후 다시 시도해주세요." });
       setBusy(false);
