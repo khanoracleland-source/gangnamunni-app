@@ -84,13 +84,6 @@ function PageHead({ title, back, onBack }: { title: string; back?: string; onBac
 interface Picked { name: string; range: string; min_age: number; options: BookingOption[]; option_id: number }
 type Stage = null | "pre" | "med" | "consent" | "confirm" | "success";
 
-/** The bookable days only, seven per screen: starts at today (or the first open day), no past days and no days the hospital is closed. */
-function weekGrid(days: string[]): string[][] {
-  const weeks: string[][] = [];
-  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
-  return weeks;
-}
-
 function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingContext; p: BookingParams; title: string; back: string; leave: () => void; change?: BookingChangeInfo }) {
   const qc = useQueryClient();
   const router = useRouter();
@@ -233,21 +226,16 @@ function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingConte
   const closeRefusal = () => setRefusal(null);
   const proceedFlag = (k: "dup" | "rev") => { flags.current[k] = true; setRefusal(null); void precheckThenConfirm(); };
 
-  // 05-09 day strip: bookable days only, 7 cells per screen, snapping screen by screen; the month tabs scroll to the first screen that has a day of that month
-  const weeks = weekGrid(days);
+  // 05-09 day strip: bookable days only (from today, no closed days), 7 cells in view, scrolling freely; a month tab scrolls to the first day of that month
   const months = [...new Set(days.map((d) => d.slice(0, 7)))];
   const curMonth = date.slice(0, 7);
-  const weekRef = useRef<HTMLDivElement>(null);
-  const scrollToWeek = (i: number, behavior: ScrollBehavior) => {
-    const el = weekRef.current;
-    if (el) el.scrollTo({ left: el.clientWidth * i, behavior });
+  const stripRef = useRef<HTMLDivElement>(null);
+  const scrollToDay = (i: number, behavior: ScrollBehavior) => {
+    const el = stripRef.current;
+    if (el && i >= 0) el.scrollTo({ left: (el.clientWidth / 7) * i, behavior });
   };
-  const jumpMonth = (m: string) => {
-    const i = weeks.findIndex((w) => w.some((d) => d.slice(0, 7) === m));
-    if (i >= 0) scrollToWeek(i, "smooth");
-  };
-  const weekOfDate = weeks.findIndex((w) => w.includes(date));
-  useEffect(() => { if (weekOfDate > 0) scrollToWeek(weekOfDate, "auto"); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- the initial week only (a changed booking's date can be weeks away)
+  const jumpMonth = (m: string) => scrollToDay(days.findIndex((d) => d.slice(0, 7) === m), "smooth");
+  useEffect(() => { scrollToDay(days.indexOf(date), "auto"); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- the initial position only (a changed booking's date can be weeks away)
 
   // ---- 05-10 이대로 예약을 진행할까요? (05-11 success sheet opens over it) ----
   if (stage === "confirm" || stage === "success") {
@@ -379,22 +367,18 @@ function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingConte
             <button type="button" key={m} className={`${styles.month} ${m === curMonth ? styles.monthOn : ""}`} aria-pressed={m === curMonth} onClick={() => jumpMonth(m)}>{Number(m.slice(5))}월</button>
           ))}
         </div>
-        <div className={styles.weeks} ref={weekRef}>
-          {weeks.map((w) => (
-            <div className={styles.week} key={w[0]}>
-              {w.map((d) => {
-                const dt = parseDay(d);
-                return (
-                  <button type="button" key={d} className={`${styles.day} ${d === date ? styles.dayOn : ""}`} aria-pressed={d === date} aria-label={`${dt.getMonth() + 1}월 ${dt.getDate()}일`}
-                    onClick={() => { setDate(d); setTime(""); }}>
-                    <span className={styles.dayWd}>{WEEKDAYS[dt.getDay()]}</span>
-                    <span className={`${styles.dayNum} ${dt.getDay() === 0 ? styles.dayMuted : ""}`}>{dt.getDate()}</span>
-                    <span className={styles.dayToday}>{d === today ? "오늘" : ""}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        <div className={styles.weeks} ref={stripRef}>
+          {days.map((d) => {
+            const dt = parseDay(d);
+            return (
+              <button type="button" key={d} className={`${styles.day} ${d === date ? styles.dayOn : ""}`} aria-pressed={d === date} aria-label={`${dt.getMonth() + 1}월 ${dt.getDate()}일`}
+                onClick={() => { setDate(d); setTime(""); }}>
+                <span className={styles.dayWd}>{WEEKDAYS[dt.getDay()]}</span>
+                <span className={`${styles.dayNum} ${dt.getDay() === 0 ? styles.dayMuted : ""}`}>{dt.getDate()}</span>
+                <span className={styles.dayToday}>{d === today ? "오늘" : ""}</span>
+              </button>
+            );
+          })}
         </div>
 
         <h2 className={styles.secTitle} style={{ paddingBottom: 6 }}>예약 시간을 선택해주세요</h2>

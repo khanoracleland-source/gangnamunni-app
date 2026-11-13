@@ -33,15 +33,14 @@
 .optPrice { font-size: calc(15px * var(--fs-scale)); font-weight: 500; white-space: nowrap; }
 .splitHint { margin: 12px 0 0; padding: 12px 14px; border-radius: 12px; background: #F2EFF0; color: #4A4446; font-size: calc(13px * var(--fs-scale)); line-height: 1.5; }
 
-/* 05-09: month tabs and the day strip (open days only, from today; 7 cells a screen, snapping by screen; Sundays muted) */
+/* 05-09: month tabs and the day strip (open days only, from today; 7 cells in view, free scroll; Sundays muted) */
 .secTitle { margin: 12px 0 0; padding: 16px 20px 8px; font-size: calc(17px * var(--fs-scale)); font-weight: 700; }
 .months { display: flex; gap: 18px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
 .months::-webkit-scrollbar { display: none; }
 .month { flex-shrink: 0; font-size: calc(15px * var(--fs-scale)); color: #6B6466; white-space: nowrap; }
 .monthOn { color: #1A1718; font-weight: 700; }
-.weeks { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin: 10px 20px 0; padding: 12px 0 10px; border-top: 1px solid #ECE9EA; border-bottom: 1px solid #ECE9EA; }
+.weeks { display: flex; overflow-x: auto; scrollbar-width: none; margin: 10px 20px 0; padding: 12px 0 10px; border-top: 1px solid #ECE9EA; border-bottom: 1px solid #ECE9EA; }
 .weeks::-webkit-scrollbar { display: none; }
-.week { flex: 0 0 100%; display: flex; scroll-snap-align: start; }
 .day { flex: 0 0 calc(100% / 7); min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0; font-size: calc(15px * var(--fs-scale)); color: #1A1718; }
 .day:disabled { cursor: default; }
 .dayWd { font-size: calc(12px * var(--fs-scale)); color: #6B6466; }
