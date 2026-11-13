@@ -468,6 +468,10 @@ export const api = {
   verifyEmailCode: (code: string) => send<{ success: boolean; email: string }>("POST", "/v1/account/email/verify", { code }, 30000),
   /** ends the API's own sign-in session (sb_sid); the PHP logout that follows ends the rest */
   logout: () => send<{ success: boolean }>("POST", "/v1/auth/logout", {}, 8000),
+  /** app only (lib/pushToken.ts): the device's FCM token belongs to the signed-in member from now on */
+  registerPushToken: (b: { token: string; platform?: "android" | "ios"; device_id?: string }) => send<{ success: boolean; linked: boolean }>("POST", "/v1/app/push-token", b, 8000),
+  /** before a logout: the token stops belonging to this member (200 even when it was not theirs) */
+  unlinkPushToken: (token: string) => send<{ success: boolean }>("POST", "/v1/app/push-token/unlink", { token }, 2000),
   withdraw: (b: { reason: string; detail: string; password: string }) => send<{ success: boolean; message: string }>("POST", "/v1/account/withdraw", b, 60000),
   consultation: (id: number, ctx?: ServerCtx) => get<ConsultationDetail>(`/v1/mypage/consultations/${id}`, undefined, ctx),
   rerequestConsultation: (id: number, slot: string) => post<{ success: boolean }>(`/v1/mypage/consultations/${id}/rerequest`, { slot }),

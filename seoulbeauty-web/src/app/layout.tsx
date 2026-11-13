@@ -38,6 +38,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             channel (checked after load, it can arrive late), a WebView user agent (Android "; wv)", iOS without "Safari/") and ?app=.
             /next/api/* never runs this script, so payment returns and social callbacks on this host are unaffected. */}
         <script dangerouslySetInnerHTML={{ __html: 'try{(function(){if(location.hostname.toLowerCase()!=="hms.seoulbeauty.app")return;var ua=navigator.userAgent;var ios=/iPhone|iPad|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);if(/; wv\\)/.test(ua)||(ios&&!/Safari\\//.test(ua))||/[?&]app=/.test(location.search))return;var go=function(){if(window.FlutterBridge||document.documentElement.getAttribute("data-app"))return;location.replace("https://seoulbeauty.app"+location.pathname+location.search+location.hash)};var later=function(){setTimeout(go,300)};if(document.readyState==="complete")later();else window.addEventListener("load",later)})()}catch(e){}' }} />
+        {/* The app hands the device's FCM token to the page once per page load, right when the load finishes, and does not retry
+            (webview_bridge.dart requestFcmTokenForWebsite): the two functions must exist before React does. Keep the token and tell
+            whoever listens (lib/pushToken.ts, event "sb-push-token"). Nobody calls them in a normal browser. */}
+        <script dangerouslySetInnerHTML={{ __html: 'try{(function(){var f=function(t){if(typeof t!=="string"||!t)return;window.__sbPushToken=t;try{window.dispatchEvent(new Event("sb-push-token"))}catch(e){}};window.onTokenReceived=f;window.receiveFCMToken=f})()}catch(e){}' }} />
       </head>
       <body>
         <Providers>

@@ -8,6 +8,7 @@ import bellIcon from "@/assets/icons/bell.png";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type NotificationSettings, type SettingKey } from "@/lib/api";
 import { phpUrl, usePhpBase } from "@/lib/php";
+import { unlinkPushToken } from "@/lib/pushToken";
 import { announceLogout, inApp, onFlutterEvent, openNotificationSettings, requestNotificationStatus } from "@/lib/bridge";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import LoginPrompt from "./LoginPrompt";
@@ -71,6 +72,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
   /* The API's own session first (it may be off or already gone: either way the PHP logout below still runs), then the PHP logout
      that ends the PHP session, the remember cookies and the app's tokens and comes back to the start page. */
   const signOut = async () => {
+    await unlinkPushToken(); // app only, while the session still exists; never throws, 2 s at most
     try { await api.logout(); } catch { /* the PHP logout removes the same session (extend/sb_nest_session.extend.php) */ }
     window.location.assign(phpUrl(php, "bbs/logout.php?url=%2Fnext%2F"));
   };

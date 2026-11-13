@@ -416,3 +416,31 @@ Yechim: `SOCIAL_CALLBACK_HOSTS` dagi xost o'zining qaytish xosti bo'ladi (login 
 3. Apple Developer → Services ID `com.celebhospital.patient.public.web` → Domains: `seoulbeauty.app`; Return URLs: `https://seoulbeauty.app/next/api/v1/auth/social/apple/callback`.
 4. `.env`: `SOCIAL_CALLBACK_HOSTS=seoulbeauty.app` (ilova `seoulbeauty.app` ga ko'chgach `hms.seoulbeauty.app` ni qo'shish shart emas — u `SOCIAL_CALLBACK_BASE` orqali ishlayveradi), restart.
 Qaytarish: qiymatni bo'shatib restart.
+
+## Push token registry in Nest (ilova 2.2.0, 2026-11-13) — `APP_PUSH_TOKEN_NEST`
+
+Ilova 2.2.0 faqat Next sahifalarini ochadi, FCM tokenni `g5_push_tokens` ga esa faqat PHP sahifa skripti (`includes/header.php` → `push_fcm/get_android_regid.php`) yozardi. Endi Next ildiz layout'i tokenni Nest'ga yuboradi:
+- `POST /v1/app/push-token` `{ "token", "platform"?: "android"|"ios", "device_info"? }` → `{ "success": true, "linked": true }`
+- `POST /v1/app/push-token/unlink` `{ "token" }` → `{ "success": true }` (logout oldidan; qator o'chirilmaydi, `mb_id = ''` bo'ladi — PHP'da chiqqan holatdagi qurilma bilan bir xil; 14 kundan keyin kunlik cleanup o'chiradi)
+Yozish qoidasi PHP `includes/push_token_registry.php` niki (bir token = bir qator, `UNIQUE pt_token`; a'zoning shu platformadagi qurilma-id'siz eski tokenlari `pt_use = 0`). A'zo faqat sessiyadan. PHP endpoint tegilmagan — 2.1.x binarlar uni ishlataveradi.
+
+1. Jadvalni tekshirish (bir marta; `UNIQUE KEY pt_token` bo'lishi SHART, aks holda har yuborishda yangi qator qo'shiladi; `pt_token` `varchar(500)` bo'lgani ma'qul):
+   ```sql
+   SHOW CREATE TABLE hms_saas.g5_push_tokens\G
+   ```
+2. GRANT (avval faqat `UPDATE (pt_use, pt_platform), DELETE` berilgan):
+   ```sql
+   GRANT INSERT (mb_id, pt_token, pt_platform, pt_device_info, pt_datetime, pt_use), UPDATE (mb_id, pt_platform, pt_device_info, pt_datetime, pt_use) ON hms_saas.g5_push_tokens TO 'sb_api_ro'@'127.0.0.1';
+   GRANT INSERT (mb_id, pt_token, pt_platform, pt_device_info, pt_datetime, pt_use), UPDATE (mb_id, pt_platform, pt_device_info, pt_datetime, pt_use) ON hms_saas.g5_push_tokens TO 'sb_api_ro'@'localhost';
+   FLUSH PRIVILEGES;
+   ```
+3. `.env` → `APP_PUSH_TOKEN_NEST=1`, `systemctl restart seoulbeauty-api`. Qaytarish: qiymatni bo'shatib restart (endpointlar 404, web jim o'tkazib yuboradi; yozilgan qatorlar zararsiz qoladi).
+
+Tekshiruv:
+```bash
+# kalit o'chiq → 404
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://seoulbeauty.app/next/api/v1/app/push-token -H 'X-Requested-With: XMLHttpRequest' -H 'Content-Type: application/json' -d '{"token":"x"}'
+# kalit yoqiq, sessiyasiz → 401 {"success":false,"error":"login_required"}
+curl -s -X POST https://seoulbeauty.app/next/api/v1/app/push-token -H 'X-Requested-With: XMLHttpRequest' -H 'Content-Type: application/json' -d '{"token":"x"}'
+```
+(`X-Requested-With` siz → 403: SameOrigin himoyasi.) Ilovada kirgandan keyin: `SELECT pt_id, mb_id, pt_platform, pt_use, pt_datetime, RIGHT(pt_token, 6) FROM g5_push_tokens ORDER BY pt_datetime DESC LIMIT 5;` — yangi qator shu a'zo bilan; log: `registered android token …abc123`. GRANT yetishmasa: 503 `push_token_unavailable`, logda `register failed (…abc123): Error ER_COLUMNACCESS_DENIED_ERROR` (yoki `ER_TABLEACCESS_DENIED_ERROR`).

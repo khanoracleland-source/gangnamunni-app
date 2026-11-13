@@ -25,6 +25,7 @@ import { RegisterModule } from './register/register.module';
 import { PasswordLostModule } from './password-lost/password-lost.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { AppAuthModule } from './app-auth/app-auth.module';
+import { PushTokenModule } from './push-token/push-token.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -34,6 +35,7 @@ import { HealthController } from './health/health.controller';
     DbModule,
     AuthModule,
     AppAuthModule,
+    PushTokenModule,
     HospitalsModule,
     WishlistModule,
     ConsultationsModule,

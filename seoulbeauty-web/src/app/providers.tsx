@@ -8,6 +8,7 @@ import { fetchAllHospitals, hospitalsAllKey } from "@/lib/hospitalsAll";
 import { announceLogoutFromUrl, notifyPageChanged } from "@/lib/bridge";
 import { meKey, useMe } from "@/lib/me";
 import { countSpaNav } from "@/lib/nav";
+import { PUSH_TOKEN_EVENT, currentPushToken, forgetPushRegistration, installPushTokenSink, requestPushToken, syncPushToken } from "@/lib/pushToken";
 import { ToastProvider } from "@/components/Toast";
 import { CACHE_BUSTER, CACHE_MAX_AGE, createIdbPersister, isMemberQuery, restorePrivate, shouldPersist } from "@/lib/persist";
 
@@ -163,6 +164,29 @@ function LogoutAnnouncer() {
   return null;
 }
 
+/**
+ * Inside the app: the device's FCM token (handed over by the app, caught by the <head> script in layout.tsx) is registered for the
+ * signed-in member: at once when the member is known, after the sign-in when the token came first, again when another member signs
+ * in or the token changes. Coming back to the foreground asks the app again (a refreshed token, a failed request). A normal browser
+ * never gets a token, so nothing is sent there (lib/pushToken.ts).
+ */
+function PushTokenBridge() {
+  const me = useMe();
+  const uid = me.data ? (me.data.loggedIn ? (me.data.user?.id ?? "") : "") : undefined;
+  useEffect(() => {
+    installPushTokenSink();
+    if (uid === undefined) return;
+    if (!uid) { forgetPushRegistration(); return; }
+    const sync = () => { void syncPushToken(uid); };
+    const onVisible = () => { if (document.visibilityState === "visible") { requestPushToken(); sync(); } };
+    window.addEventListener(PUSH_TOKEN_EVENT, sync);
+    document.addEventListener("visibilitychange", onVisible);
+    if (currentPushToken()) sync(); else requestPushToken();
+    return () => { window.removeEventListener(PUSH_TOKEN_EVENT, sync); document.removeEventListener("visibilitychange", onVisible); };
+  }, [uid]);
+  return null;
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(makeClient);
   const [persister] = useState(createIdbPersister);
@@ -173,6 +197,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       persistOptions={{ persister, maxAge: CACHE_MAX_AGE, buster: CACHE_BUSTER, dehydrateOptions: { shouldDehydrateQuery: shouldPersist } }}
     >
       <CacheGuard clearDisk={clearDisk} />
+      <PushTokenBridge />
       <WarmUp />
       <Suspense fallback={null}>
         <PageChangeNotifier />
