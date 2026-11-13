@@ -48,7 +48,7 @@ export class BookingsController {
 
   @Post(':id/payment/inicis/prepare')
   @UseGuards(SameOriginGuard)
-  paymentInicisPrepare(@Param('id') id: string, @Body() body: { device?: unknown; method?: unknown }, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.inicis.prepare(member(req), idParam(id), body?.device, body?.method); }
+  paymentInicisPrepare(@Param('id') id: string, @Body() body: { device?: unknown; method?: unknown }, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.inicis.prepare(member(req), idParam(id), body?.device, body?.method, String(req.headers['x-forwarded-host'] || req.headers.host || '')); }
 
   @Get(':id/payment/success')
   paymentSuccess(@Param('id') id: string, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) { res.setHeader('Cache-Control', 'private, no-store'); return this.payment.success(member(req), idParam(id)); }

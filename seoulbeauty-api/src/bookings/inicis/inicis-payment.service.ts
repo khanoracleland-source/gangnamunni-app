@@ -6,7 +6,7 @@ import { kstNow } from '../bookings.logic';
 import { BookingPaymentService, PaymentRefused } from '../booking-payment.service';
 import { MemberNotifyService } from '../../member-notify/member-notify.service';
 import { approve, InicisFetch, InicisUnknownOutcome, netCancel } from './inicis.client';
-import { chkFake, InicisConfig, inicisAllowedFor, inicisConfig, inicisProvider, isIdc } from './inicis.config';
+import { chkFake, InicisConfig, inicisAllowedFor, inicisConfig, inicisProvider, inicisPublicBase, isIdc } from './inicis.config';
 import { PAY_DB } from './pay-db';
 
 export const INICIS_FETCH = Symbol('INICIS_FETCH');
@@ -74,12 +74,15 @@ export class InicisPaymentService {
     void fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }), signal: AbortSignal.timeout(3000), redirect: 'error' }).catch(() => undefined);
   }
 
-  private base(cfg: InicisConfig | null): string {
+  private base(cfg: Pick<InicisConfig, 'publicBase'> | null): string {
     try { return new URL(cfg?.publicBase ?? '').pathname.replace(/\/+$/, '') || ''; } catch { return '/next'; }
   }
 
-  /** POST …/payment/inicis/prepare (method: card | bank): the signed parameters for INIPayPro.requestPayment(). Nothing is written. */
-  async prepare(m: BookingMember, id: number, device: unknown, method: unknown = 'card') {
+  /**
+   * POST …/payment/inicis/prepare (method: card | bank): the signed parameters for INIPayPro.requestPayment(). Nothing is written.
+   * `host` = the host this request came in on: the customer returns to it when it is allow-listed (inicisPublicBase), else to INICIS_PUBLIC_BASE.
+   */
+  async prepare(m: BookingMember, id: number, device: unknown, method: unknown = 'card', host = '') {
     const payType = PAY_TYPES[s(method).toLowerCase() || 'card'];
     if (!payType) throw new PaymentRefused('지원하지 않는 결제 수단입니다.', 'METHOD_NOT_SUPPORTED', 400);
     const cfg = inicisConfig();
@@ -101,7 +104,8 @@ export class InicisPaymentService {
     if (!(amount > 0) || !MERCHANT_RE.test(oid) || Buffer.byteLength(oid) > 40) throw new PaymentRefused('결제 주문 정보가 올바르지 않습니다.', 'INVALID_ORDER', 409);
     const mobile = device === 'MOBILE';
     const timestamp = String(Date.now());
-    const prefix = this.base(cfg);
+    const publicBase = inicisPublicBase(cfg, host);
+    const prefix = this.base({ publicBase });
     return {
       sdkUrl: SDK_URL,
       mode: cfg.mode,
@@ -109,8 +113,8 @@ export class InicisPaymentService {
         P_MID: cfg.mid, P_OID: oid, P_PAY_TYPE: payType, P_DEVICE_TYPE: mobile ? 'MOBILE' : 'WEB', P_IDCCODE: 'Y',
         P_AMT: String(amount), P_GOODS: clipBytes(s(b.treatment).trim() || '예약 결제', 40) || '예약 결제',
         P_UNAME: clipBytes((s(b.name) || m.name || '고객').trim(), 30) || '고객',
-        P_NEXT_URL: `${cfg.publicBase}/api/v1/payments/inicis/return`,
-        P_CLOSE_URL: `${cfg.publicBase}/mypage/bookings/${id}/payment`,
+        P_NEXT_URL: `${publicBase}/api/v1/payments/inicis/return`,
+        P_CLOSE_URL: `${publicBase}/mypage/bookings/${id}/payment`,
         P_CHARSET: 'UTF-8', P_NOTI: String(id), P_TIMESTAMP: timestamp, P_CHKFAKE: chkFake(amount, oid, timestamp, cfg.hashkey),
         // iOS card apps come back through the app's URL scheme (manual: P_RESERVED app_scheme).
         P_RESERVED: JSON.stringify(mobile ? { app_scheme: `${cfg.appScheme}://payment` } : {}),

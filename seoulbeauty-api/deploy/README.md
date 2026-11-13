@@ -170,7 +170,7 @@ GRANT DELETE ON hms_saas.personal_access_tokens TO 'sb_api_ro'@'127.0.0.1';
 GRANT DELETE ON hms_saas.personal_access_tokens TO 'sb_api_ro'@'localhost';
 FLUSH PRIVILEGES;
 ```
-`.env`: `SMTP_PASSWORD=<admin@seoulbeauty.app parol>` (kerak; yo'q bo'lsa email ketmaydi va parol O'ZGARMAYDI). Ixtiyoriy: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM_NAME`, `PUBLIC_SITE_URL` (xatdagi "비밀번호 재설정하기" havolasi uchun veb-ilova manzili, `/next` bilan; default `https://hms.seoulbeauty.app/next`). Yangi npm paketlar (nodemailer, bcryptjs): deploy'da `npm ci` kerak.
+`.env`: `SMTP_PASSWORD=<admin@seoulbeauty.app parol>` (kerak; yo'q bo'lsa email ketmaydi va parol O'ZGARMAYDI). Ixtiyoriy: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_FROM_NAME`, `PUBLIC_SITE_URL` (xatdagi "비밀번호 재설정하기" havolasi uchun veb-ilova manzili, `/next` bilan; default `https://seoulbeauty.app/next`). Yangi npm paketlar (nodemailer, bcryptjs): deploy'da `npm ci` kerak.
 
 **Test bayrog'i `PASSWORD_LOST_RATE_LIMIT=off` (XAVFLI, faqat sinov):** 비밀번호 찾기 xat limitlari va vaqtinchalik parol tekshiruvi (`verify`) limitlarini o'chiradi. Bayroq faqat `NODE_ENV=development` yoki `test` bo'lgandagina ishlaydi; `production`, boshqa qiymat yoki `NODE_ENV` umuman yo'q bo'lsa (pm2, qo'lda `node dist/main.js`) **e'tiborsiz qoldiriladi**. Ishga tushishda log'da bir marta `ACTIVE` yoki `IGNORED` yoziladi. Sababi: bayroqsiz bu endpoint istalgan emailga cheksiz xat yuborib parolini almashtira oladi. Sinovdan keyin `.env` dan olib tashlang.
 
@@ -312,7 +312,7 @@ GRANT INSERT ON hms_saas.gangnamunni_payment_status_history TO 'sb_pay'@'127.0.0
 GRANT SELECT, INSERT, UPDATE (outcome, reason) ON hms_saas.gangnamunni_payment_attempts TO 'sb_pay'@'127.0.0.1';
 ```
    Check right after granting: as `sb_pay`, `SELECT id FROM gangnamunni_platform_payments WHERE id = 0 FOR UPDATE;` must work (a locking read needs UPDATE on some column).
-2. `.env` (see `.env.example`): `INICIS_MID`, `INICIS_HASHKEY` (모바일 금액위변조 Hash Key), `INICIS_MODE=test|live`, `INICIS_PUBLIC_BASE`, `INICIS_APP_SCHEME`, `DB_PAY_USER`, `DB_PAY_PASSWORD`, `PG_PAYMENTS_ENABLED=1`.
+2. `.env` (see `.env.example`): `INICIS_MID`, `INICIS_HASHKEY` (모바일 금액위변조 Hash Key), `INICIS_MODE=test|live`, `INICIS_PUBLIC_BASE` (default `https://seoulbeauty.app/next` since 2026-11-13), `INICIS_PUBLIC_HOSTS` (hosts a checkout returns to itself, default `seoulbeauty.app`; set `seoulbeauty.app,hms.seoulbeauty.app` while 2.1.x app binaries are in the stores: they start checkout on hms and must come back to hms, where their session cookie is), `INICIS_APP_SCHEME`, `DB_PAY_USER`, `DB_PAY_PASSWORD`, `PG_PAYMENTS_ENABLED=1`.
    Start with the test MID `INIpayTest` (mode `test`: rows are `provider=inicis_test`; PHP settlement cron and admin revenue pages exclude them via `booking_payment_test_providers()` (`inicis_test` is listed there — deploy that PHP change BEFORE enabling test mode on production); Inicis cancels them at midnight; KB / KakaoBank cards cannot be tested).
    `INICIS_MODE=live` refuses a test MID, and `test` refuses a real MID.
    Test mode charges real cards, so checkout is limited to `INICIS_TEST_MEMBERS` (comma separated mb_id): everyone else keeps seeing "온라인 결제 준비 중" + `결제 없이 계속하기`. Live mode uses its own list `INICIS_LIVE_MEMBERS` (empty = nobody, `*` = everyone).

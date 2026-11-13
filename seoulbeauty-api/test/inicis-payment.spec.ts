@@ -9,7 +9,7 @@ import { BookingsModule } from '../src/bookings/bookings.module';
 import { BookingPaymentService } from '../src/bookings/booking-payment.service';
 import { INICIS_FETCH } from '../src/bookings/inicis/inicis-payment.service';
 import { PAY_DB } from '../src/bookings/inicis/pay-db';
-import { chkFake, inicisConfig, inicisProvider } from '../src/bookings/inicis/inicis.config';
+import { chkFake, inicisConfig, inicisProvider, inicisPublicBase } from '../src/bookings/inicis/inicis.config';
 import { inicisHost, parseInicisBody } from '../src/bookings/inicis/inicis.client';
 import { isPgProvider, isTestProvider } from '../src/bookings/bookings.logic';
 
@@ -33,6 +33,30 @@ describe('Inicis config knobs', () => {
   });
 });
 
+describe('Inicis return host (inicisPublicBase)', () => {
+  const cfg = { publicBase: 'https://base.test/next' };
+  const hosts = (v?: string) => (v === undefined ? {} : { INICIS_PUBLIC_HOSTS: v }) as any;
+  it('an allow-listed host is its own return host; the default list is seoulbeauty.app only', () => {
+    expect(inicisPublicBase(cfg, 'seoulbeauty.app', hosts())).toBe('https://seoulbeauty.app/next');
+    expect(inicisPublicBase(cfg, 'SeoulBeauty.app:443', hosts(''))).toBe('https://seoulbeauty.app/next');
+    expect(inicisPublicBase(cfg, 'hms.seoulbeauty.app', hosts())).toBe('https://base.test/next'); // not listed by default
+    const both = hosts('seoulbeauty.app, hms.seoulbeauty.app');
+    expect(inicisPublicBase(cfg, 'hms.seoulbeauty.app', both)).toBe('https://hms.seoulbeauty.app/next'); // 2.1.x binaries start checkout on hms
+    expect(inicisPublicBase(cfg, 'seoulbeauty.app', both)).toBe('https://seoulbeauty.app/next');
+    expect(inicisPublicBase(cfg, 'seoulbeauty.app', hosts('none'))).toBe('https://base.test/next'); // a list without the host pins everything to the base
+  });
+  it('a host that is not listed is never used (no open redirect)', () => {
+    for (const bad of ['evil.test', 'seoulbeauty.app.evil.test', 'evilseoulbeauty.app', 'seoulbeauty.app@evil.test', 'seoulbeauty.app/x', 'seoulbeauty.app:8443', 'seoulbeauty.app evil.test', 'seoulbeauty.app\\evil', '.seoulbeauty.app', 'seoulbeauty.app.'])
+      expect(inicisPublicBase(cfg, bad, hosts('seoulbeauty.app,hms.seoulbeauty.app'))).toBe('https://base.test/next');
+    // a proxy chain appends: only the last entry (written by our own proxy) counts
+    expect(inicisPublicBase(cfg, 'seoulbeauty.app, evil.test', hosts())).toBe('https://base.test/next');
+    expect(inicisPublicBase(cfg, 'evil.test, seoulbeauty.app', hosts())).toBe('https://seoulbeauty.app/next');
+  });
+  it('no header keeps the configured base', () => {
+    for (const none of ['', undefined, null, 42, ['seoulbeauty.app']]) expect(inicisPublicBase(cfg, none, hosts())).toBe('https://base.test/next');
+  });
+});
+
 describe('Inicis config and helpers', () => {
   it('P_CHKFAKE is base64(sha512(amt+oid+timestamp+hashkey)) of the raw digest (the PHP sample: base64_encode(hash(sha512, .., true)))', () => {
     const hex = createHash('sha512').update('1000' + 'INIpayTest2026' + '1700000000000' + 'k').digest('hex');
@@ -44,7 +68,7 @@ describe('Inicis config and helpers', () => {
     expect(inicisConfig({ INICIS_MID: MID } as any)).toBeNull();
     const ok = inicisConfig({ INICIS_MID: MID, INICIS_HASHKEY: KEY } as any)!;
     expect(ok.mode).toBe('test');
-    expect(ok.publicBase).toBe('https://hms.seoulbeauty.app/next');
+    expect(ok.publicBase).toBe('https://seoulbeauty.app/next');
     expect(inicisProvider(ok)).toBe('inicis_test');
     expect(inicisConfig({ INICIS_MID: MID, INICIS_HASHKEY: KEY, INICIS_MODE: 'live' } as any)).toBeNull();
     expect(inicisConfig({ INICIS_MID: 'REALMID001', INICIS_HASHKEY: KEY } as any)).toBeNull(); // real MID in test mode would charge for real
@@ -164,12 +188,26 @@ describe('Inicis card payment API', () => {
     it('signs the amount and order id from the ledger, not from the client', async () => {
       const r = await prepare({ amount: 1, P_AMT: '1', device: 'WEB' }).expect(201);
       const p = r.body.params;
-      expect(p).toMatchObject({ P_MID: MID, P_OID: OID, P_AMT: '50000', P_PAY_TYPE: 'CARD', P_DEVICE_TYPE: 'WEB', P_IDCCODE: 'Y', P_CHARSET: 'UTF-8', P_NEXT_URL: 'https://hms.seoulbeauty.app/next/api/v1/payments/inicis/return', P_CLOSE_URL: 'https://hms.seoulbeauty.app/next/mypage/bookings/7/payment' });
+      expect(p).toMatchObject({ P_MID: MID, P_OID: OID, P_AMT: '50000', P_PAY_TYPE: 'CARD', P_DEVICE_TYPE: 'WEB', P_IDCCODE: 'Y', P_CHARSET: 'UTF-8', P_NEXT_URL: 'https://seoulbeauty.app/next/api/v1/payments/inicis/return', P_CLOSE_URL: 'https://seoulbeauty.app/next/mypage/bookings/7/payment' });
       expect(p.P_CHKFAKE).toBe(chkFake('50000', OID, p.P_TIMESTAMP, KEY));
       expect(p.P_TIMESTAMP).toMatch(/^\d{13}$/);
       expect(r.body.sdkUrl).toBe('https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js');
       expect(JSON.stringify(r.body)).not.toContain(KEY); // the hash key never leaves the server
       expect(wrote()).toBe(false);
+    });
+    it('returns to the host the checkout was started on when it is allow-listed, otherwise to INICIS_PUBLIC_BASE', async () => {
+      process.env.INICIS_PUBLIC_BASE = 'https://base.test/next';
+      try {
+        const urls = async (h?: string) => { const q = prepare({ device: 'MOBILE' }); if (h) q.set('X-Forwarded-Host', h); const r = await q.expect(201); return [r.body.params.P_NEXT_URL, r.body.params.P_CLOSE_URL, r.body.closePath, r.body.params.P_CHKFAKE === chkFake('50000', OID, r.body.params.P_TIMESTAMP, KEY)]; };
+        expect(await urls('seoulbeauty.app')).toEqual(['https://seoulbeauty.app/next/api/v1/payments/inicis/return', 'https://seoulbeauty.app/next/mypage/bookings/7/payment', '/next/mypage/bookings/7/payment', true]);
+        const base = ['https://base.test/next/api/v1/payments/inicis/return', 'https://base.test/next/mypage/bookings/7/payment', '/next/mypage/bookings/7/payment', true];
+        expect(await urls('hms.seoulbeauty.app')).toEqual(base); // not in the default list
+        expect(await urls('evil.test')).toEqual(base);
+        expect(await urls()).toEqual(base); // no X-Forwarded-Host: supertest's own Host (127.0.0.1:port) is not listed
+        process.env.INICIS_PUBLIC_HOSTS = 'seoulbeauty.app,hms.seoulbeauty.app';
+        expect((await urls('hms.seoulbeauty.app'))[0]).toBe('https://hms.seoulbeauty.app/next/api/v1/payments/inicis/return');
+        expect((await urls('evil.test'))[0]).toBe(base[0]);
+      } finally { delete process.env.INICIS_PUBLIC_BASE; delete process.env.INICIS_PUBLIC_HOSTS; }
     });
     it('bank transfer opens the 계좌이체 window (P_PAY_TYPE BANK); unknown methods are refused', async () => {
       const r = await prepare({ method: 'bank' }).expect(201);

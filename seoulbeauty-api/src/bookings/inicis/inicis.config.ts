@@ -34,10 +34,24 @@ export function inicisConfig(env: NodeJS.ProcessEnv = process.env): InicisConfig
   const mode: InicisMode = (env.INICIS_MODE ?? 'test').trim() === 'live' ? 'live' : 'test';
   if (mode === 'live' && isTestMid(mid, env)) return null;
   if (mode === 'test' && !isTestMid(mid, env)) return null; // a real MID in test mode would charge real money but be booked as a test row
-  const publicBase = (env.INICIS_PUBLIC_BASE ?? 'https://hms.seoulbeauty.app/next').trim().replace(/\/+$/, '');
+  const publicBase = (env.INICIS_PUBLIC_BASE ?? 'https://seoulbeauty.app/next').trim().replace(/\/+$/, '');
   if (!/^https:\/\//.test(publicBase)) return null; // Android blocks an http P_NEXT_URL, and card data must not cross plain http
   const timeoutMs = Math.min(30_000, Math.max(3_000, Number(env.INICIS_TIMEOUT_MS) || 10_000));
   return { mid, hashkey, mode, publicBase, appScheme: (env.INICIS_APP_SCHEME ?? 'wellness').trim(), timeoutMs };
+}
+
+/**
+ * The public base of ONE checkout: where Inicis sends the customer back (P_NEXT_URL, P_CLOSE_URL). The session cookie is host-only, so the
+ * return must land on the host the payment was started on. `host` is that request's X-Forwarded-Host / Host; it is used ONLY when it is in
+ * INICIS_PUBLIC_HOSTS (comma separated, default `seoulbeauty.app`) and then as `https://<host>/next`. Any other host, a missing header or
+ * a malformed one keeps cfg.publicBase (INICIS_PUBLIC_BASE): a request header never becomes a redirect target by itself.
+ * A proxy chain appends to X-Forwarded-Host, so the last entry (the one our own proxy wrote) is the one that counts.
+ */
+export function inicisPublicBase(cfg: Pick<InicisConfig, 'publicBase'>, host: unknown, env: NodeJS.ProcessEnv = process.env): string {
+  const h = (typeof host === 'string' ? host : '').split(',').pop()!.trim().toLowerCase().replace(/:443$/, '');
+  if (!/^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$/.test(h)) return cfg.publicBase;
+  const allowed = ((env.INICIS_PUBLIC_HOSTS ?? '').trim() || 'seoulbeauty.app').toLowerCase().split(',').map((v) => v.trim()).filter(Boolean);
+  return allowed.includes(h) ? `https://${h}/next` : cfg.publicBase;
 }
 
 /** Ledger provider value (gangnamunni_platform_payments.provider): test rows are excluded from settlement. */

@@ -68,7 +68,7 @@ export class PasswordLostService {
     }
     const mb = list[0];
     const plain = temporaryPassword(12);
-    const link = `${(process.env.PUBLIC_SITE_URL || 'https://hms.seoulbeauty.app/next').replace(/\/+$/, '')}/password-reset`;
+    const link = `${(process.env.PUBLIC_SITE_URL || 'https://seoulbeauty.app/next').replace(/\/+$/, '')}/password-reset`;
     const { subject, html } = resetMail(s(config.cf_title) || '서울미녀', s(mb.mb_name), plain, link);
 
     if (!this.db.getConnection) throw new Error('pool connection needed');
