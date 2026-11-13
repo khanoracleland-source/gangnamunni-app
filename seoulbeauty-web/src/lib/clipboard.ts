@@ -14,8 +14,9 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 /**
- * The link to share for a page. The app's WebView runs on hms.seoulbeauty.app, but a shared link must always be on the public
- * domain (seoulbeauty.app serves the same pages), so the app host is swapped; path, query and hash are kept.
+ * The link to share for a page: always on the public domain (seoulbeauty.app), which is also the host the app's verified links
+ * (App Links / Universal Links, /next/*) are registered for. App 2.2.0+ already runs there; older app builds (2.1.x) still run
+ * on hms.seoulbeauty.app, so that host is swapped (recognised only, never requested); path, query and hash are kept.
  */
 export function shareUrl(href: string = window.location.href): string {
   return href.replace(/^https?:\/\/hms\.seoulbeauty\.app(?=[:/?#]|$)/i, "https://seoulbeauty.app");

@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react";
 
 /**
  * Where the PHP site lives relative to the current origin.
- * Default "/" for every host (seoulbeauty.app and the app's hms.seoulbeauty.app).
+ * Default "/" for every host (seoulbeauty.app; older app builds still use hms.seoulbeauty.app).
  * Override per host with NEXT_PUBLIC_PHP_PATHS='{"host":"/path/"}' if that ever changes.
  * Same-origin links keep the WebView on its trusted host and keep PHP session cookies.
  */
