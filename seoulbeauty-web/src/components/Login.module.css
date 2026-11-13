@@ -14,7 +14,7 @@
 .email { background: #230306; border-color: #230306; color: #fff; }
 .err { padding: 12px 14px; background: #FDECEE; color: #AC1830; font-size: calc(14px * var(--fs-scale, 1)); }
 .ok { padding: 14px; background: #EAF6EE; color: #16603A; font-size: calc(14px * var(--fs-scale, 1)); line-height: 1.7; }
-.links { padding-top: 40px; display: flex; justify-content: center; align-items: center; gap: 16px; font-size: calc(15px * var(--fs-scale, 1)); }
+.links { padding-top: 40px; display: flex; justify-content: center; align-items: center; gap: 16px; font-size: calc(14px * var(--fs-scale, 1)); }
 .links a { color: #1A1718; text-decoration: none; }
 .links i { width: 1px; height: 12px; background: #DCD6D8; }
 .notice { margin-top: auto; padding: 32px 20px 40px; font-size: calc(12px * var(--fs-scale, 1)); line-height: 1.6; color: #4A4446; }
