@@ -132,3 +132,8 @@ _secrets_quarantine/
 # 루트의 임시 스크래치/배포 아카이브
 /.*.tgz
 /.*.tsx
+
+# AI yordamchi (Claude) fayllari — gitga tushmasin
+*claude*
+*Claude*
+*CLAUDE*
