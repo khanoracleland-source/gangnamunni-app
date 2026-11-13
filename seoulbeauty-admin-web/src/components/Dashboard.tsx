@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminShell from "./AdminShell";
 import Delta from "./Delta";
+import HelpDialog from "./HelpDialog";
 import Icon, { type IconName } from "./Icon";
-import StatCard, { StatCardSkeleton } from "./StatCard";
+import Metric, { MetricSkeleton, type MetricId } from "./Metric";
 import { ErrorScreen, ForbiddenScreen, RedirectingScreen, type ErrorKind } from "./StateScreens";
 import { fetchMe, fetchSummary, type Admin, type DashboardSummary } from "@/lib/api";
 import { PHP_ADMIN_URL, REFRESH_INTERVAL_MS } from "@/lib/config";
 import { formatClock, formatNumber, formatPercent, percentOf } from "@/lib/format";
+import type { MessageKey } from "@/lib/i18n";
+import { useT } from "@/lib/locale";
 
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "error";
 type Period = "d7" | "d30";
@@ -29,9 +32,11 @@ const INITIAL: State = { phase: "loading", errorKind: "network", admin: null, su
 const errorKindOf = (status: number): ErrorKind => (status === 404 ? "disabled" : status === 503 ? "session" : "network");
 
 export default function Dashboard() {
+  const t = useT();
   const [state, setState] = useState<State>(INITIAL);
   const [busy, setBusy] = useState(false);
   const [period, setPeriod] = useState<Period>("d7");
+  const [help, setHelp] = useState<MetricId | null>(null);
   const inFlight = useRef(false);
   const lastLoadAt = useRef(0);
   // 401 / 403 are final for this page view: stop asking.
@@ -114,121 +119,184 @@ export default function Dashboard() {
 
   const { phase, admin, summary, updatedAt, stale } = state;
   const canRefresh = phase === "ready" || phase === "error";
-
-  const actions = (
-    <>
-      <span className={stale ? "updated updated--stale" : "updated"} title={summary?.generatedAt ? `집계 시각 ${summary.generatedAt} (KST)` : undefined}>
-        {stale ? (
-          <>
-            <span aria-hidden="true">⚠ </span>업데이트 실패 ·{" "}
-          </>
-        ) : null}
-        마지막 업데이트 {updatedAt ? formatClock(updatedAt) : "--:--:--"}
-      </span>
-      {stale ? <span className="sr-only" role="alert">대시보드 업데이트에 실패했습니다</span> : null}
-      <button type="button" className="btn btn--warning" onClick={refresh} disabled={!canRefresh || busy} aria-label="대시보드 새로고침">
-        <Icon name="refresh" className={busy ? "is-spinning" : undefined} />
-        새로고침
-      </button>
-    </>
-  );
+  const days = period === "d7" ? 7 : 30;
 
   return (
-    <AdminShell admin={admin} title="대시보드" description="전체 현황을 한눈에 확인합니다." icon="gauge" actions={actions}>
+    <AdminShell
+      admin={admin}
+      title={t("page.title")}
+      description={t("page.desc")}
+      icon="gauge"
+      intro={<PageIntro />}
+    >
+      <div className="toolbar">
+        <div className="toolbar__period">
+          <span id="period-label" className="toolbar__label">{t("period.label")}</span>
+          <div className="segmented" role="group" aria-labelledby="period-label">
+            {(["d7", "d30"] as const).map((p) => (
+              <button key={p} type="button" className={p === period ? "segmented__btn is-active" : "segmented__btn"} aria-pressed={p === period} onClick={() => setPeriod(p)}>
+                {t(`period.${p}`)}
+              </button>
+            ))}
+          </div>
+          <span className="toolbar__hint">{t("period.hint")}</span>
+        </div>
+        <div className="toolbar__refresh">
+          <span className={stale ? "updated updated--stale" : "updated"} title={summary?.generatedAt ? t("updated.title", { at: summary.generatedAt }) : undefined}>
+            {stale && updatedAt
+              ? t("updated.failed", { time: formatClock(updatedAt) })
+              : updatedAt
+                ? t("updated", { time: formatClock(updatedAt) })
+                : t("updated.none")}
+          </span>
+          {stale ? <span className="sr-only" role="alert">{t("updated.failedAlert")}</span> : null}
+          <button type="button" className="btn btn--secondary" onClick={refresh} disabled={!canRefresh || busy} aria-label={t("refresh.aria")}>
+            <Icon name="refresh" className={busy ? "is-spinning" : undefined} />
+            {t("refresh")}
+          </button>
+        </div>
+      </div>
+
       {phase === "loading" ? <LoadingView /> : null}
       {phase === "redirecting" ? <RedirectingScreen /> : null}
       {phase === "forbidden" ? <ForbiddenScreen /> : null}
       {phase === "error" ? <ErrorScreen kind={state.errorKind} onRetry={refresh} retrying={busy} /> : null}
-      {phase === "ready" && summary ? <SummaryView summary={summary} period={period} onPeriod={setPeriod} /> : null}
+      {phase === "ready" && summary ? <SummaryView summary={summary} period={period} onHelp={setHelp} /> : null}
+
+      <HelpDialog metric={help} days={days} onClose={() => setHelp(null)} />
     </AdminShell>
   );
 }
 
-function SectionHead({ id, icon, title, children }: { id: string; icon: IconName; title: string; children?: React.ReactNode }) {
+/** "이 화면은 무엇인가요?": closed by default, so the numbers stay the first thing on the page. */
+function PageIntro() {
+  const t = useT();
+  const items: { q: MessageKey; a: MessageKey }[] = [
+    { q: "page.help.what", a: "page.help.whatBody" },
+    { q: "page.help.refresh", a: "page.help.refreshBody" },
+    { q: "page.help.period", a: "page.help.periodBody" },
+    { q: "page.help.compare", a: "page.help.compareBody" },
+    { q: "page.help.question", a: "page.help.questionBody" },
+  ];
   return (
-    <div className="section__head">
-      <h2 id={id} className="section__title">
-        <Icon name={icon} size={16} />
-        {title}
-      </h2>
-      {children}
-    </div>
+    <details className="intro">
+      <summary className="intro__summary">
+        <Icon name="info" size={18} />
+        <span>{t("page.help.toggle")}</span>
+        <Icon name="chevronUp" size={12} className="intro__chevron" />
+      </summary>
+      <dl className="intro__list">
+        {items.map((item) => (
+          <div key={item.q} className="intro__item">
+            <dt>{t(item.q)}</dt>
+            <dd>{t(item.a)}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   );
 }
 
-const PERIODS: { id: Period; days: number }[] = [
-  { id: "d7", days: 7 },
-  { id: "d30", days: 30 },
-];
+function Section({ id, icon, title, desc, children }: { id: string; icon: IconName; title: string; desc: string; children: React.ReactNode }) {
+  return (
+    <section className="section" aria-labelledby={id}>
+      <div className="section__head">
+        <h2 id={id} className="section__title">
+          <Icon name={icon} size={20} />
+          {title}
+        </h2>
+        <p className="section__desc">{desc}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
 
-function SummaryView({ summary, period, onPeriod }: { summary: DashboardSummary; period: Period; onPeriod: (p: Period) => void }) {
+function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; period: Period; onHelp: (id: MetricId) => void }) {
+  const t = useT();
   const { members, catalog } = summary;
   const days = period === "d7" ? 7 : 30;
   const b = summary.bookings[period];
   const consultations = summary.consultations[period];
   const cancelRate = percentOf(b.cancelled, b.count);
 
+  // An admin who is also a member must be counted once: overall = members + admins - those who are both.
+  const both = Math.min(members.adminsAlsoMembers, members.total, members.admins);
+  const all = members.total + members.admins - both;
+  const general = members.total - both;
+  const signups = period === "d7" ? members.last7d : members.last30d;
+
   return (
     <>
-      <section className="section" aria-labelledby="sec-members">
-        <SectionHead id="sec-members" icon="people" title="회원" />
-        <div className="stat-grid">
-          <StatCard index={0} label="총 회원 수" value={formatNumber(members.total)} unit="명" note="탈퇴 회원 제외" />
-          <StatCard index={1} label="오늘 신규" value={formatNumber(members.today)} unit="명" note="오늘 가입한 회원" />
-          <StatCard index={2} label="7일 신규" value={formatNumber(members.last7d)} unit="명" note="최근 7일 가입" />
-          <StatCard index={3} label="30일 신규" value={formatNumber(members.last30d)} unit="명" note="최근 30일 가입" />
+      <Section id="sec-members" icon="people" title={t("sec.members")} desc={t("sec.members.desc")}>
+        <div className="grid grid--members">
+          <Metric
+            hero
+            id="all"
+            value={formatNumber(all)}
+            unit="person"
+            note={members.admins > 0 ? t("m.all.note", { n: formatNumber(members.admins) }) : t("m.all.noteNone")}
+            onHelp={onHelp}
+          />
+          <Metric id="general" value={formatNumber(general)} unit="person" note={t("m.general.note")} onHelp={onHelp} />
+          <Metric id="withdrawn" value={formatNumber(members.withdrawn)} unit="person" note={t("m.withdrawn.note")} onHelp={onHelp} />
+          <Metric id="today" value={formatNumber(members.today)} unit="person" note={t("m.today.note")} onHelp={onHelp} />
+          <Metric id="signup" value={formatNumber(signups)} unit="person" note={t("m.signup.note", { days })} onHelp={onHelp} />
         </div>
-      </section>
+      </Section>
 
-      <section className="section" aria-labelledby="sec-bookings">
-        <SectionHead id="sec-bookings" icon="calendar" title="예약">
-          <div className="segmented" role="group" aria-label="집계 기간">
-            {PERIODS.map((p) => (
-              <button key={p.id} type="button" className={p.id === period ? "segmented__btn is-active" : "segmented__btn"} aria-pressed={p.id === period} onClick={() => onPeriod(p.id)}>
-                {p.days}일
-              </button>
-            ))}
-          </div>
-        </SectionHead>
-        <div className="stat-grid">
-          <StatCard index={0} label="예약 건수" value={formatNumber(b.count)} unit="건" note={<Delta current={b.count} previous={b.prev.count} days={days} />} />
-          <StatCard index={1} label="예약 금액" value={formatNumber(b.amount)} unit="원" note={<Delta current={b.amount} previous={b.prev.amount} days={days} />} />
-          <StatCard index={2} label="결제 금액(순)" value={formatNumber(b.paidAmount)} unit="원" note={<Delta current={b.paidAmount} previous={b.prev.paidAmount} days={days} />} />
-          <StatCard index={3} label="환불 금액" value={formatNumber(b.refundedAmount)} unit="원" note={`최근 ${days}일 결제분 환불`} />
-          <StatCard index={4} label="취소 건수" value={formatNumber(b.cancelled)} unit="건" note={`취소율 ${formatPercent(cancelRate)}`} />
-          <StatCard index={5} label="승인 대기" value={formatNumber(b.pending)} unit="건" note="확정을 기다리는 예약" />
-          <StatCard index={6} label="상담 신청" value={formatNumber(consultations)} unit="건" note={`최근 ${days}일 신청`} />
+      <Section id="sec-bookings" icon="calendar" title={t("sec.bookings")} desc={t("sec.bookings.desc")}>
+        <div className="grid">
+          <Metric id="bookCount" value={formatNumber(b.count)} unit="case" note={<Delta current={b.count} previous={b.prev.count} days={days} />} onHelp={onHelp} />
+          <Metric id="bookAmount" value={formatNumber(b.amount)} unit="won" note={<Delta current={b.amount} previous={b.prev.amount} days={days} />} onHelp={onHelp} />
+          <Metric id="bookPaid" value={formatNumber(b.paidAmount)} unit="won" note={<Delta current={b.paidAmount} previous={b.prev.paidAmount} days={days} />} onHelp={onHelp} />
+          <Metric id="bookRefund" value={formatNumber(b.refundedAmount)} unit="won" note={t("m.bookRefund.note", { days })} onHelp={onHelp} />
+          <Metric
+            id="bookCancel"
+            value={formatNumber(b.cancelled)}
+            unit="case"
+            note={cancelRate === null ? t("m.bookCancel.noteNone") : t("m.bookCancel.note", { rate: formatPercent(cancelRate) })}
+            onHelp={onHelp}
+          />
+          <Metric id="bookPending" value={formatNumber(b.pending)} unit="case" note={t("m.bookPending.note")} onHelp={onHelp} />
+          <Metric id="consult" value={formatNumber(consultations)} unit="case" note={t("m.consult.note", { days })} onHelp={onHelp} />
         </div>
-      </section>
+      </Section>
 
-      <section className="section" aria-labelledby="sec-hospitals">
-        <SectionHead id="sec-hospitals" icon="hospital" title="병원" />
-        <div className="stat-grid">
-          <StatCard index={0} label="등록 병원 수" value={formatNumber(catalog.hospitals)} unit="곳" note={`승인 대기 ${formatNumber(catalog.hospitalsPending)}곳`} />
-          <StatCard index={1} label="의사 수" value={formatNumber(catalog.doctors)} unit="명" note="활동 중인 의사" />
-          <StatCard index={2} label="시술 수" value={formatNumber(catalog.treatments)} unit="개" note="노출 중인 시술" />
+      <Section id="sec-hospitals" icon="hospital" title={t("sec.hospitals")} desc={t("sec.hospitals.desc")}>
+        <div className="grid">
+          <Metric id="hospitals" value={formatNumber(catalog.hospitals)} unit="place" note={t("m.hospitals.note", { n: formatNumber(catalog.hospitalsPending) })} onHelp={onHelp} />
+          <Metric id="doctors" value={formatNumber(catalog.doctors)} unit="person" note={t("m.doctors.note")} onHelp={onHelp} />
+          <Metric id="treatments" value={formatNumber(catalog.treatments)} unit="item" note={t("m.treatments.note")} onHelp={onHelp} />
         </div>
-      </section>
+      </Section>
     </>
   );
 }
 
 /** Same sections and card boxes as the real page, so nothing jumps when the numbers arrive. */
 function LoadingView() {
-  const rows: { id: string; icon: IconName; title: string; cards: number }[] = [
-    { id: "members", icon: "people", title: "회원", cards: 4 },
-    { id: "bookings", icon: "calendar", title: "예약", cards: 7 },
-    { id: "hospitals", icon: "hospital", title: "병원", cards: 3 },
+  const t = useT();
+  const rows: { id: string; icon: IconName; title: MessageKey; desc: MessageKey; cards: number; hero?: boolean }[] = [
+    { id: "members", icon: "people", title: "sec.members", desc: "sec.members.desc", cards: 5, hero: true },
+    { id: "bookings", icon: "calendar", title: "sec.bookings", desc: "sec.bookings.desc", cards: 7 },
+    { id: "hospitals", icon: "hospital", title: "sec.hospitals", desc: "sec.hospitals.desc", cards: 3 },
   ];
   return (
     <div role="status" aria-busy="true">
-      <span className="sr-only">대시보드를 불러오는 중입니다</span>
+      <span className="sr-only">{t("loading")}</span>
       {rows.map((row) => (
         <div key={row.id} className="section" aria-hidden="true">
-          <SectionHead id={`skeleton-${row.id}`} icon={row.icon} title={row.title} />
-          <div className="stat-grid">
+          <div className="section__head">
+            <h2 className="section__title">
+              <Icon name={row.icon} size={20} />
+              {t(row.title)}
+            </h2>
+            <p className="section__desc">{t(row.desc)}</p>
+          </div>
+          <div className={row.hero ? "grid grid--members" : "grid"}>
             {Array.from({ length: row.cards }, (_, i) => (
-              <StatCardSkeleton key={i} index={i} />
+              <MetricSkeleton key={i} hero={row.hero && i === 0} />
             ))}
           </div>
         </div>

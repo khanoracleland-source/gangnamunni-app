@@ -15,7 +15,18 @@ export type BookingPeriod = {
 export type DashboardSummary = {
   /** "YYYY-MM-DD HH:MM:SS", KST */
   generatedAt: string;
-  members: { total: number; today: number; last7d: number; last30d: number };
+  members: {
+    total: number;
+    today: number;
+    last7d: number;
+    last30d: number;
+    /** accounts that left the app (not counted in total) */
+    withdrawn: number;
+    /** active admin accounts */
+    admins: number;
+    /** how many of those admins are also a current member (counted once in the overall figure) */
+    adminsAlsoMembers: number;
+  };
   bookings: { d7: BookingPeriod; d30: BookingPeriod };
   consultations: { d7: number; d30: number };
   catalog: { hospitals: number; hospitalsPending: number; doctors: number; treatments: number };
@@ -85,7 +96,15 @@ export async function fetchSummary(signal?: AbortSignal): Promise<ApiResult<Dash
     ok: true,
     data: {
       generatedAt: str(d.generatedAt),
-      members: { total: num(members.total), today: num(members.today), last7d: num(members.last7d), last30d: num(members.last30d) },
+      members: {
+        total: num(members.total),
+        today: num(members.today),
+        last7d: num(members.last7d),
+        last30d: num(members.last30d),
+        withdrawn: num(members.withdrawn),
+        admins: num(members.admins),
+        adminsAlsoMembers: num(members.adminsAlsoMembers),
+      },
       bookings: { d7: bookingPeriod(bookings.d7), d30: bookingPeriod(bookings.d30) },
       consultations: { d7: num(consultations.d7), d30: num(consultations.d30) },
       catalog: {
