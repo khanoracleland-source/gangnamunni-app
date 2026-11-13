@@ -1,8 +1,8 @@
 /* The bottom sheet standard (claude/modal-bottom-sheet-standard): dim .45, 0.4 s in/out, grip 40×4, radius 16, above the tab bar */
 .dim { position: fixed; inset: 0; z-index: 1000; background: rgba(26,23,24,.45); display: flex; align-items: flex-end; justify-content: center; overscroll-behavior: contain; animation: dimIn .4s ease-out both; }
 .sheet { position: relative; box-sizing: border-box; width: 100%; max-width: 640px; max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; background: #fff; color: #1A1718; border-radius: 16px 16px 0 0; padding-bottom: max(20px, var(--sab)); animation: sheetUp .4s cubic-bezier(.2,.8,.2,1) both; will-change: transform; word-break: keep-all; text-wrap: pretty; }
-/* tall touch target around the 40x4 grip */
-.gripZone { height: 36px; display: flex; justify-content: center; align-items: center; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+/* tall touch target around the 40x4 grip; pinned to the top of the sheet while its content scrolls */
+.gripZone { position: sticky; top: 0; z-index: 2; background: #fff; border-radius: 16px 16px 0 0; height: 36px; display: flex; justify-content: center; align-items: center; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
 .gripZone:active { cursor: grabbing; }
 .grip { width: 40px; height: 4px; border-radius: 2px; background: #1A1718; }
 /* decision sheet: same top spacing as the grip zone, nothing to drag */

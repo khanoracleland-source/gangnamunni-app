@@ -432,6 +432,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $contact_phone = trim($_POST['contact_phone'] ?? '');
             $website = trim($_POST['website'] ?? '');
             $sns_url = trim($_POST['sns_url'] ?? '');
+            // 카카오톡 채널 (선택): 값이 있으면 앱 상담 신청서에 '카카오톡 채널' 상담 방법이 표시된다
+            $kakao_channel_url = trim($_POST['kakao_channel_url'] ?? '');
             $normalize_json_list = function($raw) {
                 $raw = trim($raw);
                 if ($raw === '') return '[]';
@@ -463,6 +465,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $error = '병원 ID와 이름은 필수입니다.';
             } elseif ($phone !== '' && ($duplicate_phone_hospital = hospital_phone_find_duplicate($connect, $phone, $hospital_id))) {
                 $error = "이미 '{$duplicate_phone_hospital['name']}' 병원에서 사용 중인 전화번호입니다.";
+            } elseif ($kakao_channel_url !== '' && (!preg_match('#^https?://#i', $kakao_channel_url) || strlen($kakao_channel_url) > 255)) {
+                $error = '카카오톡 채널 URL은 http(s)://로 시작하는 255자 이내 주소여야 합니다. (예: https://pf.kakao.com/_xxxxx/chat)';
             } else {
                 $stmt = mysqli_prepare($connect,
                     "UPDATE gangnamunni_hospitals SET name=?, owner_name=?, business_number=?, introduction=?, address=?, phone=?, email=?, contact_name=?, contact_phone=?, website=?, sns_url=?, categories=?, badges=?, treatment_tags=?, subway_names=?, business_hours=?, latitude=?, longitude=?, show_rating=?, ad_grade=?, updated_at=NOW() WHERE id=?"
@@ -483,6 +487,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $error = 'Bind Param 실패: ' . $err_msg;
                     } elseif (mysqli_stmt_execute($stmt)) {
                         $message = "병원 '{$name}' 정보가 수정되었습니다.";
+                        $kakao_col = mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospitals LIKE 'kakao_channel_url'");
+                        if ($kakao_col && mysqli_num_rows($kakao_col) > 0) {
+                            $stmt_kakao = mysqli_prepare($connect, "UPDATE gangnamunni_hospitals SET kakao_channel_url = NULLIF(?, '') WHERE id = ?");
+                            if ($stmt_kakao) {
+                                mysqli_stmt_bind_param($stmt_kakao, 'si', $kakao_channel_url, $hospital_id);
+                                if (!mysqli_stmt_execute($stmt_kakao)) {
+                                    error_log("[admin_hospitals #24] kakao_channel_url 저장 실패: " . mysqli_stmt_error($stmt_kakao) . " / hospital_id={$hospital_id}");
+                                    // 성공 메시지가 남아 있으면 아래에서 msg만 들고 리다이렉트되어 오류가 사라진다
+                                    $message = '';
+                                    $error = "병원 '{$name}' 정보는 수정되었지만 카카오톡 채널 URL 저장에 실패했습니다.";
+                                }
+                                mysqli_stmt_close($stmt_kakao);
+                            }
+                        } elseif ($kakao_channel_url !== '') {
+                            $message = '';
+                            $error = "병원 '{$name}' 정보는 수정되었지만 카카오톡 채널 URL을 저장할 컬럼이 없습니다. sql/hospital_kakao_channel_20261113.sql을 먼저 적용해주세요.";
+                        }
                     } else {
                         $err_msg = mysqli_error($connect);
                         error_log("[admin_hospitals #24] Execute 실패: {$err_msg} / hospital_id={$hospital_id}");
@@ -1002,6 +1023,12 @@ $edit_json_list_value = static function ($raw) {
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">SNS URL</label>
                     <input type="url" name="sns_url" class="form-control form-control-sm" value="<?php echo htmlspecialchars($hospital['sns_url'] ?? ''); ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">카카오톡 채널 URL <span class="text-muted fw-normal">(선택)</span></label>
+                    <input type="url" name="kakao_channel_url" class="form-control form-control-sm" maxlength="255" placeholder="https://pf.kakao.com/_xxxxx/chat"
+                           value="<?php echo htmlspecialchars($hospital['kakao_channel_url'] ?? ''); ?>">
+                    <div class="form-text small">입력하면 앱 상담 신청서에 '카카오톡 채널' 상담 방법이 표시됩니다. 비워두면 전화·방문 상담만 표시됩니다.</div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold small">광고 등급</label>
@@ -1785,6 +1812,10 @@ $application_assets = [
                     <div class="col-md-6">
                         <div class="hospital-detail-label">SNS</div>
                         <div class="hospital-detail-value"><?php if (!empty($hospital['sns_url'])): ?><a href="<?= htmlspecialchars($hospital['sns_url']) ?>" target="_blank"><?= htmlspecialchars($hospital['sns_url']) ?></a><?php else: ?>-<?php endif; ?></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="hospital-detail-label">카카오톡 채널</div>
+                        <div class="hospital-detail-value"><?php if (!empty($hospital['kakao_channel_url'])): ?><a href="<?= htmlspecialchars($hospital['kakao_channel_url']) ?>" target="_blank" rel="noopener"><?= htmlspecialchars($hospital['kakao_channel_url']) ?></a><?php else: ?>-<?php endif; ?></div>
                     </div>
                     <div class="col-12">
                         <div class="hospital-detail-label">병원 소개</div>

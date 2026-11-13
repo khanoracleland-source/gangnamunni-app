@@ -5,6 +5,7 @@ export type StatusTone = 'danger' | 'muted' | 'dark';
 /** consult_status_view(): label + tone (the colours are the client's business). */
 export function consultStatus(st: unknown): { label: string; tone: StatusTone } {
   switch (String(st ?? '')) {
+    case 'approved': return { label: '상담 확정', tone: 'dark' };   // the hospital accepted the request (a visit: its day and time)
     case 'contact_failed': return { label: '연락 실패', tone: 'danger' };
     case 'completed': return { label: '상담 완료', tone: 'muted' };
     case 'rejected': return { label: '상담 불가', tone: 'muted' };

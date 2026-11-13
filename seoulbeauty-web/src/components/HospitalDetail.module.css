@@ -2,8 +2,10 @@
 .root { padding-bottom: 96px; }
 .top { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; height: 52px; padding: 0 8px; background: var(--bg); }
 .back { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: #1A1718; flex: 0 0 44px; }
-.topBtn { width: 44px; height: 44px; flex: 0 0 44px; display: flex; align-items: center; justify-content: center; }
-.topBtn img { display: block; }
+.topSpacer { width: 44px; height: 44px; flex: 0 0 44px; }
+/* share sits beside the wishlist star (both 22px icons, 14px apart); the padding only widens the touch area */
+.shareBtn { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; padding: 11px 0; margin: -11px 0; line-height: 1; }
+.shareBtn img { display: block; width: 22px; height: 22px; object-fit: contain; }
 .title { flex: 1; min-width: 0; text-align: center; font-size: calc(17px * var(--fs-scale)); font-weight: 500; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tabs { position: sticky; top: 52px; z-index: 9; display: flex; background: var(--bg); border-bottom: 1px solid #DCD6D8; }
 .tab { flex: 1 1 0; height: 46px; font-size: calc(15px * var(--fs-scale)); color: #1A1718; }

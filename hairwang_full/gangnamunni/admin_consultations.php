@@ -289,8 +289,21 @@ require_once __DIR__ . '/includes/admin_header.php';
                         <td><small><?php echo htmlspecialchars($c['hospital_name'] ?? ''); ?></small></td>
                         <td><strong><?php echo htmlspecialchars($c['name'] ?? ''); ?></strong></td>
                         <td><?php echo htmlspecialchars($c['phone'] ?? ''); ?></td>
-                        <td><?php echo htmlspecialchars($c['consultation_type'] ?? $c['treatment_type'] ?? ''); ?></td>
-                        <td><span title="<?php echo htmlspecialchars($c['message'] ?? ''); ?>"><?php echo htmlspecialchars(mb_substr($c['message'] ?? '', 0, 30) . (mb_strlen($c['message'] ?? '') > 30 ? '...' : '')); ?></span></td>
+                        <?php
+                        $type_lbl = ['general' => '전화 상담', 'doctor' => '방문 상담', 'kakao' => '카카오톡 채널 상담'];
+                        $ctype = (string)($c['consultation_type'] ?? $c['treatment_type'] ?? '');
+                        // 신청서에서 고른 항목은 메시지 앞머리에 "[관심 시술] …" 형태의 줄로 저장된다. 그 줄들은 줄이지 않고 그대로 보여준다.
+                        $msg_full = (string)($c['message'] ?? '');
+                        $msg_rest = $msg_full;
+                        $msg_tags = [];
+                        while (preg_match('/\A\[(?:관심 시술|상담 방법|연락 가능 시간|방문 희망 일시)\][^\r\n]*(?:\r\n|\r|\n|\z)/u', $msg_rest, $mm)) {
+                            $msg_tags[] = trim($mm[0]);
+                            $msg_rest = (string)substr($msg_rest, strlen($mm[0]));
+                        }
+                        if (!empty($msg_tags)) { $msg_rest = ltrim($msg_rest); }
+                        ?>
+                        <td><?php echo htmlspecialchars($type_lbl[$ctype] ?? $ctype); ?></td>
+                        <td><?php foreach ($msg_tags as $mt): ?><small class="d-block text-nowrap"><?php echo htmlspecialchars($mt); ?></small><?php endforeach; ?><span title="<?php echo htmlspecialchars($msg_full); ?>"><?php echo htmlspecialchars(mb_substr($msg_rest, 0, 30) . (mb_strlen($msg_rest) > 30 ? '...' : '')); ?></span></td>
                         <td>
                             <?php
                             $photos = !empty($c['photo_urls']) ? json_decode($c['photo_urls'], true) : [];

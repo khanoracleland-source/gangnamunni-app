@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type BookingChangeInfo, type BookingContext, type BookingOption, type BookingPackage, type BookingRefusal, type BookingRequest, type NoshowInfo } from "@/lib/api";
-import { bookableDays, dday, fmtDay, formatDateTime, koTopic, parseDay, priceRange, timeSlots, won, WEEKDAYS } from "@/lib/booking";
+import { bookableDays, dday, formatDateTime, koTopic, parseDay, priceRange, timeSlots, won, WEEKDAYS } from "@/lib/booking";
 import { BASE_PATH } from "@/lib/phpLink";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import LoginPrompt from "./LoginPrompt";
@@ -84,17 +84,10 @@ function PageHead({ title, back, onBack }: { title: string; back?: string; onBac
 interface Picked { name: string; range: string; min_age: number; options: BookingOption[]; option_id: number }
 type Stage = null | "pre" | "med" | "consent" | "confirm" | "success";
 
-/** Every calendar day from the Monday of this week to the Sunday of the last bookable week (05-09 shows whole weeks, closed days muted). */
-function weekGrid(days: string[], today: string): string[][] {
-  const first = parseDay(today);
-  first.setDate(first.getDate() - ((first.getDay() + 6) % 7));
-  const lastDay = days.length ? parseDay(days[days.length - 1]) : parseDay(today);
+/** The bookable days only, seven per screen: starts at today (or the first open day), no past days and no days the hospital is closed. */
+function weekGrid(days: string[]): string[][] {
   const weeks: string[][] = [];
-  for (const cur = new Date(first); cur <= lastDay; ) {
-    const w: string[] = [];
-    for (let i = 0; i < 7; i++) { w.push(fmtDay(cur)); cur.setDate(cur.getDate() + 1); }
-    weeks.push(w);
-  }
+  for (let i = 0; i < days.length; i += 7) weeks.push(days.slice(i, i + 7));
   return weeks;
 }
 
@@ -240,9 +233,8 @@ function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingConte
   const closeRefusal = () => setRefusal(null);
   const proceedFlag = (k: "dup" | "rev") => { flags.current[k] = true; setRefusal(null); void precheckThenConfirm(); };
 
-  // 05-09 week strip: whole weeks, 7 cells per screen, snapping week by week; the month tabs scroll to the first week that has a day of that month
-  const weeks = weekGrid(days, today);
-  const bookable = new Set(days);
+  // 05-09 day strip: bookable days only, 7 cells per screen, snapping screen by screen; the month tabs scroll to the first screen that has a day of that month
+  const weeks = weekGrid(days);
   const months = [...new Set(days.map((d) => d.slice(0, 7)))];
   const curMonth = date.slice(0, 7);
   const weekRef = useRef<HTMLDivElement>(null);
@@ -251,7 +243,7 @@ function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingConte
     if (el) el.scrollTo({ left: el.clientWidth * i, behavior });
   };
   const jumpMonth = (m: string) => {
-    const i = weeks.findIndex((w) => w.some((d) => d.slice(0, 7) === m && bookable.has(d)));
+    const i = weeks.findIndex((w) => w.some((d) => d.slice(0, 7) === m));
     if (i >= 0) scrollToWeek(i, "smooth");
   };
   const weekOfDate = weeks.findIndex((w) => w.includes(date));
@@ -392,12 +384,11 @@ function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingConte
             <div className={styles.week} key={w[0]}>
               {w.map((d) => {
                 const dt = parseDay(d);
-                const ok = bookable.has(d);
                 return (
-                  <button type="button" key={d} disabled={!ok} className={`${styles.day} ${d === date ? styles.dayOn : ""}`} aria-pressed={d === date} aria-label={`${dt.getMonth() + 1}월 ${dt.getDate()}일`}
+                  <button type="button" key={d} className={`${styles.day} ${d === date ? styles.dayOn : ""}`} aria-pressed={d === date} aria-label={`${dt.getMonth() + 1}월 ${dt.getDate()}일`}
                     onClick={() => { setDate(d); setTime(""); }}>
                     <span className={styles.dayWd}>{WEEKDAYS[dt.getDay()]}</span>
-                    <span className={`${styles.dayNum} ${!ok || dt.getDay() === 0 ? styles.dayMuted : ""}`}>{dt.getDate()}</span>
+                    <span className={`${styles.dayNum} ${dt.getDay() === 0 ? styles.dayMuted : ""}`}>{dt.getDate()}</span>
                     <span className={styles.dayToday}>{d === today ? "오늘" : ""}</span>
                   </button>
                 );

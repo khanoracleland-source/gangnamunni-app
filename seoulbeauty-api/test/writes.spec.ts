@@ -61,21 +61,22 @@ describe('writes: wishlist + consultations', () => {
     await request(app.getHttpServer()).post('/v1/wishlist/toggle').set(XHR).set('Cookie', 'sid=member').set('Origin', 'https://evil.example').send({ targetId: 8216 }).expect(403);
   });
 
-  it('consultation: guest ok, member linked, validation, rate limit', async () => {
+  it('consultation: sign-in required, member linked, validation, rate limit', async () => {
     const body = { hospitalId: 8216, type: 'doctor', name: '홍길동', phone: '010-1111-2222', message: '[관심 시술] 보톡스' };
-    let r = await request(app.getHttpServer()).post('/v1/consultations').set(XHR).send(body).expect(201);
-    expect(r.body).toMatchObject({ success: true, id: 77 });
-    expect(sql.some((s) => s.q.includes('UPDATE gangnamunni_consultations'))).toBe(false); // guest: no mb_id link
+    await request(app.getHttpServer()).post('/v1/consultations').set(XHR).send(body).expect(401);   // guest: nothing is saved
+    expect(sql.some((s) => s.q.includes('INSERT INTO gangnamunni_consultations'))).toBe(false);
     sql.length = 0;
-    r = await request(app.getHttpServer()).post('/v1/consultations').set(XHR).set('Cookie', 'sid=member').send(body).expect(201);
+    const r = await request(app.getHttpServer()).post('/v1/consultations').set(XHR).set('Cookie', 'sid=member').send(body).expect(201);
+    expect(r.body).toMatchObject({ success: true, id: 77 });
     expect(sql.find((s) => s.q.includes('UPDATE gangnamunni_consultations'))!.v).toEqual(['kim', 77]);
     const ins = sql.find((s) => s.q.includes('INSERT INTO gangnamunni_consultations'))!.v!;
     expect(ins.slice(0, 3)).toEqual([8216, '플래티넘의원', 'doctor']);
-    await request(app.getHttpServer()).post('/v1/consultations').set(XHR).send({ ...body, phone: 'abc' }).expect(400);
-    await request(app.getHttpServer()).post('/v1/consultations').set(XHR).send({ ...body, hospitalId: 1 }).expect(400);
-    await request(app.getHttpServer()).post('/v1/consultations').send(body).expect(403);
-    // 5 per 10 min per guest key: used 2 so far (first ok + unknown hospital counts; 400/403 before the check don't)
-    for (let i = 0; i < 3; i++) await request(app.getHttpServer()).post('/v1/consultations').set(XHR).send(body).expect(201);
-    await request(app.getHttpServer()).post('/v1/consultations').set(XHR).send(body).expect(429);
+    const member = () => request(app.getHttpServer()).post('/v1/consultations').set(XHR).set('Cookie', 'sid=member');
+    await member().send({ ...body, phone: 'abc' }).expect(400);
+    await member().send({ ...body, hospitalId: 1 }).expect(400);
+    await request(app.getHttpServer()).post('/v1/consultations').set('Cookie', 'sid=member').send(body).expect(403);
+    // 5 per 10 min per member: used 2 so far (first ok + unknown hospital counts; 400/401/403 before the check don't)
+    for (let i = 0; i < 3; i++) await member().send(body).expect(201);
+    await member().send(body).expect(429);
   });
 });

@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import DetailSkeleton from "./DetailSkeleton";
 import { api, ApiError, assetUrl, PLACEHOLDER, qk, type DetailTab, type HospitalDetail as Detail, type HospitalPage } from "@/lib/api";
 import { shareUrl } from "@/lib/clipboard";
+import { useRequireLogin } from "@/lib/me";
 import ReviewList from "./ReviewList";
 import WishlistButton from "./WishlistButton";
 import ConsultSheet from "./ConsultSheet";
@@ -89,7 +90,7 @@ function HeroSlider({ images }: { images: string[] }) {
   );
 }
 
-/** `treatmentId` = detail.php?treatment_id= : the 홈 tab opens with that treatment's 이벤트 block (design 05-08). */
+/** `treatmentId` = detail.php?treatment_id= : the 홈 tab opens with that treatment's 이벤트 block (design 05-08) and the 시술 병원 summary (05-04). */
 export default function HospitalDetail({ id, initial, initialTab = "home", treatmentId = 0 }: { id: number; initial?: Detail; initialTab?: DetailTab; treatmentId?: number }) {
   const router = useRouter();
   const qc = useQueryClient();
@@ -98,6 +99,8 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
   const [consultOpen, setConsultOpen] = useState(false);
   const [hoursOpen, setHoursOpen] = useState(false);
   const showToast = useToast();
+  // 상담 is for members: a guest is sent to the login page (and back here) before the sheet opens
+  const requireLogin = useRequireLogin();
   const now = useNow();
   const { data: h, error, isError, refetch, isPlaceholderData } = useQuery({
     queryKey: qk.hospital(id),
@@ -171,16 +174,13 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
 
   return (
     <article className={styles.root}>
-      {/* design 04-01: back · centred name · spacer; tabs right under it; then the shared info block */}
+      {/* design 04-01: back · centred name · spacer; tabs right under it; then the shared info block (name · share · wishlist) */}
       <header className={styles.top}>
         <button onClick={back} className={styles.back} aria-label="뒤로 가기">
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
         </button>
         <h1 className={styles.title}>{h.name}</h1>
-        <button type="button" className={styles.topBtn} onClick={share} aria-label="공유">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={shareIcon.src} alt="" width={22} height={22} />
-        </button>
+        <span className={styles.topSpacer} aria-hidden="true" />
       </header>
 
       <nav className={styles.tabs} role="tablist">
@@ -196,6 +196,10 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
 
       <div className={styles.nameRow}>
         <span className={styles.name}>{h.name}</span>
+        <button type="button" className={styles.shareBtn} onClick={share} aria-label="공유">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={shareIcon.src} alt="" width={22} height={22} />
+        </button>
         <WishlistButton hospitalId={h.id} initialCount={h.wishlistCount} />
       </div>
       {((h.showRating && h.rating != null && h.rating > 0) || isBest) && (
@@ -234,7 +238,8 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
       {seen.includes("home") && (
         <div hidden={tab !== "home"}>
           {treatmentId > 0 && <TreatmentEvent hospitalId={id} treatmentId={treatmentId} />}
-          {/* design 05-04: 시술 병원 summary, address + 주소복사, 병원소개, 의료진 소개 */}
+          {/* design 05-04: 시술 병원 summary (only when opened for a treatment), address + 주소복사, 병원소개, 의료진 소개 */}
+          {treatmentId > 0 && (<>
           <h2 className={styles.secTitleLg}>시술 병원</h2>
           <div className={styles.hospCard}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -260,6 +265,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
               </div>
             </div>
           </div>
+          </>)}
           {h.address && (
             <div className={styles.addrRow}>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#1A1718" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>
@@ -285,7 +291,7 @@ export default function HospitalDetail({ id, initial, initialTab = "home", treat
 
       {/* design 04-01: 상담신청 (accent) · 예약하기 (grey). Booking still lives in PHP (same origin keeps the app's session). */}
       <div className={styles.cta}>
-        <button type="button" className={styles.ctaPrimary} onClick={() => setConsultOpen(true)}>상담신청</button>
+        <button type="button" className={styles.ctaPrimary} onClick={() => void requireLogin(async () => setConsultOpen(true))}>상담신청</button>
         <Link href={`/booking?id=${id}&from=hospital`} className={styles.ctaSecondary}>예약하기</Link>
       </div>
       <ConsultSheet hospital={h} open={consultOpen} onClose={() => setConsultOpen(false)} />

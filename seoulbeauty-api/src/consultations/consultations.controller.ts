@@ -2,7 +2,7 @@ import { BadRequestException, Body, Controller, HttpException, Inject, Post, Req
 import type { Response } from 'express';
 import { createHash } from 'node:crypto';
 import { DB, Db } from '../db/db.module';
-import { AuthGuard, AuthedRequest } from '../auth/auth.guard';
+import { AuthedRequest, RequireAuthGuard } from '../auth/auth.guard';
 import { SameOriginGuard } from '../common/same-origin.guard';
 
 export interface ConsultationInput {
@@ -18,7 +18,7 @@ const TYPES = new Set(['general', 'doctor', 'kakao']);
 const PHONE = /^[0-9+()\-\s]{7,30}$/;
 
 /**
- * Mirrors consultation_submit.php: guests may submit (name+phone), members get mb_id linked,
+ * consultation_submit.php for signed-in members only (401 otherwise): the request is linked to the member (mb_id),
  * 5 requests / 10 min per session, status 'pending'. Photo upload is NOT ported yet (see docs).
  */
 @Controller('v1/consultations')
@@ -51,7 +51,7 @@ export class ConsultationsController {
   }
 
   @Post()
-  @UseGuards(SameOriginGuard, AuthGuard)
+  @UseGuards(SameOriginGuard, RequireAuthGuard)
   async create(@Body() body: Partial<ConsultationInput>, @Req() req: AuthedRequest, @Res({ passthrough: true }) res: Response) {
     res.setHeader('Cache-Control', 'private, no-store');
     const hospitalId = Number(body?.hospitalId);
@@ -77,7 +77,7 @@ export class ConsultationsController {
     )) as any;
     const id = Number(ins?.insertId ?? 0);
 
-    const mbId = req.session.loggedIn ? req.session.user?.id : undefined;
+    const mbId = req.session.user?.id;   // RequireAuthGuard: always a member here
     if (id && mbId && (await this.hasMbIdColumn())) {
       await this.db.query('UPDATE gangnamunni_consultations SET mb_id = ? WHERE id = ?', [mbId, id]);
     }

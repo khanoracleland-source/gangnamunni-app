@@ -4,6 +4,7 @@
 .title { font-size: calc(22px * var(--fs-scale)); font-weight: 700; }
 .sub { font-size: calc(13px * var(--fs-scale)); color: #4A4446; margin-top: 2px; }
 .hosp { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 12px 14px; background: #F7F5F5; border-radius: 12px; font-size: calc(14px * var(--fs-scale)); }
+.hospIco { flex: 0 0 18px; width: 18px; height: 18px; object-fit: contain; display: block; }
 .hosp b { font-size: calc(15px * var(--fs-scale)); font-weight: 700; }
 .hospDist { font-size: calc(12px * var(--fs-scale)); color: #6B6466; }
 .label { font-size: calc(13px * var(--fs-scale)); font-weight: 700; padding: 16px 0 8px; }
@@ -13,6 +14,19 @@
 .chip { height: 36px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid #DCD6D8; border-radius: 18px; background: #fff; font-size: calc(13px * var(--fs-scale)); color: #1A1718; }
 .chipOn { font-weight: 700; color: #4A4446; background: #F2EFF0; }
 .note { font-size: calc(12px * var(--fs-scale)); color: #6B6466; margin-top: 8px; line-height: 1.5; }
+/* 방문 상담: one scrolling row of days (the booking page's day cell) and a four-column time grid */
+.days { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 10px; }
+.days::-webkit-scrollbar { display: none; }
+.day { flex: 0 0 44px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; color: #1A1718; }
+.dayWd { font-size: calc(12px * var(--fs-scale)); color: #6B6466; }
+.dayNum { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: calc(15px * var(--fs-scale)); }
+.dayOn .dayNum { background: #1A1718; color: #fff; font-weight: 700; }
+.slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.slot { height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid #DCD6D8; border-radius: 12px; background: #fff; color: #1A1718; font-size: calc(15px * var(--fs-scale)); white-space: nowrap; }
+.slotOn { border-color: var(--accent); font-weight: 700; }
+.slot:disabled { color: #BDB6B8; background: #F6F4F5; border-color: #ECE9EA; }
+.visitNote { grid-column: 1 / -1; padding: 14px; border-radius: 12px; background: #F6F4F5; color: #6B6466; text-align: center; font-size: calc(13px * var(--fs-scale)); }
+@media (max-width: 339px) { .slots { grid-template-columns: repeat(3, 1fr); } }
 .row { display: flex; gap: 8px; }
 .input { flex: 1; min-width: 0; height: 44px; border: 1px solid #DCD6D8; border-radius: 12px; padding: 0 12px; font-size: calc(15px * var(--fs-scale)); background: #fff; color: #1A1718; }
 .inputName { flex: 0 0 110px; }
@@ -21,7 +35,7 @@
 .agreeRow { display: flex; align-items: center; gap: 8px; padding: 14px 0 0; font-size: calc(13px * var(--fs-scale)); }
 .agree { flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .check { position: absolute; opacity: 0; width: 0; height: 0; }
-.checkBox { width: 18px; height: 18px; flex: 0 0 18px; border: 1.5px solid #BDB6B8; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: transparent; }
+.checkBox { width: 18px; height: 18px; flex: 0 0 18px; border: 1.5px solid #BDB6B8; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: transparent; }
 .check:checked + .checkBox { background: var(--accent); border-color: var(--accent); color: #fff; }
 .check:focus-visible + .checkBox { outline: 2px solid #1A1718; outline-offset: 2px; }
 .req { color: #4A4446; }
@@ -32,7 +46,7 @@
 .submit:disabled { opacity: .6; }
 /* done states */
 .done { display: flex; flex-direction: column; gap: 14px; padding: 28px 0 8px; text-align: center; }
-.doneIcon { width: 48px; height: 48px; margin: 0 auto; border-radius: 12px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+.doneIcon { width: 44px; height: 44px; margin: 0 auto; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; }
 .doneTitle { font-size: calc(22px * var(--fs-scale)); font-weight: 700; line-height: 1.35; }
 .doneText { margin: 0; font-size: calc(15px * var(--fs-scale)); color: #4A4446; line-height: 1.5; }
 .phoneBox { display: flex; align-items: center; gap: 10px; margin-top: 4px; padding: 12px 14px; background: #F7F5F5; border-radius: 12px; text-align: left; }
@@ -41,7 +55,8 @@
 .phoneLabel b { font-weight: 700; margin-left: 6px; }
 .phoneNote { font-size: calc(12px * var(--fs-scale)); color: #6B6466; }
 .saveBtn { flex: 0 0 auto; height: 36px; padding: 0 12px; border: 1px solid #DCD6D8; border-radius: 18px; background: #fff; font-size: calc(13px * var(--fs-scale)); font-weight: 700; color: #1A1718; }
-.done .submit { margin-top: 0; }
+/* 05-06: the confirm button sits 28px under the phone box (14 gap + 14) */
+.done .submit { margin-top: 14px; }
 .doneBtns { display: flex; flex-direction: column; gap: 8px; }
 .kakaoBtn { height: 52px; display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 12px; background: #FEE500; color: #191919; font-size: calc(17px * var(--fs-scale)); font-weight: 700; text-decoration: none; }
 .ghostBtn { height: 52px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid #DCD6D8; background: #fff; color: #1A1718; font-size: calc(17px * var(--fs-scale)); font-weight: 500; }

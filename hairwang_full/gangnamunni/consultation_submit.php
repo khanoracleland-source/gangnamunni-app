@@ -20,6 +20,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     exit;
 }
 
+// 상담 신청은 회원 전용 (Nest /v1/consultations 와 동일한 규칙)
+if (!function_exists('is_gangnamunni_logged_in') || !is_gangnamunni_logged_in() || empty($member['mb_id'])) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => '로그인이 필요합니다.']);
+    exit;
+}
+
 $post_string = static function (string $key, string $default = ''): string {
     $value = $_POST[$key] ?? $default;
     return is_string($value) || is_numeric($value) ? trim(stripslashes((string)$value)) : $default;
