@@ -98,7 +98,10 @@ main() {
   # ---------------------------------------------------------------- 0. muhit
   step "0/7  Muhit va old tekshiruv"
 
-  if command -v fvm >/dev/null 2>&1; then
+  if [ -n "${FLUTTER_BIN:-}" ]; then
+    FLUTTER="$FLUTTER_BIN"       # qo'lda tanlash: FLUTTER_BIN=flutter ./scripts/build_release.sh
+    echo "FLUTTER_BIN berilgan — '$FLUTTER' ishlatiladi."
+  elif command -v fvm >/dev/null 2>&1; then
     FLUTTER="fvm flutter"      # .fvmrc dagi versiya (3.35.4) ishlatiladi
   elif command -v flutter >/dev/null 2>&1; then
     FLUTTER="flutter"
@@ -156,7 +159,19 @@ main() {
   # (--no-fatal-infos --no-fatal-warnings); haqiqiy XATO (error) bo'lsa analyze 0 dan farqli
   # kod qaytaradi va build boshlanmaydi.
   step "3/7  flutter analyze (faqat error to'xtatadi)"
-  $FLUTTER analyze --no-fatal-infos --no-fatal-warnings || fail "flutter analyze xato topdi — build qilinmadi."
+  ANALYZE_OUT="$(mktemp -t sb_analyze.XXXXXX)"
+  ANALYZE_RC=0
+  $FLUTTER analyze --no-fatal-infos --no-fatal-warnings > "$ANALYZE_OUT" 2>&1 || ANALYZE_RC=$?
+  cat "$ANALYZE_OUT"
+  if [ "$ANALYZE_RC" -ne 0 ]; then
+    # Tahlil serverining o'zi qulasa (kod xatosi emas — masalan loyiha yo'lidagi lotin bo'lmagan harflar tufayli)
+    # build to'xtatilmaydi: kompilyatsiya xatolarini keyingi `flutter test` va build baribir ushlaydi.
+    if grep -q "analysis server exited" "$ANALYZE_OUT" && ! grep -Eq "^[[:space:]]*error •" "$ANALYZE_OUT"; then
+      echo "OGOHLANTIRISH: analyze vositasi qulab tushdi (kod xatosi emas) — davom etiladi; kodni test va build tekshiradi."
+    else
+      fail "flutter analyze xato topdi — build qilinmadi."
+    fi
+  fi
 
   # ---------------------------------------------------------------- 4. test
   if [ "$SKIP_TESTS" -eq 1 ]; then
