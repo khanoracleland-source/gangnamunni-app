@@ -26,9 +26,12 @@ mysql -u root -p -e "SHOW DATABASES; SELECT table_schema FROM information_schema
 ```sql
 CREATE USER IF NOT EXISTS 'sb_admin_ro'@'127.0.0.1' IDENTIFIED BY '<password>';
 CREATE USER IF NOT EXISTS 'sb_admin_ro'@'localhost' IDENTIFIED BY '<password>';
--- members: only the columns the counters need (no e-mail, phone or password hash)
-GRANT SELECT (mb_datetime, mb_leave_date) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'127.0.0.1';
-GRANT SELECT (mb_datetime, mb_leave_date) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'localhost';
+-- members: only the columns the counters need (mb_id only to match admins; no e-mail, phone or password hash)
+GRANT SELECT (mb_id, mb_datetime, mb_leave_date) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (mb_id, mb_datetime, mb_leave_date) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'localhost';
+-- admins: only the flag and the member link (never username, e-mail or password columns)
+GRANT SELECT (id, is_active, g5_mb_id) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, is_active, g5_mb_id) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_ro'@'localhost';
 GRANT SELECT (created_at, status, price) ON <DB_NAME>.gangnamunni_bookings TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (created_at, status, price) ON <DB_NAME>.gangnamunni_bookings TO 'sb_admin_ro'@'localhost';
 GRANT SELECT (payment_type, funds_recipient, provider, status, amount, refunded_amount, paid_at) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_ro'@'127.0.0.1';
@@ -44,6 +47,10 @@ GRANT SELECT (status, is_active) ON <DB_NAME>.gangnamunni_hospital_treatments TO
 ```
 A table that does not exist yet (e.g. `gangnamunni_platform_payments`) cannot be granted: skip that line; the API reports
 its figures as 0. Any other database error (for example a missing grant) makes the summary fail with 500 and is logged.
+`gangnamunni_admins.g5_mb_id` (admin <-> member link) comes from an optional migration of the PHP admin panel. If the
+column does not exist yet, drop `g5_mb_id` from the admins grant (`GRANT SELECT (id, is_active)`): the summary then shows
+the number of admins and reports "admins who are also members" as 0 (an unknown column or a missing grant on these two
+admin figures is logged as a warning and counted as 0, it does not fail the page).
 If a later page needs more columns, extend the grant instead of switching to a wider user.
 
 ## 2. PHP side

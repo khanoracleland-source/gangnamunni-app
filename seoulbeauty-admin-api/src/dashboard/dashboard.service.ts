@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
 import {
-  bookingsQuery, buildSummary, consultationsQuery, DashboardSummary, doctorsQuery, hospitalsQuery, membersQuery, paymentsQuery, Query, treatmentsQuery,
+  adminMembersQuery, adminsQuery, bookingsQuery, buildSummary, consultationsQuery, DashboardSummary, doctorsQuery, hospitalsQuery, membersQuery, paymentsQuery, Query, treatmentsQuery,
 } from './dashboard.logic';
 
 /** How long one computed summary is reused (all admins share it: the figures are platform-wide). */
@@ -15,15 +15,23 @@ export class DashboardService {
 
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  /** First row of a SELECT. A table that is not installed (e.g. platform payments) counts as "no data", not an error. */
-  private async row(q: Query): Promise<Record<string, unknown> | null> {
+  /**
+   * First row of a SELECT. A table that is not installed (e.g. platform payments) counts as "no data", not an error.
+   * `lenient` also covers a missing column or a missing grant (optional figures): reported as 0 and logged.
+   */
+  private async row(q: Query, lenient = false): Promise<Record<string, unknown> | null> {
     try {
       const [rows] = (await this.db.query(q.sql, q.values)) as any;
       return (Array.isArray(rows) && rows[0]) || null;
     } catch (e) {
       const err = e as { code?: string; errno?: number; message?: string };
-      if (err?.code === 'ER_NO_SUCH_TABLE' || err?.errno === 1146) {
-        this.log.warn(`table missing, reported as 0: ${err.message}`);
+      const missing = err?.code === 'ER_NO_SUCH_TABLE' || err?.errno === 1146;
+      const optional =
+        lenient &&
+        (['ER_BAD_FIELD_ERROR', 'ER_TABLEACCESS_DENIED_ERROR', 'ER_COLUMNACCESS_DENIED_ERROR'].includes(err?.code || '') ||
+          [1054, 1142, 1143].includes(err?.errno || 0));
+      if (missing || optional) {
+        this.log.warn(`table/column missing or not granted, reported as 0: ${err.message}`);
         return null;
       }
       throw e;
@@ -31,8 +39,10 @@ export class DashboardService {
   }
 
   private async compute(): Promise<DashboardSummary> {
-    const [members, bookings7, bookings30, payments7, payments30, consultations, hospitals, doctors, treatments] = await Promise.all([
+    const [members, admins, adminMembers, bookings7, bookings30, payments7, payments30, consultations, hospitals, doctors, treatments] = await Promise.all([
       this.row(membersQuery()),
+      this.row(adminsQuery(), true),
+      this.row(adminMembersQuery(), true),
       this.row(bookingsQuery(7)),
       this.row(bookingsQuery(30)),
       this.row(paymentsQuery(7)),
@@ -42,7 +52,7 @@ export class DashboardService {
       this.row(doctorsQuery()),
       this.row(treatmentsQuery()),
     ]);
-    return buildSummary({ members, bookings7, bookings30, payments7, payments30, consultations, hospitals, doctors, treatments });
+    return buildSummary({ members, admins, adminMembers, bookings7, bookings30, payments7, payments30, consultations, hospitals, doctors, treatments });
   }
 
   async summary(): Promise<DashboardSummary> {

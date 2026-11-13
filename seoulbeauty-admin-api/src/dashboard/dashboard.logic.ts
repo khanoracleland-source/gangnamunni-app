@@ -18,7 +18,7 @@ export interface BookingWindow {
 export interface DashboardSummary {
   /** KST, "YYYY-MM-DD HH:mm:ss" */
   generatedAt: string;
-  members: { total: number; today: number; last7d: number; last30d: number };
+  members: { total: number; today: number; last7d: number; last30d: number; withdrawn: number; admins: number; adminsAlsoMembers: number };
   bookings: { d7: BookingWindow; d30: BookingWindow };
   consultations: { d7: number; d30: number };
   catalog: { hospitals: number; hospitalsPending: number; doctors: number; treatments: number };
@@ -43,15 +43,35 @@ export const num = (v: unknown): number => {
 /**
  * Members: g5_member without withdrawn accounts (mb_leave_date is '' until a member leaves), the same rule as the
  * 탈퇴 filter of the PHP member list. `today` is the calendar day in the connection time zone (KST).
+ * `withdrawn` counts the accounts that left (mb_leave_date <> ''); one scan serves both figures.
  */
 export function membersQuery(): Query {
   return {
-    sql: `SELECT COUNT(*) AS total,
-       COALESCE(SUM(mb_datetime >= CURDATE()), 0) AS today,
-       COALESCE(SUM(mb_datetime >= NOW() - INTERVAL ? DAY), 0) AS last7d,
-       COALESCE(SUM(mb_datetime >= NOW() - INTERVAL ? DAY), 0) AS last30d
-     FROM g5_member WHERE mb_leave_date = ''`,
+    sql: `SELECT COALESCE(SUM(mb_leave_date = ''), 0) AS total,
+       COALESCE(SUM(mb_leave_date = '' AND mb_datetime >= CURDATE()), 0) AS today,
+       COALESCE(SUM(mb_leave_date = '' AND mb_datetime >= NOW() - INTERVAL ? DAY), 0) AS last7d,
+       COALESCE(SUM(mb_leave_date = '' AND mb_datetime >= NOW() - INTERVAL ? DAY), 0) AS last30d,
+       COALESCE(SUM(mb_leave_date <> ''), 0) AS withdrawn
+     FROM g5_member`,
     values: [7, 30],
+  };
+}
+
+/** Active admin accounts (platform and hospital roles). Only is_active is read. */
+export function adminsQuery(): Query {
+  return { sql: `SELECT COUNT(*) AS cnt FROM gangnamunni_admins WHERE is_active = 1`, values: [] };
+}
+
+/**
+ * Active admin accounts that are also a current (not withdrawn) g5_member: gangnamunni_admins.g5_mb_id is the explicit
+ * admin <-> member link. The column comes from an optional migration; without it nobody counts as linked.
+ */
+export function adminMembersQuery(): Query {
+  return {
+    sql: `SELECT COUNT(DISTINCT a.id) AS cnt
+     FROM gangnamunni_admins a JOIN g5_member m ON m.mb_id = a.g5_mb_id
+     WHERE a.is_active = 1 AND a.g5_mb_id <> '' AND m.mb_leave_date = ''`,
+    values: [],
   };
 }
 
@@ -147,6 +167,8 @@ export function bookingWindow(booking: Row, payment: Row): BookingWindow {
 
 export interface SummaryRows {
   members: Row;
+  admins?: Row;
+  adminMembers?: Row;
   bookings7: Row;
   bookings30: Row;
   payments7: Row;
@@ -161,7 +183,12 @@ export interface SummaryRows {
 export function buildSummary(r: SummaryRows, now: Date = new Date()): DashboardSummary {
   return {
     generatedAt: kstTimestamp(now),
-    members: { total: num(r.members?.total), today: num(r.members?.today), last7d: num(r.members?.last7d), last30d: num(r.members?.last30d) },
+    members: { total: num(r.members?.total), today: num(r.members?.today), last7d: num(r.members?.last7d), last30d: num(r.members?.last30d),
+      withdrawn: num(r.members?.withdrawn),
+      admins: num(r.admins?.cnt),
+      // never above the number of admins, whatever the join returned
+      adminsAlsoMembers: Math.min(num(r.adminMembers?.cnt), num(r.admins?.cnt)),
+    },
     bookings: { d7: bookingWindow(r.bookings7, r.payments7), d30: bookingWindow(r.bookings30, r.payments30) },
     consultations: { d7: num(r.consultations?.d7), d30: num(r.consultations?.d30) },
     catalog: {

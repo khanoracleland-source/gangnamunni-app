@@ -1,9 +1,9 @@
 import {
-  bookingsQuery, bookingWindow, buildSummary, consultationsQuery, doctorsQuery, hospitalsQuery, kstTimestamp, membersQuery, num, paymentsQuery, treatmentsQuery,
+  adminMembersQuery, adminsQuery, bookingsQuery, bookingWindow, buildSummary, consultationsQuery, doctorsQuery, hospitalsQuery, kstTimestamp, membersQuery, num, paymentsQuery, treatmentsQuery,
   BOOKING_CANCELLED_STATUSES, BOOKING_PENDING_STATUSES, PAYMENT_PAID_STATUSES, PAYMENT_TEST_PROVIDERS,
 } from './dashboard.logic';
 
-const all = [membersQuery(), bookingsQuery(7), bookingsQuery(30), paymentsQuery(7), paymentsQuery(30), consultationsQuery(), hospitalsQuery(), doctorsQuery(), treatmentsQuery()];
+const all = [membersQuery(), adminsQuery(), adminMembersQuery(), bookingsQuery(7), bookingsQuery(30), paymentsQuery(7), paymentsQuery(30), consultationsQuery(), hospitalsQuery(), doctorsQuery(), treatmentsQuery()];
 const placeholders = (sql: string) => (sql.match(/\?/g) || []).length;
 
 describe('dashboard queries', () => {
@@ -17,9 +17,24 @@ describe('dashboard queries', () => {
   it('bind exactly as many values as they have placeholders', () => {
     for (const q of all) expect(q.values).toHaveLength(placeholders(q.sql));
   });
-  it('members: withdrawn accounts are left out', () => {
-    expect(membersQuery().sql).toContain("FROM g5_member WHERE mb_leave_date = ''");
+  it('members: withdrawn accounts are left out of total/today/7d/30d and counted separately', () => {
+    const sql = membersQuery().sql;
+    expect(sql).toContain("SUM(mb_leave_date = ''), 0) AS total");
+    expect(sql).toContain("mb_leave_date = '' AND mb_datetime >= CURDATE()");
+    expect(sql).toContain("SUM(mb_leave_date <> ''), 0) AS withdrawn");
     expect(membersQuery().values).toEqual([7, 30]);
+  });
+  it('admins: active accounts, linked to members through g5_mb_id (current members only)', () => {
+    expect(adminsQuery().sql).toContain('FROM gangnamunni_admins WHERE is_active = 1');
+    const sql = adminMembersQuery().sql;
+    expect(sql).toContain('JOIN g5_member m ON m.mb_id = a.g5_mb_id');
+    expect(sql).toContain("m.mb_leave_date = ''");
+    expect(sql).not.toMatch(/password|email/i);
+  });
+  it('buildSummary: admin figures map from their rows and the link count never exceeds the admins', () => {
+    const rows = { members: { total: 100, today: 1, last7d: 5, last30d: 20, withdrawn: 7 }, admins: { cnt: '3' }, adminMembers: { cnt: '5' },
+      bookings7: null, bookings30: null, payments7: null, payments30: null, consultations: null, hospitals: null, doctors: null, treatments: null };
+    expect(buildSummary(rows).members).toEqual({ total: 100, today: 1, last7d: 5, last30d: 20, withdrawn: 7, admins: 3, adminsAlsoMembers: 3 });
   });
   it('bookings: window by created_at, scan covers the previous window too', () => {
     const q = bookingsQuery(7);
@@ -73,7 +88,7 @@ describe('dashboard mapping', () => {
     const zero = { count: 0, amount: 0, paidAmount: 0, refundedAmount: 0, cancelled: 0, pending: 0, prev: { count: 0, amount: 0, paidAmount: 0 } };
     expect(buildSummary(empty, new Date('2026-11-13T07:40:00Z'))).toEqual({
       generatedAt: '2026-11-13 16:40:00',
-      members: { total: 0, today: 0, last7d: 0, last30d: 0 },
+      members: { total: 0, today: 0, last7d: 0, last30d: 0, withdrawn: 0, admins: 0, adminsAlsoMembers: 0 },
       bookings: { d7: zero, d30: zero },
       consultations: { d7: 0, d30: 0 },
       catalog: { hospitals: 0, hospitalsPending: 0, doctors: 0, treatments: 0 },

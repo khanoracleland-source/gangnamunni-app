@@ -16,12 +16,19 @@ describe('admin API (PHP admin session + dashboard summary)', () => {
   const sqls: string[] = [];
   const realFetch = global.fetch;
   let missingPayments = false;
+  let linkColumn: 'ok' | 'missing' | 'denied' = 'ok';
 
   const dbStub = {
     query: jest.fn(async (sql: string, values: unknown[] = []) => {
       sqls.push(sql);
       const last = values[values.length - 1];
-      if (sql.includes('g5_member')) return [[{ total: '1200', today: '3', last7d: '25', last30d: '110' }]];
+      if (sql.includes('JOIN g5_member')) {
+        if (linkColumn === 'missing') throw Object.assign(new Error("Unknown column 'a.g5_mb_id' in 'on clause'"), { code: 'ER_BAD_FIELD_ERROR', errno: 1054 });
+        if (linkColumn === 'denied') throw Object.assign(new Error('SELECT command denied'), { code: 'ER_COLUMNACCESS_DENIED_ERROR', errno: 1143 });
+        return [[{ cnt: '2' }]];
+      }
+      if (sql.includes('FROM gangnamunni_admins')) return [[{ cnt: '4' }]];
+      if (sql.includes('g5_member')) return [[{ total: '1200', today: '3', last7d: '25', last30d: '110', withdrawn: '37' }]];
       if (sql.includes('gangnamunni_bookings')) {
         return [[last === 14
           ? { cnt: '10', amount: '900000', cancelled: '2', pending: '3', prev_cnt: '4', prev_amount: '300000' }
@@ -67,6 +74,7 @@ describe('admin API (PHP admin session + dashboard summary)', () => {
     phpCalls.length = 0;
     sqls.length = 0;
     missingPayments = false;
+    linkColumn = 'ok';
     dbStub.query.mockClear();
     await boot();
   });
@@ -167,7 +175,7 @@ describe('admin API (PHP admin session + dashboard summary)', () => {
       const r = await get('/v1/dashboard/summary', SUPER).expect(200);
       expect(r.body).toEqual({
         generatedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/),
-        members: { total: 1200, today: 3, last7d: 25, last30d: 110 },
+        members: { total: 1200, today: 3, last7d: 25, last30d: 110, withdrawn: 37, admins: 4, adminsAlsoMembers: 2 },
         bookings: {
           d7: { count: 10, amount: 900000, paidAmount: 500000, refundedAmount: 50000, cancelled: 2, pending: 3, prev: { count: 4, amount: 300000, paidAmount: 120000 } },
           d30: { count: 40, amount: 3500000, paidAmount: 2100000, refundedAmount: 150000, cancelled: 5, pending: 6, prev: { count: 30, amount: 2000000, paidAmount: 1800000 } },
@@ -179,7 +187,7 @@ describe('admin API (PHP admin session + dashboard summary)', () => {
     });
     it('only runs SELECT statements', async () => {
       await get('/v1/dashboard/summary', SUPER).expect(200);
-      expect(sqls).toHaveLength(9);
+      expect(sqls).toHaveLength(11);
       for (const sql of sqls) expect(sql.trim()).toMatch(/^SELECT\b/);
     });
     it('a missing table is reported as 0, not as an error', async () => {
@@ -188,6 +196,11 @@ describe('admin API (PHP admin session + dashboard summary)', () => {
       expect(r.body.bookings.d7).toMatchObject({ count: 10, amount: 900000, paidAmount: 0, refundedAmount: 0, prev: { count: 4, amount: 300000, paidAmount: 0 } });
       expect(r.body.bookings.d30).toMatchObject({ paidAmount: 0, refundedAmount: 0 });
       expect(r.body.members.total).toBe(1200);
+    });
+    it.each(['missing', 'denied'] as const)('admin link column %s: adminsAlsoMembers is 0, the rest is unchanged', async (mode) => {
+      linkColumn = mode;
+      const r = await get('/v1/dashboard/summary', SUPER).expect(200);
+      expect(r.body.members).toEqual({ total: 1200, today: 3, last7d: 25, last30d: 110, withdrawn: 37, admins: 4, adminsAlsoMembers: 0 });
     });
     it('any other database error is not swallowed', async () => {
       dbStub.query.mockImplementationOnce(async () => { throw Object.assign(new Error('Access denied'), { code: 'ER_TABLEACCESS_DENIED_ERROR', errno: 1142 }); });
@@ -200,10 +213,10 @@ describe('admin API (PHP admin session + dashboard summary)', () => {
         await get('/v1/dashboard/summary', SUPER).expect(200);
         now.mockReturnValue(2_009_999);
         await get('/v1/dashboard/summary', SUPER).expect(200);
-        expect(dbStub.query).toHaveBeenCalledTimes(9);
+        expect(dbStub.query).toHaveBeenCalledTimes(11);
         now.mockReturnValue(2_010_000);
         await get('/v1/dashboard/summary', SUPER).expect(200);
-        expect(dbStub.query).toHaveBeenCalledTimes(18);
+        expect(dbStub.query).toHaveBeenCalledTimes(22);
       } finally {
         now.mockRestore();
       }

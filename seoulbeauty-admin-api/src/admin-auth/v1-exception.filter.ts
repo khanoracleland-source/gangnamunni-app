@@ -5,8 +5,8 @@ import type { Request, Response } from 'express';
 const isV1 = (path: string): boolean => path === '/v1' || path.startsWith('/v1/');
 
 /**
- * Every /v1 answer is uncacheable, and any 404 under /v1 (unknown path, wrong method, switch off) has the one
- * contract shape {"error":"not_found"} instead of Nest's default body. Other paths (/health) keep Nest's defaults.
+ * Every /v1 answer is uncacheable, and any 404 under /v1 (unknown path, wrong method, switch off) has the same
+ * JSON body {"error":"not_found"} instead of Nest's default body. Other paths (/health) keep Nest's defaults.
  */
 @Catch()
 export class V1ExceptionFilter extends BaseExceptionFilter {
