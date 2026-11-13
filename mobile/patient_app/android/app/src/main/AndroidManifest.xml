@@ -127,16 +127,35 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Shared web URLs open this app when installed; otherwise Android uses the browser. -->
+            <!-- Shared web URLs open this app when installed; otherwise Android uses the browser.
+                 One verified host only (seoulbeauty.app): on Android 11 and older a single host that
+                 fails verification fails every host, so the previous app host is not listed.
+                 Pages only, listed by section under /next: a manifest filter cannot exclude a path
+                 on every Android version, so /next/api/ (social-login callback, payment return) and
+                 /next/_next/ are simply never matched and stay in the browser. Sign-in pages
+                 (/next/login, /next/register, /next/password-*) are left out on purpose: a login that
+                 started in the browser must finish there. DeepLinkService rejects /next/api/ as well.
+                 A new top-level page section needs a line here. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data
-                    android:scheme="https"
-                    android:host="hms.seoulbeauty.app"
-                    android:pathPrefix="/hairwang/gangnamunni" />
+                <data android:scheme="https" />
+                <data android:host="seoulbeauty.app" />
+                <data android:path="/next" />
+                <data android:path="/next/" />
+                <data android:pathPrefix="/next/hospitals" />
+                <data android:pathPrefix="/next/events" />
+                <data android:pathPrefix="/next/community" />
+                <data android:pathPrefix="/next/reviews" />
+                <data android:pathPrefix="/next/booking" />
+                <data android:pathPrefix="/next/mypage" />
+                <data android:pathPrefix="/next/faq" />
+                <data android:pathPrefix="/next/qna" />
+                <data android:pathPrefix="/next/terms" />
+                <data android:pathPrefix="/next/privacy" />
+                <data android:pathPrefix="/next/points-policy" />
             </intent-filter>
 
             <!-- OAuth 콜백 Deep Link -->

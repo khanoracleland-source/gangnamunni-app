@@ -6,6 +6,39 @@
         "appID": "JZ4MFA48JA.com.celebhospital.patient.public",
         "components": [
           {
+            "/": "/next/api/*",
+            "exclude": true,
+            "comment": "Endpoints (payment return, social-login callback) never open the app"
+          },
+          {
+            "/": "/next/_next/*",
+            "exclude": true,
+            "comment": "Build assets are not pages"
+          },
+          {
+            "/": "/next/login*",
+            "exclude": true,
+            "comment": "Sign-in pages stay in the browser (same as the Android manifest): a login that started in the browser must finish there"
+          },
+          {
+            "/": "/next/register*",
+            "exclude": true,
+            "comment": "Sign-in pages stay in the browser (same as the Android manifest): a login that started in the browser must finish there"
+          },
+          {
+            "/": "/next/password-*",
+            "exclude": true,
+            "comment": "Sign-in pages stay in the browser (same as the Android manifest): a login that started in the browser must finish there"
+          },
+          {
+            "/": "/next",
+            "comment": "Seoul Beauty home (Next.js)"
+          },
+          {
+            "/": "/next/*",
+            "comment": "Seoul Beauty pages (Next.js)"
+          },
+          {
             "/": "/hairwang/gangnamunni",
             "comment": "Open the Seoul Beauty web root in the patient app"
           },
@@ -18,6 +51,39 @@
       {
         "appID": "JZ4MFA48JA.com.celebhospital.patient",
         "components": [
+          {
+            "/": "/next/api/*",
+            "exclude": true,
+            "comment": "Endpoints (payment return, social-login callback) never open the app"
+          },
+          {
+            "/": "/next/_next/*",
+            "exclude": true,
+            "comment": "Build assets are not pages"
+          },
+          {
+            "/": "/next/login*",
+            "exclude": true,
+            "comment": "Sign-in pages stay in the browser (same as the Android manifest): a login that started in the browser must finish there"
+          },
+          {
+            "/": "/next/register*",
+            "exclude": true,
+            "comment": "Sign-in pages stay in the browser (same as the Android manifest): a login that started in the browser must finish there"
+          },
+          {
+            "/": "/next/password-*",
+            "exclude": true,
+            "comment": "Sign-in pages stay in the browser (same as the Android manifest): a login that started in the browser must finish there"
+          },
+          {
+            "/": "/next",
+            "comment": "Seoul Beauty home (Next.js)"
+          },
+          {
+            "/": "/next/*",
+            "comment": "Seoul Beauty pages (Next.js)"
+          },
           {
             "/": "/hairwang/gangnamunni",
             "comment": "Legacy private build (com.celebhospital.patient) - remove once fully retired"
