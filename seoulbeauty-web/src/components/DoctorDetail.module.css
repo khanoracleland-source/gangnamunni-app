@@ -14,7 +14,7 @@
 .h2 { margin: 0; font-size: calc(15px * var(--fs-scale)); font-weight: 700; }
 .tags { display: flex; gap: 6px; flex-wrap: wrap; }
 .tag { padding: 3px 7px; background: #F1EFEF; border-radius: 6px; font-size: calc(12px * var(--fs-scale)); font-weight: 500; color: #1A1718; white-space: nowrap; }
-.creds { margin: 0 20px; padding: 18px 0 18px 16px; border-bottom: 1px solid #ECE9EA; font-size: calc(13px * var(--fs-scale)); line-height: 1.7; color: #1A1718; }
+.creds { margin: 0 20px; padding: 18px 0 18px 16px; border-bottom: 1px solid #ECE9EA; font-size: calc(13px * var(--fs-scale)); line-height: 2; color: #4A4446; }
 .creds li { padding-left: 2px; }
 .h2Sec { margin: 0; padding: 20px 20px 0; font-size: calc(15px * var(--fs-scale)); font-weight: 700; }
 .hosp { display: flex; gap: 12px; align-items: center; margin: 12px 20px 0; padding: 16px; border: 1px solid #ECE9EA; border-radius: 16px; background: #fff; color: #1A1718; text-decoration: none; }
@@ -23,7 +23,7 @@
 .hospName { font-size: calc(17px * var(--fs-scale)); font-weight: 700; line-height: 1.3; }
 .hospAddr { font-size: calc(12px * var(--fs-scale)); color: #4A4446; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sep { color: #CFC8CB; }
-.hospMeta { display: flex; align-items: center; gap: 12px; font-size: calc(12px * var(--fs-scale)); }
+.hospMeta { display: flex; align-items: center; gap: 12px; font-size: calc(11px * var(--fs-scale)); }
 .rating { display: inline-flex; align-items: center; gap: 3px; }
 .rating img, .badge img { display: block; object-fit: contain; }
 .rating b { font-weight: 700; }
