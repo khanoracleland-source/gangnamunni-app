@@ -30,7 +30,7 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: AppAuthGateScreen(
-            url: 'https://hms.seoulbeauty.app/hairwang/gangnamunni/',
+            url: 'https://seoulbeauty.app/next/',
             authService: NativeAuthService.testing(
                 client: MockClient((_) async => http.Response('', 500)))),
       ));

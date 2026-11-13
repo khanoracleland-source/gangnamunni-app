@@ -298,7 +298,7 @@ class WebViewBridge {
           if (window.__nativeAuthBootstrapPending) return;
           window.__nativeAuthBootstrapPending = true;
           var status = 0;
-          fetch('/hairwang/gangnamunni/api/app_auth_bootstrap.php', {
+          fetch('/next/api/v1/app-auth/bootstrap', {
             method: 'POST', credentials: 'same-origin', cache: 'no-store',
             headers: {'X-Native-Auth': '1'}
           }).then(function(r) { status = r.status; return r.ok ? r.json() : null; })

@@ -170,7 +170,8 @@ void main() {
     final result = await makeService().resolveAuthState();
     expect(result.status, NativeAuthStatus.valid);
     expect(result.sessionBridgeToken, 'e' * 64);
-    expect(requests.last.url.path, endsWith('app_auth_verify.php'));
+    expect(requests.last.url.toString(),
+        'https://seoulbeauty.app/next/api/v1/app-auth/verify');
     expect(disk['native_session_v2'], saved);
   });
   test('legacy credentials migrate without forcing login', () async {
@@ -210,11 +211,11 @@ void main() {
     seed(expired: true);
     expect((await makeService().resolveAuthState()).status,
         NativeAuthStatus.valid);
-    expect(requests.single.url.path, endsWith('app_auth_refresh.php'));
+    expect(requests.single.url.path, '/next/api/v1/app-auth/refresh');
   });
   test('401 access falls back to valid refresh', () async {
     seed();
-    respond = (r) => r.url.path.endsWith('verify.php')
+    respond = (r) => r.url.path.endsWith('/app-auth/verify')
         ? jsonResponse({'success': false, 'error': 'access_token_invalid'}, 401)
         : jsonResponse(bundle());
     expect((await makeService().resolveAuthState()).status,
@@ -331,7 +332,7 @@ void main() {
     final started = Completer<void>();
     final response = Completer<http.Response>();
     respond = (r) {
-      if (r.url.path.endsWith('verify.php')) {
+      if (r.url.path.endsWith('/app-auth/verify')) {
         started.complete();
         return response.future;
       }
@@ -401,7 +402,7 @@ void main() {
     final started = Completer<void>();
     final response = Completer<http.Response>();
     respond = (r) {
-      if (r.url.path.endsWith('refresh.php')) {
+      if (r.url.path.endsWith('/app-auth/refresh')) {
         started.complete();
         return response.future;
       }
@@ -444,7 +445,7 @@ void main() {
     final logoutStarted = Completer<void>();
     final logoutResponse = Completer<http.Response>();
     respond = (r) {
-      if (r.url.path.endsWith('app_logout.php')) {
+      if (r.url.path.endsWith('/app-auth/logout')) {
         logoutStarted.complete();
         return logoutResponse.future;
       }
@@ -466,7 +467,7 @@ void main() {
     final started = Completer<void>();
     final response = Completer<http.Response>();
     respond = (r) {
-      if (r.url.path.endsWith('app_auth_exchange.php')) {
+      if (r.url.path.endsWith('/app-auth/exchange')) {
         started.complete();
         return response.future;
       }
@@ -479,7 +480,7 @@ void main() {
     response.complete(jsonResponse(bundle()));
     expect(await login, isFalse);
     await logout;
-    expect(requests.last.url.path, endsWith('app_logout.php'));
+    expect(requests.last.url.path, '/next/api/v1/app-auth/logout');
     expect((await makeService().resolveAuthState()).status,
         NativeAuthStatus.needsLogin);
   });

@@ -13,7 +13,8 @@ import 'package:kivicare_patient/screens/webview/startup_webview_screen.dart';
 // ignore: depend_on_referenced_packages
 import 'package:webview_flutter_platform_interface/webview_flutter_platform_interface.dart';
 
-const url = 'https://hms.seoulbeauty.app/hairwang/gangnamunni/';
+// The old PHP home on the app's host: it must open as the Next.js home.
+const url = 'https://seoulbeauty.app/hairwang/gangnamunni/';
 
 class TestPlatform extends WebViewPlatform {
   final events = <String>[];
@@ -161,9 +162,9 @@ void main() {
         .setMockMethodCallHandler(storageChannel, null);
   });
   const listUrl =
-      'https://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php?treatment=%ED%8B%B0%ED%83%80%EB%8A%84&sort=price&region=강남';
+      'https://seoulbeauty.app/hairwang/gangnamunni/hospitals.php?treatment=%ED%8B%B0%ED%83%80%EB%8A%84&sort=price&region=강남';
   const detailUrl =
-      'https://hms.seoulbeauty.app/hairwang/gangnamunni/detail.php?id=8216&treatment_id=2&treatment=%ED%8B%B0%ED%83%80%EB%8A%84';
+      'https://seoulbeauty.app/hairwang/gangnamunni/detail.php?id=8216&treatment_id=2&treatment=%ED%8B%B0%ED%83%80%EB%8A%84';
   // NextPilot is on by default, so the list the header arrow returns to is
   // loaded as its /next/hospitals equivalent (query/filters preserved).
   final nextListUrl = NextPilot.rewrite(Uri.parse(listUrl))!;
@@ -261,7 +262,7 @@ void main() {
   });
 
   testWidgets(
-      'cookie-only upgrade neither clears cookies nor overwrites device binding',
+      'no stored session keeps cookies and sends the stored device id before load',
       (tester) async {
     await pumpReady(
         tester,
@@ -270,7 +271,31 @@ void main() {
             authService: NativeAuthService.testing(
                 client: MockClient((_) async => http.Response('', 500)))));
     expect(platform.events, isNot(contains('clear')));
-    expect(platform.cookies.where((c) => c.name == 'sb_app_device'), isEmpty);
+    // NestJS never mints sb_app_device; bootstrap answers 401 without it.
+    final device =
+        platform.cookies.singleWhere((c) => c.name == 'sb_app_device');
+    expect(device.value, 'a' * 64);
+    expect(device.domain, 'seoulbeauty.app');
+    expect(platform.cookies.any((c) => c.name == 'sb_sso_token'), isFalse);
+    expect(platform.events.indexOf('cookie:sb_app_device'),
+        lessThan(platform.events.indexOf('load')));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('fresh install creates one device id and sends it as the cookie',
+      (tester) async {
+    disk.clear();
+    await pumpReady(
+        tester,
+        AppAuthGateScreen(
+            url: url,
+            authService: NativeAuthService.testing(
+                client: MockClient((_) async => http.Response('', 500)))));
+    final device =
+        platform.cookies.singleWhere((c) => c.name == 'sb_app_device');
+    expect(device.value, matches(RegExp(r'^[a-f0-9]{64}$')));
+    expect(disk['native_device_id'], device.value);
+    expect(platform.events, isNot(contains('clear')));
     expect(platform.events, contains('load'));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
@@ -320,6 +345,45 @@ void main() {
     expect(platform.events.last, 'load');
     expect(platform.events.indexOf('channel:FlutterBridge'),
         lessThan(platform.events.indexOf('load')));
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('a verified session lands on the NestJS endpoint of the app host',
+      (tester) async {
+    // An old push link on the previous app host: cookies and the landing go to the app host.
+    await pumpReady(
+        tester,
+        StartupWebViewScreen(
+            url:
+                'https://hms.seoulbeauty.app/hairwang/gangnamunni/my_bookings.php?tab=completed',
+            deviceId: 'a' * 64,
+            sessionBridgeToken: 'b' * 64));
+    expect(platform.cookies.map((c) => c.domain).toSet(), {'seoulbeauty.app'});
+    final first = platform.loadedUrls.single;
+    expect(first.scheme, 'https');
+    expect(first.host, 'seoulbeauty.app');
+    expect(first.path, '/next/api/v1/app-auth/land');
+    expect(first.queryParameters,
+        {'url': '/next/mypage/bookings?tab=completed'});
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('without a verified session the start page loads directly',
+      (tester) async {
+    await pumpReady(
+        tester, const StartupWebViewScreen(url: 'https://seoulbeauty.app/next/'));
+    expect(platform.loadedUrls.single, Uri.parse('https://seoulbeauty.app/next/'));
+    expect(platform.cookies.any((c) => c.name == 'sb_sso_token'), isFalse);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('a page outside the site never receives the session landing',
+      (tester) async {
+    await pumpReady(
+        tester,
+        StartupWebViewScreen(
+            url: 'https://example.com/page', sessionBridgeToken: 'b' * 64));
+    expect(platform.loadedUrls.single, Uri.parse('https://example.com/page'));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
   });
@@ -373,7 +437,7 @@ void main() {
     platform.cookies.add(const WebViewCookie(
         name: 'PHPSESSID',
         value: 'old-account',
-        domain: 'hms.seoulbeauty.app'));
+        domain: 'seoulbeauty.app'));
     await pumpReady(
         tester,
         AppAuthGateScreen(

@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:nb_utils/nb_utils.dart';
 import 'package:uni_links/uni_links.dart';
 
+import '../configs.dart';
 import '../screens/booking/appointment_detail_screen.dart';
 import '../screens/booking/model/appointments_res_model.dart';
 import '../screens/clinic/clinic_detail_screen.dart';
@@ -64,8 +65,11 @@ class DeepLinkService {
   static const List<String> _supportedSchemes = ['wellness', 'kivicare'];
 
   /// Only verified first-party web links may be opened inside the app.
-  static const List<String> _supportedWebHosts = ['hms.seoulbeauty.app'];
-  static const String _supportedWebPath = '/hairwang/gangnamunni';
+  /// The app's host and the previous one (StartupWebViewScreen opens both on the app's host).
+  static const List<String> _supportedWebHosts = [APP_SITE_HOST, ...LEGACY_SITE_HOSTS];
+
+  /// The Next.js site and the old PHP folder (its links are sent to their Next.js page).
+  static const List<String> _supportedWebPaths = ['/next', '/hairwang/gangnamunni'];
 
   // -------------------------------------------------------
   // 초기화
@@ -512,9 +516,9 @@ class DeepLinkService {
     if (!_supportedWebHosts.contains(uri.host.toLowerCase())) return false;
 
     final path = uri.path.toLowerCase();
-    return path == _supportedWebPath ||
-        path == '$_supportedWebPath/' ||
-        path.startsWith('$_supportedWebPath/');
+    // Endpoints are not pages: a link must never make the app call one.
+    if (path.startsWith('/next/api/')) return false;
+    return _supportedWebPaths.any((base) => path == base || path.startsWith('$base/'));
   }
 
   /// 경로 세그먼트의 첫 번째 요소를 정수 ID로 추출

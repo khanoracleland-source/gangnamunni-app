@@ -60,7 +60,8 @@ class _AppAuthGateScreenState extends State<AppAuthGateScreen> {
         // A verified native account is authoritative. A stale PHPSESSID for
         // another account would otherwise bypass the injected bridge token.
         // Clear before restoring the verified account, or after rejection.
-        // noStoredSession and retry preserve the cookie-only fallback.
+        // noStoredSession keeps its cookies: the WebView may still be logged
+        // in, and bootstrap then turns that login into native tokens.
         // If clearing fails, the outer catch shows retry rather than opening
         // a rejected account through stale cookies.
         await WebViewCookieManager().clearCookies();
@@ -70,10 +71,12 @@ class _AppAuthGateScreenState extends State<AppAuthGateScreen> {
 
       setState(() {
         _loading = false;
-        // Let old cookie-only installs restore their original device binding.
-        // The authenticated exchange then adopts that id into secure storage.
-        _deviceId =
-            result.status == NativeAuthStatus.noStoredSession ? null : deviceId;
+        // The app is the only owner of sb_app_device: NestJS never mints one
+        // (the old PHP site did), and /app-auth/bootstrap answers 401 without
+        // it. Always hand over this install's stored id — a fresh install or
+        // a cookie-only upgrade included — so the login that follows can be
+        // exchanged for native tokens. Bootstrap echoes the same id back.
+        _deviceId = deviceId;
         _showRetry = result.status == NativeAuthStatus.retry;
         _sessionBridgeToken = result.status == NativeAuthStatus.valid
             ? result.sessionBridgeToken
@@ -82,6 +85,7 @@ class _AppAuthGateScreenState extends State<AppAuthGateScreen> {
     } catch (_) {
       // Secure storage can fail before resolveAuthState handles errors.
       // Preserve credentials and allow another attempt instead of spinning.
+      // No device id could be read, so none is passed on.
       if (!mounted) return;
       setState(() {
         _loading = false;

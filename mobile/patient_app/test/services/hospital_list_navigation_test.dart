@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:kivicare_patient/services/hospital_list_navigation.dart';
 
 void main() {
-  final site = Uri.parse('https://hms.seoulbeauty.app/hairwang/gangnamunni/');
+  final site = Uri.parse('https://seoulbeauty.app/hairwang/gangnamunni/');
   final list = site.resolve('hospitals.php?treatment=티타늄&sort=price&region=강남');
   final detail =
       site.resolve('detail.php?id=8216&treatment_id=2&treatment=티타늄');
@@ -46,9 +46,9 @@ void main() {
     site.resolve('my_wishlist.php'),
     site.resolve('index.php'),
     Uri.parse('https://other.example/hairwang/gangnamunni/hospitals.php'),
-    Uri.parse('http://hms.seoulbeauty.app/hairwang/gangnamunni/hospitals.php'),
+    Uri.parse('http://seoulbeauty.app/hairwang/gangnamunni/hospitals.php'),
     Uri.parse(
-        'https://hms.seoulbeauty.app:8443/hairwang/gangnamunni/hospitals.php'),
+        'https://seoulbeauty.app:8443/hairwang/gangnamunni/hospitals.php'),
   ]) {
     test('leaving list/detail flow clears stale return URL: $other', () {
       navigation.pageStarted(list.toString());

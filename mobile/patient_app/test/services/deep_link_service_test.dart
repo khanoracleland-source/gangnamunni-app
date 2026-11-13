@@ -39,6 +39,37 @@ void main() {
     return ['wellness', 'kivicare'].contains(scheme.toLowerCase());
   }
 
+  /// Mirrors DeepLinkService._isSupportedWebLink
+  bool isSupportedWebLink(Uri uri) {
+    if (uri.scheme.toLowerCase() != 'https') return false;
+    if (!['seoulbeauty.app', 'hms.seoulbeauty.app']
+        .contains(uri.host.toLowerCase())) {
+      return false;
+    }
+    final path = uri.path.toLowerCase();
+    if (path.startsWith('/next/api/')) return false;
+    return ['/next', '/hairwang/gangnamunni']
+        .any((base) => path == base || path.startsWith('$base/'));
+  }
+
+  // =====================================================================
+  // GROUP: Verified web links (seoulbeauty.app)
+  // =====================================================================
+  group('Verified web links', () {
+    test('a Next.js page on the app host is accepted', () {
+      expect(
+          isSupportedWebLink(
+              Uri.parse('https://seoulbeauty.app/next/hospitals/1')),
+          isTrue);
+    });
+
+    test('a /next/api/ endpoint is rejected', () {
+      expect(
+          isSupportedWebLink(Uri.parse('https://seoulbeauty.app/next/api/v1/x')),
+          isFalse);
+    });
+  });
+
   // =====================================================================
   // GROUP: Supported URL Schemes
   // =====================================================================

@@ -28,7 +28,7 @@ class StartupWebViewScreen extends StatefulWidget {
   /// cookie jar did or did not manage to persist.
   final String? deviceId;
 
-  /// A one-shot WebView session-bridge token (see app_auth_verify/refresh.php)
+  /// A one-shot WebView session-bridge token (see /v1/app-auth/verify|refresh)
   /// from a native accessToken/refreshToken that was already verified valid.
   /// When present, it is injected as sb_sso_token before the first page load
   /// so the site opens already logged in — no login page, no cookie roulette.
@@ -55,7 +55,7 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
   late final WebViewController _controller;
   final WebViewCookieManager _cookieManager = WebViewCookieManager();
   final _hospitalNavigation =
-      HospitalListNavigation(Uri.parse(STARTUP_WEBVIEW_URL));
+      HospitalListNavigation(Uri.parse(LEGACY_SITE_URL));
   bool _returningToList = false;
   bool _isLoading = true;
   bool _hasRenderedPage = false;
@@ -134,7 +134,8 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     // Tell the website that this request comes from the patient app. The
     // marker is deliberately not an auth token; it only lets the login page
     // enable its rotating 120-day remember-login token by default.
-    final startupUri = Uri.parse(widget.url);
+    // A link on the previous app host (old push / shared link) opens on the app's host.
+    final startupUri = NextPilot.canonical(Uri.parse(widget.url));
     await _cookieManager.setCookie(
       WebViewCookie(
         name: 'sb_patient_app',
@@ -171,9 +172,9 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       );
     }
 
-    // Pin the server's device binding to the same id NativeAuthService uses,
-    // instead of letting the server mint one and the WebView cookie jar be
-    // the only place it's remembered.
+    // Pin the server's device binding to the same id NativeAuthService uses.
+    // NestJS never mints this cookie, so without it /app-auth/bootstrap
+    // refuses (401) and a WebView login can never become native tokens.
     if (widget.deviceId != null && widget.deviceId!.isNotEmpty) {
       await _cookieManager.setCookie(
         WebViewCookie(
@@ -186,8 +187,8 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     }
 
     // A verified accessToken (or a fresh one from refreshToken) hands the
-    // WebView an already-authenticated session — sso_auto_login.php promotes
-    // this cookie to a real login on the very first page load.
+    // WebView an already-authenticated session — the landing request below
+    // (/next/api/v1/app-auth/land) turns this one-time cookie into the site session.
     if (widget.sessionBridgeToken != null &&
         widget.sessionBridgeToken!.isNotEmpty) {
       await _cookieManager.setCookie(
@@ -270,19 +271,16 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
       ),
     );
     if (!mounted) return;
-    // Pilot: open the Next.js home directly (loadRequest from Dart bypasses the navigation
-    // delegate on Android, so the rewrite has to happen here).
+    // An old PHP-style link opens as its Next.js page (loadRequest from Dart bypasses the
+    // navigation delegate on Android, so the rewrite has to happen here).
     final target = NextPilot.rewrite(startupUri) ?? startupUri;
     final hasBridgeToken = widget.sessionBridgeToken?.isNotEmpty == true;
-    if (hasBridgeToken && target != startupUri) {
-      // The one-time sb_sso_token becomes a real session cookie only on a PHP request
-      // made by this WebView; a Next.js page never runs PHP. Land on PHP once and let it
-      // redirect (302) to the Next.js target, so the session cookie is in this cookie jar.
-      final land = startupUri.resolve('app_session_land.php').replace(
-        queryParameters: {'url': target.hasQuery ? '${target.path}?${target.query}' : target.path},
-      );
+    if (hasBridgeToken && NextPilot.isSiteUrl(target)) {
+      // The one-time sb_sso_token becomes the site session only on the landing endpoint
+      // (a page never consumes it). Land there once and let it redirect (302) to the
+      // target, so the session cookie is in this cookie jar before the page loads.
       debugPrint('[NextPilot] session landing -> ${target.path}');
-      await _controller.loadRequest(land);
+      await _controller.loadRequest(NextPilot.landUri(target));
     } else {
       await _controller.loadRequest(target);
     }
@@ -358,8 +356,9 @@ class _StartupWebViewScreenState extends State<StartupWebViewScreen>
     if (url == null || url.isEmpty) return false;
 
     final uri = Uri.tryParse(url);
-    final startupUri = Uri.tryParse(widget.url);
-    if (uri == null || startupUri == null) return false;
+    final parsedStartup = Uri.tryParse(widget.url);
+    if (uri == null || parsedStartup == null) return false;
+    final startupUri = NextPilot.canonical(parsedStartup);
 
     if (NextPilot.isHomePage(uri)) return true;
     if (uri.host.toLowerCase() != startupUri.host.toLowerCase()) return false;

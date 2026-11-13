@@ -16,6 +16,9 @@ analyzer:
     - android/**
     - ios/**
     - web/**
+    # Vendored plugin copies (pubspec dependency_overrides). Their example/ and test/ folders are not
+    # part of the app and cannot resolve their own dependencies here, so they only add noise.
+    - patched_plugins/**
 
 include: package:flutter_lints/flutter.yaml
 

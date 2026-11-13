@@ -4,7 +4,8 @@ import 'package:kivicare_patient/services/next_pilot.dart';
 
 /// Every PHP page with a Next.js counterpart, and the parameters that keep the PHP page.
 void main() {
-  const host = 'https://hms.seoulbeauty.app';
+  const host = 'https://seoulbeauty.app';
+  const old = 'https://hms.seoulbeauty.app';
   Uri php(String pathAndQuery) => Uri.parse('$host/$pathAndQuery');
   Uri legacy(String pathAndQuery) => Uri.parse('$host/hairwang/gangnamunni/$pathAndQuery');
   String? to(Uri u) {
@@ -17,9 +18,41 @@ void main() {
 
   test('only the trusted https origin is rewritten', () {
     expect(to(Uri.parse('https://evil.test/mypage.php')), isNull);
-    expect(to(Uri.parse('http://hms.seoulbeauty.app/mypage.php')), isNull);
-    expect(to(Uri.parse('https://user@hms.seoulbeauty.app/mypage.php')), isNull);
-    expect(to(Uri.parse('https://HMS.seoulbeauty.app/mypage.php')), '/next/mypage');
+    expect(to(Uri.parse('http://seoulbeauty.app/mypage.php')), isNull);
+    expect(to(Uri.parse('https://user@seoulbeauty.app/mypage.php')), isNull);
+    expect(to(Uri.parse('https://seoulbeauty.app:8443/mypage.php')), isNull);
+    expect(to(Uri.parse('https://SEOULBEAUTY.app/mypage.php')), '/next/mypage');
+  });
+
+  test('a page link on the previous app host opens on the app host', () {
+    String? url(String u) => NextPilot.rewrite(Uri.parse(u))?.toString();
+    expect(url('$old/mypage.php'), '$host/next/mypage');
+    expect(url('$old/hairwang/gangnamunni/detail.php?id=5'), '$host/next/hospitals/5');
+    // the page a card payment returns to (the return itself is posted to the old host)
+    expect(url('$old/next/mypage/bookings/7/payment/success'), '$host/next/mypage/bookings/7/payment/success');
+    expect(url('$old/next/mypage/bookings/7/payment?pay_error=X'), '$host/next/mypage/bookings/7/payment?pay_error=X');
+    // a PHP page without a Next.js counterpart only changes host
+    expect(url('$old/hairwang/gangnamunni/chat.php?id=3'), '$host/hairwang/gangnamunni/chat.php?id=3');
+    // endpoints are never replayed on another host
+    expect(url('$old/next/api/v1/payments/inicis/return'), isNull);
+    expect(url('$old/next/api/v1/auth/social/callback?code=x&state=y'), isNull);
+    // only a plain https link of that host
+    expect(url('http://hms.seoulbeauty.app/mypage.php'), isNull);
+    expect(url('https://user@hms.seoulbeauty.app/mypage.php'), isNull);
+    expect(url('https://hms.seoulbeauty.app:8443/mypage.php'), isNull);
+    expect(url('https://hms.seoulbeauty.app.evil.test/mypage.php'), isNull);
+    // already on the app host: nothing to do (no reload loop)
+    expect(url('$host/next/mypage'), isNull);
+    expect(NextPilot.canonical(Uri.parse('$host/next/mypage')), Uri.parse('$host/next/mypage'));
+  });
+
+  test('session landing and the booking list', () {
+    expect(NextPilot.landUri(Uri.parse('$host/next/')).toString(), '$host/next/api/v1/app-auth/land?url=%2Fnext%2F');
+    expect(NextPilot.landUri(Uri.parse('$host/next/hospitals?q=a&sort=price')).queryParameters, {'url': '/next/hospitals?q=a&sort=price'});
+    expect(NextPilot.bookingsUri.toString(), '$host/next/mypage/bookings');
+    expect(NextPilot.isSiteUrl(Uri.parse('$host/next/')), isTrue);
+    expect(NextPilot.isSiteUrl(Uri.parse('$old/next/')), isFalse);
+    expect(NextPilot.isSiteUrl(Uri.parse('https://example.com/next/')), isFalse);
   });
 
   test('home', () {
@@ -38,8 +71,26 @@ void main() {
     expect(to(php('detail.php?id=8216')), '/next/hospitals/8216');
     expect(to(php('detail.php?id=8216&tab=events&from=my_wishlist')), '/next/hospitals/8216?tab=events');
     expect(to(php('detail.php?id=8216&tab=home')), '/next/hospitals/8216');
-    expect(to(php('detail.php?id=8216&treatment_id=2')), isNull); // treatment context stays PHP
+    // treatment context: the Next.js detail opens that treatment's block (same rules as the website's phpLink.ts)
+    expect(to(php('detail.php?id=8216&treatment_id=2')), '/next/hospitals/8216?treatment_id=2');
+    expect(to(php('detail.php?id=8216&tab=events&treatment_id=2&treatment=%EB%B3%B4%ED%86%A1%EC%8A%A4&return_url=%2Fhospitals.php')),
+        '/next/hospitals/8216?tab=events&treatment_id=2');
+    expect(to(php('detail.php?id=8216&treatment_id=0')), isNull);
+    expect(to(php('detail.php?id=8216&treatment_id=abc')), isNull);
+    expect(to(php('detail.php?id=8216&treatment=%EB%B3%B4%ED%86%A1%EC%8A%A4')), isNull); // a name without an id stays PHP
+    expect(to(php('detail.php?id=8216&page=2')), isNull);
     expect(to(php('detail.php?id=0')), isNull);
+  });
+
+  test('PHP pages that pushes still link to open their Next.js page', () {
+    // admin_consultations.php: the push sent when a hospital accepts a 상담
+    expect(to(php('my_appointments.php')), '/next/mypage/consultations');
+    expect(to(legacy('my_appointments.php?app=patient')), '/next/mypage/consultations');
+    expect(to(Uri.parse('$old/my_appointments.php')), '/next/mypage/consultations');
+    expect(to(php('my_appointments.php?phone=01012345678')), isNull); // the phone lookup stays PHP
+    // password_reset.php is a redirect to auth/password_lost.php
+    expect(to(php('password_reset.php')), '/next/password-lost');
+    expect(to(php('password_reset.php?token=x')), isNull);
   });
 
   test('events', () {

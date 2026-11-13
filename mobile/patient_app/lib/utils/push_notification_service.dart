@@ -15,6 +15,7 @@ import '../models/notificationdata_model.dart';
 import '../network/network_utils.dart';
 import '../screens/booking/model/appointments_res_model.dart';
 import '../services/deep_link_service.dart';
+import '../services/next_pilot.dart';
 import 'api_end_points.dart';
 import 'app_common.dart';
 import 'common_base.dart';
@@ -225,9 +226,7 @@ class PushNotificationService {
   }
 
   String _bookingListUrl() {
-    final bookingListUrl =
-        Uri.parse(STARTUP_WEBVIEW_URL).resolve('my_bookings.php');
-    return bookingListUrl.toString();
+    return NextPilot.bookingsUri.toString();
   }
 
   Uri _bookingListDeepLink() {

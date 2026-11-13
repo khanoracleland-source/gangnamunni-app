@@ -17,7 +17,35 @@ class NextPilot {
   /// Apache serves the Next.js app under this prefix on the same host.
   static const String basePath = '/next';
 
-  static final Uri _site = Uri.parse(STARTUP_WEBVIEW_URL);
+  /// The app's host plus the folder the PHP site lived in: old PHP-style links
+  /// (`/detail.php`, `/hairwang/gangnamunni/detail.php`) are recognised against it.
+  static final Uri _site = Uri.parse(LEGACY_SITE_URL);
+
+  /// A first-party page link on a previous app host (hms.seoulbeauty.app: old push
+  /// payloads, shared links, the page a payment returns to) -> the same page on the
+  /// app's host, where the session cookie is. Everything else is returned as is.
+  /// `/next/api/…` is never moved: those are endpoints another service posts to
+  /// (payment return, social callback), and replaying them as a GET would break them.
+  static Uri canonical(Uri uri) {
+    if (uri.scheme != 'https' || uri.userInfo.isNotEmpty) return uri;
+    if (uri.hasPort && uri.port != 443) return uri;
+    if (!LEGACY_SITE_HOSTS.contains(uri.host.toLowerCase())) return uri;
+    if (uri.path.startsWith('$basePath/api/')) return uri;
+    return uri.replace(host: _site.host);
+  }
+
+  /// True for a page of the app's own site (https, the app's host).
+  static bool isSiteUrl(Uri uri) => _sameOrigin(uri, _site);
+
+  /// `/next/api/v1/app-auth/land?url=<path>`: turns the one-time `sb_sso_token`
+  /// cookie into the site session and redirects (302) to [target] (same site only).
+  static Uri landUri(Uri target) => _sitePath(
+        '$basePath/api/v1/app-auth/land',
+        {'url': target.hasQuery ? '${target.path}?${target.query}' : target.path},
+      );
+
+  /// 예약 내역 (the page a booking push opens).
+  static Uri get bookingsUri => _sitePath('$basePath/mypage/bookings');
 
   /// Filters the Next.js list understands (day 9: dosage filter and the
   /// hospital search view `hid`/`tcat` too). Anything else stays on PHP.
@@ -31,11 +59,14 @@ class NextPilot {
       a.port == b.port &&
       a.userInfo.isEmpty;
 
-  /// Returns the Next.js URL to load instead of [uri], or null to leave it.
+  /// Returns the URL to load instead of [uri], or null to leave it: the Next.js
+  /// page of a PHP-style link, and/or the app's host for a link on a previous one.
   static Uri? rewrite(Uri uri) {
-    if (!enabled) return null;
-    final result = _rewrite(uri);
-    debugPrint('[NextPilot] nav ${uri.host}${uri.path} -> ${result?.path ?? 'keep'}');
+    final site = canonical(uri);
+    final moved = site != uri ? site : null;
+    if (!enabled) return moved;
+    final result = _rewrite(site) ?? moved;
+    debugPrint('[NextPilot] nav ${uri.host}${uri.path} -> ${result == null ? 'keep' : '${result.host}${result.path}'}');
     return result;
   }
 
@@ -62,6 +93,8 @@ class NextPilot {
     if (_myWishlistPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/wishlist', const {}, const {});
     if (_myReviewsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/reviews', const {'tab'}, const {'tab': {'writable', 'done'}});
     if (_myConsultationsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/consultations', const {}, const {});
+    // The push the hospital panel sends when it accepts a 상담 (admin_consultations.php) still links here.
+    if (_myAppointmentsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/consultations', const {}, const {});
     if (_myBookingsPaths.contains(uri.path)) return _rewriteBookings(uri);
     if (_bookingDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/bookings', idParam: 'booking_id');
     if (_myConsultationDetailPaths.contains(uri.path)) return _rewriteIdPage(uri, 'mypage/consultations');
@@ -78,6 +111,8 @@ class NextPilot {
     if (_registerTermsPaths.contains(uri.path)) return _rewriteRegisterTerms(uri);
     if (_pointsPolicyPaths.contains(uri.path)) return _rewritePointsPolicy(uri);
     if (_passwordLostPaths.contains(uri.path)) return _rewriteMine(uri, 'password-lost', const {}, const {});
+    // password_reset.php only redirects (301) to auth/password_lost.php.
+    if (_passwordResetPaths.contains(uri.path)) return _rewriteMine(uri, 'password-lost', const {}, const {});
     if (_loginPaths.contains(uri.path)) return _rewriteLogin(uri);
     if (_registerPaths.contains(uri.path)) return _rewriteMine(uri, 'register', const {}, const {});
     if (_myPointsPaths.contains(uri.path)) return _rewriteMine(uri, 'mypage/points', const {}, const {});
@@ -132,22 +167,30 @@ class NextPilot {
         queryParameters: query,
       );
 
-  /// detail.php?id=N[&tab=][&from=my_wishlist][&app=] -> /next/hospitals/N[?tab=].
-  /// Any other parameter (treatment context, page, ...) keeps the PHP page.
+  /// detail.php?id=N[&tab=][&treatment_id=M][&from=my_wishlist][&app=] -> /next/hospitals/N[?tab=][&treatment_id=M].
+  /// Same rules as the website (seoulbeauty-web/src/lib/phpLink.ts): `treatment` (the name) and `return_url` are
+  /// PHP-only helpers and are dropped; a bad treatment id, a name without an id, or any other parameter keeps the PHP page.
   static Uri? _rewriteDetail(Uri uri) {
     final q = uri.queryParameters;
     final id = int.tryParse(q['id'] ?? '');
     if (id == null || id <= 0) return null;
-    const allowed = {'id', 'tab', 'from', 'app'};
+    const allowed = {'id', 'tab', 'from', 'app', 'treatment_id', 'treatment', 'return_url'};
     if (q.keys.any((k) => !allowed.contains(k))) return null;
     final tab = q['tab'];
     if (tab != null && tab.isNotEmpty && !_detailTabs.contains(tab)) return null;
+    final rawTreatment = q['treatment_id'];
+    final treatment = rawTreatment == null || !RegExp(r'^[1-9]\d{0,9}$').hasMatch(rawTreatment) ? null : rawTreatment;
+    if (rawTreatment != null ? treatment == null : q.containsKey('treatment')) return null;
+    final kept = <String, String>{
+      if (tab != null && tab.isNotEmpty && tab != 'home') 'tab': tab,
+      if (treatment != null) 'treatment_id': treatment,
+    };
     return Uri(
       scheme: _site.scheme,
       host: _site.host,
       port: _site.hasPort ? _site.port : null,
       path: '$basePath/hospitals/$id',
-      queryParameters: (tab == null || tab.isEmpty || tab == 'home') ? null : {'tab': tab},
+      queryParameters: kept.isEmpty ? null : kept,
     );
   }
 
@@ -193,6 +236,8 @@ class NextPilot {
   static final Set<String> _myWishlistPaths = {'/my_wishlist.php', _site.resolve('my_wishlist.php').path};
   static final Set<String> _myReviewsPaths = {'/my_reviews.php', _site.resolve('my_reviews.php').path};
   static final Set<String> _myConsultationsPaths = {'/my_consultations.php', _site.resolve('my_consultations.php').path};
+  static final Set<String> _myAppointmentsPaths = {'/my_appointments.php', _site.resolve('my_appointments.php').path};
+  static final Set<String> _passwordResetPaths = {'/password_reset.php', _site.resolve('password_reset.php').path};
   static final Set<String> _myBookingsPaths = {'/my_bookings.php', _site.resolve('my_bookings.php').path};
   // booking_request_detail.php (active/completed) and booking_cancel_detail.php (cancelled) share one Next page.
   static final Set<String> _bookingDetailPaths = {

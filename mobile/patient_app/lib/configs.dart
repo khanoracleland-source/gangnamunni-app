@@ -49,9 +49,20 @@ const HELP_LINE_NUMBER = '+82-2-1234-5678'; // Update with actual number
 /// Show WebView on first launch
 const SHOW_WEBVIEW_ON_STARTUP = true;
 
-/// WebView URL to load on startup
-const STARTUP_WEBVIEW_URL =
-    'https://hms.seoulbeauty.app/hairwang/gangnamunni/?app=patient';
+/// The site the app runs on. 2.2.0 moved the app from hms.seoulbeauty.app to the
+/// public host: sign-in, tokens and every page are served there by Next.js / NestJS.
+const APP_SITE_HOST = 'seoulbeauty.app';
+
+/// Hosts that older links (push payloads, shared links, payment returns) can
+/// still carry. The app opens their pages on [APP_SITE_HOST], where the session is.
+const LEGACY_SITE_HOSTS = <String>['hms.seoulbeauty.app'];
+
+/// WebView URL to load on startup (the Next.js home)
+const STARTUP_WEBVIEW_URL = 'https://$APP_SITE_HOST/next/';
+
+/// Where the PHP site used to live. Nothing is loaded from here any more; it is
+/// only used to recognise old PHP-style links and send them to their Next.js page.
+const LEGACY_SITE_URL = 'https://$APP_SITE_HOST/hairwang/gangnamunni/';
 
 /// WebView Type: 'general' or 'sns'
 const STARTUP_WEBVIEW_TYPE = 'general'; // 'general' | 'sns'

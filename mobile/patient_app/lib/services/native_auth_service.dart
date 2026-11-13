@@ -63,7 +63,8 @@ class NativeAuthService {
     'native_refresh_expires_at',
   ];
   static final _tokenPattern = RegExp(r'^[a-f0-9]{64}$');
-  static final Uri _apiBase = Uri.parse(STARTUP_WEBVIEW_URL);
+  /// NestJS token endpoints (2.2.0; the PHP app_auth_*.php files were the same contract).
+  static const _apiPath = '/next/api/v1/app-auth';
 
   int _epoch = 0;
   int _lastLogoutEpoch = 0;
@@ -75,8 +76,7 @@ class NativeAuthService {
   final Set<String> _loggedOutCodes = {};
   String? _completedCode;
 
-  Uri _endpoint(String file) => _apiBase.replace(
-      path: '/hairwang/gangnamunni/api/$file', query: '', fragment: '');
+  Uri _endpoint(String name) => Uri.https(APP_SITE_HOST, '$_apiPath/$name');
 
   // Serialize the epoch check AND the asynchronous write/delete, so logout
   // cannot interleave between the check and a delayed platform write.
@@ -173,7 +173,7 @@ class NativeAuthService {
       if (_isToken(access) &&
           expiry is int &&
           expiry - 30 > DateTime.now().millisecondsSinceEpoch ~/ 1000) {
-        final res = await _post('app_auth_verify.php',
+        final res = await _post('verify',
             {'device_id': device, 'access_token': access});
         if (epoch != _epoch) return _superseded;
         final data = _decode(res);
@@ -191,7 +191,7 @@ class NativeAuthService {
         }
         // An expired/revoked access token alone does not invalidate refresh.
       }
-      final res = await _post('app_auth_refresh.php', {
+      final res = await _post('refresh', {
         'mb_id': mbId,
         'refresh_token': refresh,
         'device_id': device,
@@ -259,9 +259,9 @@ class NativeAuthService {
       data?['success'] == false &&
       errors.contains(data?['error']);
 
-  Future<http.Response> _post(String file, Map<String, dynamic> body) => _client
+  Future<http.Response> _post(String name, Map<String, dynamic> body) => _client
       .post(
-        _endpoint(file),
+        _endpoint(name),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(body),
       )
@@ -308,8 +308,7 @@ class NativeAuthService {
         if (epoch != _epoch) return false;
         http.Response? res;
         try {
-          res = await _post(
-              'app_auth_exchange.php', {'code': code, 'device_id': device});
+          res = await _post('exchange', {'code': code, 'device_id': device});
         } catch (_) {/* A lost response can retry the same idempotent code. */}
         if (epoch != _epoch) {
           if (_lastLogoutEpoch > epoch && res?.statusCode == 200) {
@@ -385,7 +384,7 @@ class NativeAuthService {
 
   Future<void> _revoke(Map<String, dynamic> session) async {
     try {
-      await _post('app_logout.php', {
+      await _post('logout', {
         'mb_id': session['mb_id'],
         'device_id': session['device_id'],
         'access_token': session['access_token'],
