@@ -1,0 +1,26 @@
+# /etc/systemd/system/seoulbeauty-admin-web.service
+[Unit]
+Description=Seoul Beauty admin panel (Next.js)
+After=network.target seoulbeauty-admin-api.service
+Wants=seoulbeauty-admin-api.service
+
+[Service]
+Type=simple
+User=sbapi
+Group=sbapi
+WorkingDirectory=/var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas/seoulbeauty-admin-web
+Environment=NODE_ENV=production
+Environment=PORT=3400
+# next loads .env itself
+ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3400
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/www/html/multi-hospital-management-system-saas-hospital/hms-saas-v5.8.0/hms-saas/seoulbeauty-admin-web/.next
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

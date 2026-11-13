@@ -1,0 +1,8 @@
+# Add INSIDE BOTH <VirtualHost *:80> and <VirtualHost *:443> blocks of the seoulbeauty.app
+# site config, ABOVE the existing "ProxyPass /api" lines.
+# Admin panel: https://seoulbeauty.app/admin-next/  ->  127.0.0.1:3400 (basePath=/admin-next)
+# No trailing slash on purpose: the dashboard is served at /admin-next itself (Next answers
+# /admin-next/ with a redirect to it), so a "/admin-next/" rule would miss the page.
+# /admin-next/api/* is forwarded by Next itself to the admin API (127.0.0.1:3300); no extra rule.
+ProxyPass        /admin-next http://127.0.0.1:3400/admin-next retry=0 timeout=30
+ProxyPassReverse /admin-next http://127.0.0.1:3400/admin-next
