@@ -250,23 +250,15 @@ button, select { font: inherit; color: inherit; }
 
 .topbar__menu { display: none; }
 
-.brand { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 600; font-size: 15px; }
-.brand__mark {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--r-sm);
-  background: var(--primary);
-  color: var(--on-primary);
-  font-size: 13px;
-  font-weight: 700;
-}
-.brand__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand { display: flex; flex: none; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+/* The logo file is an opaque white square: the white tile stays in dark mode too. */
+.brand__logo { flex: none; width: 32px; height: 32px; object-fit: contain; border-radius: var(--r-sm); background: #fff; }
+.brand__name { white-space: nowrap; }
 
 .spacer { flex: 1; }
-.who { padding: 0 8px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.who { flex: 0 1 auto; min-width: 0; padding: 0 8px; overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar__who { display: none; margin: 0 0 12px; padding: 8px 10px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+.sidebar__who b { display: block; color: var(--ink); font-size: 14px; font-weight: 600; }
 
 .lang { display: inline-flex; min-width: 0; }
 .sel {
@@ -396,6 +388,8 @@ h1 { font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -0.02
   cursor: pointer;
 }
 .intro__summary::-webkit-details-marker { display: none; }
+/* The box clips its children, so the focus ring is drawn inside the row. */
+.intro__summary:focus-visible { outline-offset: -2px; }
 .intro__summary .chev { margin-left: auto; color: var(--accent-text); transition: transform 0.15s; }
 .intro[open] .intro__summary .chev { transform: rotate(90deg); }
 .intro__list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 20px 32px; padding: 4px 20px 20px; }
@@ -473,10 +467,11 @@ h1 { font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -0.02
 .q:hover { background: var(--surface-2); color: var(--ink); }
 .q:active { background: var(--line); }
 
-.num { display: flex; align-items: baseline; gap: 4px; margin-top: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.num__value { font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: -0.02em; }
-.num__unit { color: var(--muted); font-size: 14px; }
+.num { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 4px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.num__value { max-width: 100%; font-size: 28px; line-height: 36px; font-weight: 600; letter-spacing: -0.02em; white-space: nowrap; }
+.num__unit { color: var(--muted); font-size: 14px; white-space: nowrap; }
 .is-long .num__value { font-size: 24px; }
+.is-xlong .num__value { font-size: 20px; line-height: 28px; }
 
 .card__note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: auto; padding-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.45; }
 
@@ -494,6 +489,7 @@ h1 { font-size: 24px; line-height: 32px; font-weight: 700; letter-spacing: -0.02
 .card.hero .num__value { font-size: 40px; line-height: 48px; }
 .card.hero .num__unit { font-size: 16px; }
 .card.hero.is-long .num__value { font-size: 32px; }
+.card.hero.is-xlong .num__value { font-size: 26px; line-height: 36px; }
 .split { display: flex; flex-wrap: wrap; gap: 4px 24px; color: var(--muted); font-size: 14px; }
 .split__item { display: inline-flex; align-items: baseline; gap: 4px; }
 .split__item b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -564,6 +560,8 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 }
 
 @media (max-width: 767px) {
+  .who, .top-legacy span { display: none; }
+  .sidebar__who { display: block; }
   .main { padding: 24px 20px 48px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .card.hero .num__value { font-size: 36px; }
@@ -573,7 +571,7 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   .main { padding: 20px 16px 40px; }
   .grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   h1 { font-size: 20px; line-height: 28px; }
-  .brand__name, .who, .top-legacy { display: none; }
+  .brand__name, .top-legacy { display: none; }
   .legacy-link { display: flex; }
   .card { min-height: 0; padding: 16px; }
   .card.hero { gap: 16px; padding: 20px; }

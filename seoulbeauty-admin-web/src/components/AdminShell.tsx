@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import Icon from "./Icon";
 import LangSelect from "./LangSelect";
 import type { Admin } from "@/lib/api";
-import { PHP_ADMIN_URL, PHP_LOGOUT_URL } from "@/lib/config";
+import { BASE_PATH, PHP_ADMIN_URL, PHP_LOGOUT_URL } from "@/lib/config";
 import type { MessageKey } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/locale";
 import { MENU } from "@/lib/menu";
@@ -114,14 +114,15 @@ export default function AdminShell({ admin, title, description, actions, intro, 
             <Icon name="menu" />
           </button>
           <Link href="/" className="brand">
-            <span className="brand__mark" aria-hidden="true">서</span>
+            {/* eslint-disable-next-line @next/next/no-img-element -- fixed 32px static file, no optimizer needed */}
+            <img className="brand__logo" src={`${BASE_PATH}/seoul_beauty_logo.png`} width={32} height={32} alt="서울미녀" />
             <span className="brand__name">{t("brand")}</span>
           </Link>
 
           <span className="spacer" />
           {admin ? <span className="who" title={displayName ? `${t("top.signedIn")}: ${displayName}` : t("top.signedIn")}>{roleLabel}</span> : null}
           <LangSelect />
-          <a className="ibtn top-legacy" href={PHP_ADMIN_URL} title={t("top.legacyTitle")}>
+          <a className="ibtn top-legacy" href={PHP_ADMIN_URL} title={t("top.legacyTitle")} aria-label={t("top.legacyTitle")}>
             <Icon name="external" />
             <span>{t("top.legacy")}</span>
           </a>
@@ -140,6 +141,13 @@ export default function AdminShell({ admin, title, description, actions, intro, 
         </header>
 
         <nav id="sidebar" ref={sidebarRef} tabIndex={-1} className={drawerOpen ? "sidebar is-open" : "sidebar"} aria-label={t("menu.label")}>
+          {admin ? (
+            <p className="sidebar__who">
+              <span>{t("top.signedIn")}</span>
+              <b>{displayName || roleLabel}</b>
+              {displayName ? <span>{roleLabel}</span> : null}
+            </p>
+          ) : null}
           <a className="legacy-link" href={PHP_ADMIN_URL}>
             <Icon name="external" />
             <span>{t("state.legacy")}</span>

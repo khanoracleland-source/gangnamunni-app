@@ -46,9 +46,18 @@ export function formatClock(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-/** Values this long (digits, commas and unit together) are drawn in the smaller size so they never clip. */
-export const LONG_VALUE_LENGTH = 12;
+/**
+ * Formatted values (digits and commas, unit not counted) of at least this length are drawn smaller so a
+ * four-column card (about 164px inside at 1200px) never clips them. 11 characters fit at 28px, 10 digits
+ * (13 characters) at 20px, 12 digits (15 characters) at 20px.
+ */
+export const LONG_VALUE_LENGTH = 10;
+export const XLONG_VALUE_LENGTH = 13;
 
 export function isLongValue(text: string): boolean {
   return text.length >= LONG_VALUE_LENGTH;
+}
+
+export function isXLongValue(text: string): boolean {
+  return text.length >= XLONG_VALUE_LENGTH;
 }

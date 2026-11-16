@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Icon, { type IconName } from "./Icon";
-import { isLongValue } from "@/lib/format";
+import { isLongValue, isXLongValue } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 
@@ -54,7 +54,7 @@ export default function Metric({ id, value, unit, note, hero, split, onHelp }: P
   const t = useT();
   const name = t(metricKey(id, "name"));
   const { kind, icon } = KIND[id];
-  const cls = ["card", `c-${kind}`, hero ? "hero" : "", isLongValue(value) ? "is-long" : ""].filter(Boolean).join(" ");
+  const cls = ["card", `c-${kind}`, hero ? "hero" : "", isLongValue(value) ? "is-long" : "", isXLongValue(value) ? "is-xlong" : ""].filter(Boolean).join(" ");
   const unitText = t(`unit.${unit}`);
   const personUnit = t("unit.person");
   return (
