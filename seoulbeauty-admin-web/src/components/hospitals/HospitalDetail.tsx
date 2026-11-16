@@ -265,6 +265,8 @@ export default function HospitalDetail({ id }: { id: string }) {
           }}
           onCancel={() => router.replace(viewHref)}
           onReload={retry}
+          imageCount={detail.images.length}
+          doctorCount={detail.doctors.length}
         />
       ) : null}
       {detail && h && !editing ? (

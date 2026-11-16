@@ -853,6 +853,38 @@ select.input { padding-right: 8px; cursor: pointer; }
 .editbar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-pop); }
 .editbar__status { flex: 1 1 160px; min-width: 0; color: var(--muted); font-size: 14px; }
 
+/* Folding cards of the edit page */
+.ecard { margin-bottom: var(--s-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
+.ecard--err { border-color: var(--down); }
+.ecard__h { margin: 0; font-size: 16px; line-height: 24px; font-weight: 700; }
+.ecard__btn { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 56px; padding: var(--s-2) var(--s-5); background: transparent; border: 0; border-radius: var(--r-md); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.ecard__btn:hover { background: var(--surface-2); }
+.ecard__btn:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.ecard__ico { display: inline-flex; flex: none; color: var(--accent-text); }
+.ecard__main { display: flex; flex: 1 1 0; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); min-width: 0; }
+.ecard__title { min-width: 0; overflow-wrap: anywhere; }
+.ecard__chev { flex: none; margin-left: auto; color: var(--muted); transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.ecard__btn[aria-expanded="true"] .ecard__chev { transform: rotate(90deg); }
+/* Fold animation: grid row 0fr -> 1fr keeps the body mounted (state is kept) and lets it ease to its natural height.
+   visibility hides a closed body from focus and screen readers once the close transition has finished. */
+.ecard__panel { display: grid; grid-template-rows: 0fr; visibility: hidden; opacity: 0; transition: grid-template-rows 0.22s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.16s ease, visibility 0s linear 0.22s; }
+.ecard__panel[data-open="true"] { grid-template-rows: 1fr; visibility: visible; opacity: 1; transition-delay: 0s; }
+.ecard__clip { min-height: 0; overflow: hidden; }
+.ecard__body { min-width: 0; padding: var(--s-5); border-top: 1px solid var(--line); }
+.ecard__desc { margin-bottom: var(--s-4); }
+.ecard__body .panel { padding: 0; background: none; border: 0; border-radius: 0; }
+.ecard__rating { margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.ecard__legacy { display: grid; justify-items: start; gap: var(--s-3); }
+
+@media (max-width: 899px) {
+  .form { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+}
+
+@media (max-width: 576px) {
+  .ecard__btn { padding: var(--s-2) var(--s-4); }
+  .ecard__body { padding: var(--s-4); }
+}
+
 .status-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .section__tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .dialog__text { font-size: 15px; line-height: 1.6; }
@@ -936,4 +968,29 @@ html[data-theme="dark"] .btn--danger { background: #B02A37; }
 
 @media (max-width: 400px) {
   .sales__facts { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ───────── Location picker (hospital edit, location card) ───────── */
+.mp { display: grid; gap: var(--s-3); min-width: 0; margin-bottom: var(--s-4); }
+.mp__top { display: flex; align-items: center; gap: var(--s-2); }
+.mp__search { display: flex; align-items: flex-end; gap: var(--s-2); }
+.mp__q { flex: 1 1 0; }
+.mp__btns { display: flex; flex: none; gap: var(--s-2); }
+.mp__list { display: grid; max-height: 200px; margin: 0; padding: 0; overflow-y: auto; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.mp__item { display: grid; gap: 2px; width: 100%; min-height: 44px; padding: var(--s-2) var(--s-3); background: transparent; border: 0; border-bottom: 1px solid var(--line); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.mp__list li:last-child .mp__item { border-bottom: 0; }
+.mp__item:hover { background: var(--surface-2); }
+.mp__item:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.mp__name { font-weight: 600; overflow-wrap: anywhere; }
+.mp__addr { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.mp__status { min-height: 20px; }
+.mp__mapbox { position: relative; height: 340px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); }
+.mp__map { width: 100%; height: 100%; }
+.mp__map img { max-width: none; }
+.mp__loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: var(--s-4); background: var(--surface-2); color: var(--muted); font-size: 14px; text-align: center; }
+@media (max-width: 576px) {
+  .mp__search { flex-direction: column; align-items: stretch; }
+  .mp__q { flex: none; }
+  .mp__btns .btn { flex: 1 1 0; }
+  .mp__mapbox { height: 260px; }
 }

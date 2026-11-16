@@ -65,6 +65,19 @@ const NEW = {
     </>
   ),
   alert: <path d="M10 3.5l7 12.5H3L10 3.5zM10 8.5v3.5M10 14v.01" />,
+  clock: (
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6v4l2.8 1.8" />
+    </>
+  ),
+  pin: (
+    <>
+      <path d="M10 17.5s5.5-4.7 5.5-9A5.5 5.5 0 0 0 4.5 8.5c0 4.3 5.5 9 5.5 9z" />
+      <circle cx="10" cy="8.5" r="2" />
+    </>
+  ),
+  sparkle: <path d="M9 3.5l1.6 4.4 4.4 1.6-4.4 1.6L9 15.5l-1.6-4.4L3 9.5l4.4-1.6zM15.5 3v3M14 4.5h3" />,
   unplug: <path d="M3 10h3.5M13.5 10H17M6.5 7v6l3.5-1.5v-3L6.5 7zM13.5 8v4" />,
 } satisfies Record<string, ReactNode>;
 

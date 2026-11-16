@@ -95,6 +95,22 @@ GRANT SELECT (id, hospital_id, name, specialty, experience, qualification, bio, 
 GRANT SELECT (id, hospital_id, field_name, old_value, new_value, changed_at, reviewed) ON <DB_NAME>.gangnamunni_hospital_revisions TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (id, hospital_id, field_name, old_value, new_value, changed_at, reviewed) ON <DB_NAME>.gangnamunni_hospital_revisions TO 'sb_admin_ro'@'localhost';
 ```
+### Map for the location picker (`GET /v1/map-config`, part of the hospital pages)
+Reads the Kakao browser key and the map provider from the PHP settings table. Read-only, no new env key.
+```sql
+GRANT SELECT (setting_key, setting_value) ON <DB_NAME>.gangnamunni_settings TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (setting_key, setting_value) ON <DB_NAME>.gangnamunni_settings TO 'sb_admin_ro'@'localhost';
+```
+Without the grant (or without the table) the route still answers `200 {"provider":"osm","key":null}` and the reason is
+logged as a warning; the page then shows no Kakao map, only the latitude/longitude fields. The answer is cached for 5 minutes,
+so after changing a setting or the grant allow that long (or restart the service).
+```bash
+curl -s -H 'Cookie: PHPSESSID=<value>' http://127.0.0.1:3300/v1/map-config
+# {"provider":"kakao","key":"<browser key>"}   or   {"provider":"osm","key":null}
+```
+The key is a browser (JavaScript) key, meant to be sent to the page. In the Kakao developers console the `seoulbeauty.app`
+domain must be listed among the registered web domains of that key, otherwise the SDK refuses to load.
+
 What happens when something is missing:
 - the `gangnamunni_hospitals` grant (list, counters, main detail query) is required: without it those routes answer
   `500 {"error":"server_error"}` and the reason is in the journal;

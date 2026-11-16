@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
-import Icon from "../Icon";
+import Icon, { type IconName } from "../Icon";
 import ConfirmDialog from "./ConfirmDialog";
-import { GradePill, Notice, Pill, Section } from "./parts";
+import LocationPicker from "./LocationPicker";
+import { GradePill, Notice, Pill } from "./parts";
 import { patchHospital, type HospitalDetail } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import {
@@ -22,7 +23,7 @@ import {
   type ListKey,
   type TextKey,
 } from "@/lib/hospitalEdit";
-import { WEEKDAYS, type Weekday } from "@/lib/hospitals";
+import { WEEKDAYS, legacyEditUrl, type Weekday } from "@/lib/hospitals";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 
@@ -41,6 +42,54 @@ const focusField = (key: string): void => {
   document.getElementById(`f-${key}`)?.focus();
 };
 
+type CardId = "basic" | "tags" | "hours" | "loc" | "docs" | "images" | "doctors" | "treatments" | "ai";
+
+/** Cards in page order, like the old panel. The first four are edited here; the rest open the old panel. */
+const CARD_IDS: readonly CardId[] = ["basic", "tags", "hours", "loc", "docs", "images", "doctors", "treatments", "ai"];
+
+/** The card that holds each editable field: a card with an error must be open before the field can be focused. */
+const FIELD_CARD: Record<string, CardId> = {
+  name: "basic", email: "basic", ownerName: "basic", businessNumber: "basic", phone: "basic", contactName: "basic",
+  contactPhone: "basic", address: "basic", website: "basic", snsUrl: "basic", introduction: "basic",
+  categories: "tags", badges: "tags", treatmentTags: "tags", subwayNames: "tags",
+  businessHours: "hours", showRating: "hours",
+  latitude: "loc", longitude: "loc",
+};
+
+/** Only the first card is open at first (quick edits); the rest are folded, as in the old panel. */
+const initialOpen = (): Record<CardId, boolean> =>
+  Object.fromEntries(CARD_IDS.map((id) => [id, id === "basic"])) as Record<CardId, boolean>;
+
+const CARD_TITLE_KEYS: Record<CardId, MessageKey> = {
+  basic: "h.e.c.basic",
+  tags: "h.e.c.tags",
+  hours: "h.e.c.hours",
+  loc: "h.e.c.loc",
+  docs: "h.e.c.docs",
+  images: "h.e.c.images",
+  doctors: "h.e.c.doctors",
+  treatments: "h.e.c.treatments",
+  ai: "h.e.c.ai",
+};
+const CARD_DESC_KEYS: Partial<Record<CardId, MessageKey>> = {
+  docs: "h.e.c.docs.desc",
+  images: "h.e.c.images.desc",
+  doctors: "h.e.c.doctors.desc",
+  treatments: "h.e.c.treatments.desc",
+  ai: "h.e.c.ai.desc",
+};
+const CARD_ICONS: Record<CardId, IconName> = {
+  basic: "hospital",
+  tags: "tag",
+  hours: "clock",
+  loc: "pin",
+  docs: "sheet",
+  images: "image",
+  doctors: "userPlus",
+  treatments: "clipboard",
+  ai: "sparkle",
+};
+
 type Props = {
   hospital: HospitalDetail["hospital"];
   /** The change was stored. */
@@ -49,13 +98,16 @@ type Props = {
   onCancel: () => void;
   /** Throw the typed values away and read the hospital again. */
   onReload: () => void;
+  /** How many images / doctors the hospital has, when known: shown on the cards that lead to the old panel. */
+  imageCount?: number;
+  doctorCount?: number;
 };
 
 /**
  * The edit form of one hospital. It starts from the loaded values, sends only the fields that differ,
  * and reports a clash with a change made elsewhere instead of overwriting it.
  */
-export default function HospitalEdit({ hospital, onSaved, onCancel, onReload }: Props) {
+export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount }: Props) {
   const t = useT();
   const original = useMemo(() => draftFromHospital(hospital), [hospital]);
   const [draft, setDraft] = useState<Draft>(original);
@@ -67,6 +119,12 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload }: 
   // Set once the form is being left on purpose (saved or cancelled), so the unsaved-changes warning stays quiet.
   const leaving = useRef(false);
   const noticeRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState<Record<CardId, boolean>>(initialOpen);
+  // The field to focus once the card that holds it is open and drawn.
+  const [focusReq, setFocusReq] = useState<{ key: string } | null>(null);
+  // The address field was edited and left: the location picker may look the address up quietly.
+  const [syncTick, setSyncTick] = useState(0);
+  const [addressAtFocus, setAddressAtFocus] = useState("");
 
   const patch = useMemo(() => buildPatch(original, draft), [original, draft]);
   const patchKeys = Object.keys(patch);
@@ -100,6 +158,10 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload }: 
     };
   }, [dirty, t]);
 
+  useEffect(() => {
+    if (focusReq) focusField(focusReq.key);
+  }, [focusReq]);
+
   // A message that is not about one field is brought into view: the buttons are at the other end of the page.
   useEffect(() => {
     if (failure || conflict) noticeRef.current?.scrollIntoView({ block: "center" });
@@ -128,9 +190,16 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload }: 
 
   const showErrors = (found: Record<string, string>) => {
     setErrors(found);
+    // A card with a problem is opened so the field can be seen and focused.
+    const cards = new Set(Object.keys(found).map((key) => FIELD_CARD[key]).filter((id): id is CardId => id !== undefined));
+    if (cards.size > 0) setOpen((prev) => ({ ...prev, ...Object.fromEntries([...cards].map((id) => [id, true])) }));
     const first = FIELD_ORDER.find((key) => key in found);
-    if (first) window.setTimeout(() => focusField(first), 0);
+    if (first) setFocusReq({ key: first });
   };
+
+  const toggle = (id: CardId) => setOpen((prev) => ({ ...prev, [id]: !prev[id] }));
+  const setAll = (value: boolean) => setOpen(Object.fromEntries(CARD_IDS.map((id) => [id, value])) as Record<CardId, boolean>);
+  const errorsIn = (id: CardId): number => Object.keys(errors).filter((key) => FIELD_CARD[key] === id).length;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -182,7 +251,14 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload }: 
     return t(textKey ?? "h.e.err.invalid");
   };
 
-  const text = (key: TextKey, label: string, extra?: { wide?: boolean; multiline?: boolean; type?: string; inputMode?: "text" | "tel" | "email" | "url"; required?: boolean; autoComplete?: string }): ReactNode => (
+  const onAddressFocus = () => {
+    setAddressAtFocus(draft.address);
+  };
+  const onAddressBlur = () => {
+    if (draft.address.trim() !== "" && draft.address !== addressAtFocus) setSyncTick((n) => n + 1);
+  };
+
+  const text = (key: TextKey, label: string, extra?: { onFocus?: () => void; onBlur?: () => void; wide?: boolean; multiline?: boolean; type?: string; inputMode?: "text" | "tel" | "email" | "url"; required?: boolean; autoComplete?: string }): ReactNode => (
     <TextField id={`f-${key}`} label={label} value={draft[key]} onChange={(v) => setText(key, v)} error={err(key)} {...extra} />
   );
 
@@ -198,66 +274,24 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload }: 
       </div>
       {errorCount > 0 ? <Notice tone="warn" icon="alert">{t("h.e.errSummary", { n: errorCount })}</Notice> : null}
 
-      <Section id="sec-e-basic" title={t("h.basic.title")} desc={t("h.e.basic.desc")}>
-        <div className="panel form">
+      <div className="section__tools">
+        <button type="button" className="btn btn--ghost" onClick={() => setAll(true)}>{t("h.e.c.openAll")}</button>
+        <button type="button" className="btn btn--ghost" onClick={() => setAll(false)}>{t("h.e.c.closeAll")}</button>
+      </div>
+
+      <FoldCard id="basic" open={open.basic} errors={errorsIn("basic")} onToggle={toggle}>
+        <div className="form">
           {text("name", t("h.f.name"), { required: true, autoComplete: "organization" })}
+          {text("email", t("h.f.email"), { type: "email", inputMode: "email", autoComplete: "email" })}
           {text("ownerName", t("h.f.owner"))}
           {text("businessNumber", t("h.f.businessNumber"), { inputMode: "text" })}
-          {text("introduction", t("h.f.intro"), { wide: true, multiline: true })}
-        </div>
-      </Section>
-
-      <Section id="sec-e-contact" title={t("h.e.contact.title")} desc={t("h.e.contact.desc")}>
-        <div className="panel form">
-          {text("address", t("h.f.address"), { wide: true, autoComplete: "street-address" })}
           {text("phone", t("h.f.phone"), { type: "tel", inputMode: "tel", autoComplete: "tel" })}
-          {text("email", t("h.f.email"), { type: "email", inputMode: "email", autoComplete: "email" })}
           {text("contactName", t("h.e.f.contactName"))}
           {text("contactPhone", t("h.e.f.contactPhone"), { type: "tel", inputMode: "tel" })}
+          {text("address", t("h.f.address"), { autoComplete: "street-address", onFocus: onAddressFocus, onBlur: onAddressBlur })}
           {text("website", t("h.f.website"), { type: "url", inputMode: "url" })}
           {text("snsUrl", t("h.f.sns"), { type: "url", inputMode: "url" })}
-        </div>
-      </Section>
-
-      <Section id="sec-e-tags" title={t("h.tags.title")} desc={t("h.e.tags.desc")}>
-        <div className="panel form">
-          <ChipEditor id="f-categories" label={t("h.tags.categories")} items={draft.categories} onChange={(v) => setList("categories", v)} error={err("categories")} />
-          <ChipEditor id="f-badges" label={t("h.tags.badges")} items={draft.badges} onChange={(v) => setList("badges", v)} error={err("badges")} />
-          <ChipEditor id="f-treatmentTags" label={t("h.tags.treatments")} items={draft.treatmentTags} onChange={(v) => setList("treatmentTags", v)} error={err("treatmentTags")} />
-          <ChipEditor id="f-subwayNames" label={t("h.tags.subways")} items={draft.subwayNames} onChange={(v) => setList("subwayNames", v)} error={err("subwayNames")} />
-        </div>
-      </Section>
-
-      <Section id="sec-e-hours" title={t("h.hours.title")} desc={t("h.e.hours.desc")}>
-        <HoursEditor hours={draft.hours} onChange={setHours} error={err("businessHours")} />
-      </Section>
-
-      <Section id="sec-e-location" title={t("h.e.loc.title")} desc={t("h.e.loc.desc")}>
-        <div className="panel form">
-          <TextField id="f-latitude" label={t("h.e.f.lat")} hint={t("h.e.f.latHint")} inputMode="decimal" value={draft.latitude} error={err("latitude")} onChange={(v) => { setDraft((d) => ({ ...d, latitude: v })); clearError("latitude"); }} />
-          <TextField id="f-longitude" label={t("h.e.f.lng")} hint={t("h.e.f.lngHint")} inputMode="decimal" value={draft.longitude} error={err("longitude")} onChange={(v) => { setDraft((d) => ({ ...d, longitude: v })); clearError("longitude"); }} />
-        </div>
-      </Section>
-
-      <Section id="sec-e-display" title={t("h.e.display.title")} desc={t("h.e.display.desc")}>
-        <div className="panel form">
-          <div className="form__wide">
-            <label className="check" htmlFor="f-showRating">
-              <input
-                id="f-showRating"
-                type="checkbox"
-                checked={draft.showRating}
-                aria-describedby="f-showRating-hint"
-                onChange={(e) => {
-                  setDraft((d) => ({ ...d, showRating: e.target.checked }));
-                  clearError("showRating");
-                }}
-              />
-              <span>{t("h.e.f.showRating")}</span>
-            </label>
-            <p className="field__hint" id="f-showRating-hint">{t("h.e.f.showRatingHint")}</p>
-            {err("showRating") ? <p className="field__error">{err("showRating")}</p> : null}
-          </div>
+          {text("introduction", t("h.f.intro"), { wide: true, multiline: true })}
           <div className="form__wide">
             <div className="locked">
               <span className="field__label">{t("h.status.grade")}</span>
@@ -267,7 +301,70 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload }: 
             <p className="field__hint">{t("h.e.f.gradeNote")}</p>
           </div>
         </div>
-      </Section>
+      </FoldCard>
+
+      <FoldCard id="tags" open={open.tags} errors={errorsIn("tags")} onToggle={toggle}>
+        <p className="field__hint ecard__desc">{t("h.e.tags.desc")}</p>
+        <div className="form">
+          <ChipEditor id="f-categories" label={t("h.tags.categories")} items={draft.categories} onChange={(v) => setList("categories", v)} error={err("categories")} />
+          <ChipEditor id="f-badges" label={t("h.tags.badges")} items={draft.badges} onChange={(v) => setList("badges", v)} error={err("badges")} />
+          <ChipEditor id="f-treatmentTags" label={t("h.tags.treatments")} items={draft.treatmentTags} onChange={(v) => setList("treatmentTags", v)} error={err("treatmentTags")} />
+          <ChipEditor id="f-subwayNames" label={t("h.tags.subways")} items={draft.subwayNames} onChange={(v) => setList("subwayNames", v)} error={err("subwayNames")} />
+        </div>
+      </FoldCard>
+
+      <FoldCard id="hours" open={open.hours} errors={errorsIn("hours")} onToggle={toggle}>
+        <p className="field__hint ecard__desc">{t("h.e.hours.desc")}</p>
+        <HoursEditor hours={draft.hours} onChange={setHours} error={err("businessHours")} />
+        <div className="ecard__rating">
+          <label className="check" htmlFor="f-showRating">
+            <input
+              id="f-showRating"
+              type="checkbox"
+              checked={draft.showRating}
+              aria-describedby="f-showRating-hint"
+              onChange={(e) => {
+                setDraft((d) => ({ ...d, showRating: e.target.checked }));
+                clearError("showRating");
+              }}
+            />
+            <span>{t("h.e.f.showRating")}</span>
+          </label>
+          <p className="field__hint" id="f-showRating-hint">{t("h.e.f.showRatingHint")}</p>
+          {err("showRating") ? <p className="field__error">{err("showRating")}</p> : null}
+        </div>
+      </FoldCard>
+
+      <FoldCard id="loc" open={open.loc} errors={errorsIn("loc")} onToggle={toggle}>
+        <p className="field__hint ecard__desc">{t("h.e.loc.desc")}</p>
+        <LocationPicker
+          open={open.loc}
+          address={draft.address}
+          lat={draft.latitude}
+          lng={draft.longitude}
+          syncTick={syncTick}
+          onAddress={(value) => setText("address", value)}
+          onCoords={(latitude, longitude) => {
+            setDraft((d) => ({ ...d, latitude, longitude }));
+            clearError("latitude");
+            clearError("longitude");
+          }}
+          onUnauthorized={() => {
+            leaving.current = true;
+            window.location.assign(PHP_ADMIN_URL);
+          }}
+        />
+        <div className="form">
+          <TextField id="f-latitude" label={t("h.e.f.lat")} hint={t("h.e.f.latHint")} inputMode="decimal" value={draft.latitude} error={err("latitude")} onChange={(v) => { setDraft((d) => ({ ...d, latitude: v })); clearError("latitude"); }} />
+          <TextField id="f-longitude" label={t("h.e.f.lng")} hint={t("h.e.f.lngHint")} inputMode="decimal" value={draft.longitude} error={err("longitude")} onChange={(v) => { setDraft((d) => ({ ...d, longitude: v })); clearError("longitude"); }} />
+        </div>
+      </FoldCard>
+
+      <FoldCard id="docs" open={open.docs} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
+      <FoldCard id="images" open={open.images} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={imageCount === undefined ? undefined : t("h.e.c.imgCount", { n: imageCount })} />
+      <FoldCard id="doctors" open={open.doctors} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={doctorCount === undefined ? undefined : t("h.e.c.docCount", { n: doctorCount })} />
+      <FoldCard id="treatments" open={open.treatments} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
+      <FoldCard id="ai" open={open.ai} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
 
       <div className="editbar">
         <p className="editbar__status" role="status" aria-live="polite">
@@ -290,6 +387,61 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload }: 
   );
 }
 
+type FoldCardProps = {
+  id: CardId;
+  open: boolean;
+  errors: number;
+  onToggle: (id: CardId) => void;
+  /** Cards that are not edited here: the old panel page that does it. */
+  legacyHref?: string;
+  /** A short count shown next to the title. */
+  count?: string;
+  children?: ReactNode;
+};
+
+/**
+ * One folding block of the edit page. The heading is a button (aria-expanded) so keyboard and screen readers
+ * work as with a native disclosure, and the body stays mounted while folded so typed values and the hours
+ * editor's own state are kept.
+ */
+function FoldCard({ id, open, errors, onToggle, legacyHref, count, children }: FoldCardProps) {
+  const t = useT();
+  const descKey = CARD_DESC_KEYS[id];
+  return (
+    <section className={errors > 0 ? "ecard ecard--err" : "ecard"}>
+      <h2 className="ecard__h">
+        <button type="button" id={`ec-${id}-h`} className="ecard__btn" aria-expanded={open} aria-controls={`ec-${id}`} onClick={() => onToggle(id)}>
+          <span className="ecard__ico"><Icon name={CARD_ICONS[id]} size={20} /></span>
+          <span className="ecard__main">
+            <span className="ecard__title">{t(CARD_TITLE_KEYS[id])}</span>
+            {legacyHref ? <Pill tone="info">{t("menu.legacy")}</Pill> : null}
+            {count ? <Pill tone="plain">{count}</Pill> : null}
+            {errors > 0 ? <Pill tone="warn">{t("h.e.c.errCount", { n: errors })}</Pill> : null}
+          </span>
+          <Icon name="chevron" size={20} className="ecard__chev" />
+        </button>
+      </h2>
+      <div id={`ec-${id}`} role="region" aria-labelledby={`ec-${id}-h`} className="ecard__panel" data-open={open}>
+        <div className="ecard__clip">
+          <div className="ecard__body">
+        {legacyHref ? (
+          <div className="ecard__legacy">
+            {descKey ? <p className="field__hint">{t(descKey)}</p> : null}
+            <a className="btn btn--ghost" href={legacyHref}>
+              <Icon name="external" size={18} />
+              <span>{t("h.e.c.legacyOpen")}</span>
+            </a>
+          </div>
+        ) : (
+          children
+        )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 type TextFieldProps = {
   id: string;
   label: string;
@@ -303,10 +455,12 @@ type TextFieldProps = {
   type?: string;
   inputMode?: "text" | "tel" | "email" | "url" | "decimal";
   autoComplete?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 /** A label, the input, a hint and the error of this field: the error is tied to the input for screen readers. */
-function TextField({ id, label, value, onChange, error, hint, wide, multiline, required, type = "text", inputMode, autoComplete }: TextFieldProps) {
+function TextField({ id, label, value, onChange, error, hint, wide, multiline, required, type = "text", inputMode, autoComplete, onFocus, onBlur }: TextFieldProps) {
   const hintId = `${id}-hint`;
   const errorId = `${id}-err`;
   const describedBy = [hint ? hintId : "", error ? errorId : ""].filter(Boolean).join(" ") || undefined;
@@ -331,6 +485,8 @@ function TextField({ id, label, value, onChange, error, hint, wide, multiline, r
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
       )}
       {hint ? <p className="field__hint" id={hintId}>{hint}</p> : null}

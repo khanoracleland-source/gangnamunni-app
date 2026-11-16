@@ -508,6 +508,23 @@ export async function reviewHospitalRevisions(id: number): Promise<WriteResult<R
   return res.ok ? { ok: true, data: {} } : res;
 }
 
+// ───────── Map ─────────
+
+/** Which map the location picker draws. "osm" = no usable map key: the picker falls back to typing the coordinates. */
+export type MapConfig = { provider: "kakao" | "osm"; key: string | null };
+
+/**
+ * The map provider and the browser key for the location picker. Only a 401 is reported as such (the session is gone);
+ * any other failure or an odd answer reads as "osm", so the form always keeps working with the plain coordinate fields.
+ */
+export async function mapConfig(signal?: AbortSignal): Promise<ApiResult<MapConfig>> {
+  const res = await getJson("/v1/map-config", signal);
+  if (!res.ok) return res.status === 401 ? res : { ok: true, data: { provider: "osm", key: null } };
+  const d = obj(res.data);
+  const key = str(d.key).trim();
+  return { ok: true, data: d.provider === "kakao" && key !== "" ? { provider: "kakao", key } : { provider: "osm", key: null } };
+}
+
 // ───────── Sales card ─────────
 
 export type SalesPeriod = {

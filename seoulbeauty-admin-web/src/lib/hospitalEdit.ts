@@ -149,10 +149,9 @@ const LIST_KEYS: readonly ListKey[] = ["categories", "badges", "treatmentTags", 
 
 /** Order in which fields appear on the page: the first field with an error is the one that gets focus. */
 export const FIELD_ORDER: readonly string[] = [
-  "name", "ownerName", "businessNumber", "introduction",
-  "address", "phone", "email", "contactName", "contactPhone", "website", "snsUrl",
+  "name", "email", "ownerName", "businessNumber", "phone", "contactName", "contactPhone", "address", "website", "snsUrl", "introduction",
   "categories", "badges", "treatmentTags", "subwayNames",
-  "businessHours", "latitude", "longitude", "showRating",
+  "businessHours", "showRating", "latitude", "longitude",
 ];
 
 export function draftFromHospital(h: HospitalDetail["hospital"]): Draft {
