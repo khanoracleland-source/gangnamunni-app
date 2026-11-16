@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
   // Client code builds its fetch and asset URLs from this, so it can never drift from basePath.
   env: { NEXT_PUBLIC_BASE_PATH: BASE_PATH },
   poweredByHeader: false,
+  // Hospital image uploads reach the API through the /api rewrite as one multipart request (up to 11 files, ~105MB);
+  // Next's default proxy body limit is 10MB, which would cut the body off.
+  experimental: { proxyClientMaxBodySize: "120mb", proxyTimeout: 300_000 },
   // This app lives inside the hms-saas monorepo (another package-lock.json above): pin the root.
   turbopack: { root: path.resolve(__dirname) },
   outputFileTracingRoot: path.resolve(__dirname),

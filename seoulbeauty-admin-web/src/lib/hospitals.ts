@@ -75,6 +75,9 @@ export function externalHref(stored: string): string {
 /** The hospital's page in the old panel, opened for editing. */
 export const legacyEditUrl = (id: number): string => `${PHP_BASE_URL}admin_hospitals.php?view=${id}&edit=1`;
 
+/** The old panel's image manager of one hospital (edit order, hide, delete): not done in the new panel. */
+export const legacyImagesUrl = (id: number): string => `${PHP_BASE_URL}admin_hospital_images.php?hospital_id=${id}`;
+
 /** A submitted document, served by the old panel (it checks the viewer's permission itself). */
 export const legacyDocumentUrl = (id: number, doc: "business" | "medical"): string =>
   `${PHP_BASE_URL}hospital_document.php?hospital_id=${id}&doc=${doc}`;

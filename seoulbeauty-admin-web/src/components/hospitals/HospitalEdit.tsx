@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import Icon, { type IconName } from "../Icon";
 import ConfirmDialog from "./ConfirmDialog";
+import HospitalImages from "./HospitalImages";
 import LocationPicker from "./LocationPicker";
 import { GradePill, Notice, Pill } from "./parts";
 import { patchHospital, type HospitalDetail } from "@/lib/api";
@@ -101,13 +102,15 @@ type Props = {
   /** How many images / doctors the hospital has, when known: shown on the cards that lead to the old panel. */
   imageCount?: number;
   doctorCount?: number;
+  /** The server lets this panel upload images itself: the images card is then a working card, not a link to the old panel. */
+  imagesEnabled?: boolean;
 };
 
 /**
  * The edit form of one hospital. It starts from the loaded values, sends only the fields that differ,
  * and reports a clash with a change made elsewhere instead of overwriting it.
  */
-export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount }: Props) {
+export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false }: Props) {
   const t = useT();
   const original = useMemo(() => draftFromHospital(hospital), [hospital]);
   const [draft, setDraft] = useState<Draft>(original);
@@ -125,6 +128,12 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
   // The address field was edited and left: the location picker may look the address up quietly.
   const [syncTick, setSyncTick] = useState(0);
   const [addressAtFocus, setAddressAtFocus] = useState("");
+  // The change time the save is checked against. An image upload moves it forward without touching the typed values.
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState(hospital.updatedAt || null);
+  const [imageTotal, setImageTotal] = useState<number | undefined>(imageCount);
+  // The images card reads its data once it has been opened.
+  const [imagesOpened, setImagesOpened] = useState(false);
+  if (open.images && !imagesOpened) setImagesOpened(true);
 
   const patch = useMemo(() => buildPatch(original, draft), [original, draft]);
   const patchKeys = Object.keys(patch);
@@ -212,7 +221,7 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
     }
     setErrors({});
     setSaving(true);
-    const res = await patchHospital(hospital.id, hospital.updatedAt || null, patch);
+    const res = await patchHospital(hospital.id, baseUpdatedAt, patch);
     setSaving(false);
     if (res.ok) {
       leaving.current = true;
@@ -361,7 +370,24 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
       </FoldCard>
 
       <FoldCard id="docs" open={open.docs} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
-      <FoldCard id="images" open={open.images} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={imageCount === undefined ? undefined : t("h.e.c.imgCount", { n: imageCount })} />
+      {imagesEnabled ? (
+        <FoldCard id="images" open={open.images} errors={0} onToggle={toggle} count={imageTotal === undefined ? undefined : t("h.e.c.imgCount", { n: imageTotal })}>
+          <HospitalImages
+            hospitalId={hospital.id}
+            opened={imagesOpened}
+            onChange={({ count, updatedAt }) => {
+              setImageTotal(count);
+              if (updatedAt) setBaseUpdatedAt(updatedAt);
+            }}
+            onUnauthorized={() => {
+              leaving.current = true;
+              window.location.assign(PHP_ADMIN_URL);
+            }}
+          />
+        </FoldCard>
+      ) : (
+        <FoldCard id="images" open={open.images} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={imageCount === undefined ? undefined : t("h.e.c.imgCount", { n: imageCount })} />
+      )}
       <FoldCard id="doctors" open={open.doctors} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={doctorCount === undefined ? undefined : t("h.e.c.docCount", { n: doctorCount })} />
       <FoldCard id="treatments" open={open.treatments} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
       <FoldCard id="ai" open={open.ai} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />

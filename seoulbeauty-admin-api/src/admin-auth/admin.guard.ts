@@ -116,8 +116,41 @@ export class HospitalsDeleteEnabledGuard implements CanActivate {
   }
 }
 
+/** Uploading hospital images. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
+export const hospitalsImagesEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_IMAGES === '1';
+
+/** With the images switch off the upload route answers 404 as if it did not exist; nothing else is looked at. */
+@Injectable()
+export class HospitalsImagesEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsImagesEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
+
+const firstValue = (v: string | string[] | undefined): string => (Array.isArray(v) ? v[0] : v || '').split(',')[0].trim().toLowerCase();
+
+/** Content type (one of `types`), marker header and, when sent, an Origin host equal to the host the request was addressed to. */
+function csrfAllowed(req: Request, types: string[]): boolean {
+  const type = firstValue(req.headers['content-type']).split(';')[0].trim();
+  const marker = firstValue(req.headers['x-requested-with']);
+  let ok = types.includes(type) && marker === CSRF_HEADER_VALUE;
+  const origin = firstValue(req.headers.origin);
+  if (ok && origin) {
+    let originHost = '';
+    try {
+      originHost = new URL(origin).host.toLowerCase();
+    } catch {
+      originHost = '';
+    }
+    const target = firstValue(req.headers['x-forwarded-host']) || firstValue(req.headers.host);
+    ok = originHost !== '' && originHost === target;
+  }
+  return ok;
+}
 
 /**
  * CSRF protection of the writing routes: JSON content type, the marker header, and, when the browser sent an Origin,
@@ -127,23 +160,16 @@ export const CSRF_HEADER_VALUE = 'admin-next';
 @Injectable()
 export class CsrfGuard implements CanActivate {
   canActivate(ctx: ExecutionContext): boolean {
-    const req = ctx.switchToHttp().getRequest<Request>();
-    const first = (v: string | string[] | undefined): string => (Array.isArray(v) ? v[0] : v || '').split(',')[0].trim().toLowerCase();
-    const type = first(req.headers['content-type']).split(';')[0].trim();
-    const marker = first(req.headers['x-requested-with']);
-    let ok = type === 'application/json' && marker === CSRF_HEADER_VALUE;
-    const origin = first(req.headers.origin);
-    if (ok && origin) {
-      let originHost = '';
-      try {
-        originHost = new URL(origin).host.toLowerCase();
-      } catch {
-        originHost = '';
-      }
-      const target = first(req.headers['x-forwarded-host']) || first(req.headers.host);
-      ok = originHost !== '' && originHost === target;
-    }
-    if (!ok) throw new ForbiddenException({ error: 'csrf' });
+    if (!csrfAllowed(ctx.switchToHttp().getRequest<Request>(), ['application/json'])) throw new ForbiddenException({ error: 'csrf' });
+    return true;
+  }
+}
+
+/** Same protection for file uploads: the content type must be multipart/form-data; the marker header and the Origin rule are unchanged. */
+@Injectable()
+export class MultipartCsrfGuard implements CanActivate {
+  canActivate(ctx: ExecutionContext): boolean {
+    if (!csrfAllowed(ctx.switchToHttp().getRequest<Request>(), ['multipart/form-data'])) throw new ForbiddenException({ error: 'csrf' });
     return true;
   }
 }

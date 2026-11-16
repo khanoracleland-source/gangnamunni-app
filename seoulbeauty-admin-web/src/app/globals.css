@@ -892,6 +892,44 @@ select.input { padding-right: 8px; cursor: pointer; }
 .dialog__err .notice { margin-bottom: 0; }
 .dialog__foot { flex-wrap: wrap; gap: 8px; }
 
+/* Hospital images card */
+.himg { display: grid; gap: var(--s-4); min-width: 0; }
+.himg__grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--s-4); }
+.himg__panel { display: grid; align-content: start; gap: var(--s-3); min-width: 0; padding: var(--s-4); background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-md); }
+.himg__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); color: var(--accent-text); }
+.himg__title { margin: 0; color: var(--ink); font-size: 15px; line-height: 22px; font-weight: 700; }
+.himg__pickrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); min-width: 0; }
+.himg__pick { cursor: pointer; }
+.himg__pick:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.himg__pick--off { opacity: 0.45; cursor: not-allowed; }
+.himg__fname { min-width: 0; overflow-wrap: anywhere; color: var(--muted); font-size: 14px; }
+.himg__full { padding: var(--s-2) var(--s-3); background: var(--surface-2); border-radius: var(--r-sm); color: var(--ink); font-size: 14px; line-height: 1.6; }
+.himg__previews { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+.himg__fig { position: relative; width: 112px; min-width: 0; margin: 0; }
+.himg__img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--muted); font-size: 12px; }
+.himg__cap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); margin-top: var(--s-1); color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.himg__rm { position: absolute; top: 4px; right: 4px; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; background: var(--surface); border: 1px solid var(--control-line); border-radius: var(--r-pill); color: var(--ink); cursor: pointer; }
+.himg__rm:hover:not(:disabled) { background: var(--surface-2); }
+.himg__rm:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.himg__rm:disabled { opacity: 0.45; cursor: not-allowed; }
+.himg__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--s-2) var(--s-3); }
+.himg__status { flex: 1 1 200px; min-width: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.himg__status--ok { color: var(--up); font-weight: 600; }
+.himg__status--err { color: var(--down); font-weight: 600; }
+.himg__saved { display: grid; gap: var(--s-3); padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.himg__saved .himg__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+.himg__saved .himg__fig, .himg__previews.himg__list .himg__fig { width: auto; }
+.himg__previews.himg__list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 112px)); }
+.himg__manage { justify-self: start; }
+.himg__retry { display: grid; justify-items: start; gap: var(--s-3); }
+
+@media (max-width: 899px) {
+  .himg__grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (pointer: coarse) {
+  .himg__rm { width: 44px; height: 44px; }
+}
+
 @media (max-width: 767px) {
   .hed__head { display: none; }
   .hed__row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }

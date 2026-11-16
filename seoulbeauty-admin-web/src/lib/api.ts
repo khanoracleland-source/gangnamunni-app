@@ -17,7 +17,7 @@ export type Admin = {
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -117,6 +117,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitals: obj(d.features).hospitals === true,
         hospitalsWrite: obj(d.features).hospitalsWrite === true,
         hospitalsDelete: obj(d.features).hospitalsDelete === true,
+        hospitalsImages: obj(d.features).hospitalsImages === true,
         archive: obj(d.features).archive === true,
       },
     },
@@ -494,6 +495,78 @@ export async function patchHospital(
 ): Promise<WriteResult<{ updatedAt: string }>> {
   const res = await sendJson("PATCH", `/v1/hospitals/${encodeURIComponent(String(id))}`, { expectedUpdatedAt, fields });
   return res.ok ? { ok: true, data: { updatedAt: str(res.data.updatedAt) } } : res;
+}
+
+// ───────── Hospital images ─────────
+
+/** What the images card shows: every stored image, the current main image address, and how many detail slots are used. */
+export type HospitalImageSet = { items: HospitalImage[]; mainUrl: string | null; detailCount: number; detailLimit: number };
+
+function imageSet(v: unknown): HospitalImageSet {
+  const d = obj(v);
+  const limit = num(d.detailLimit);
+  return {
+    items: list(d.items)
+      .map((raw) => {
+        const i = obj(raw);
+        return { id: num(i.id), url: str(i.url), type: str(i.type), sortOrder: num(i.sortOrder), isActive: bool(i.isActive) };
+      })
+      .filter((i) => i.url.trim() !== ""),
+    mainUrl: str(d.mainUrl).trim() === "" ? null : str(d.mainUrl),
+    detailCount: num(d.detailCount),
+    detailLimit: limit > 0 ? limit : 10,
+  };
+}
+
+export async function hospitalImages(id: number, signal?: AbortSignal): Promise<ApiResult<HospitalImageSet>> {
+  const res = await getJson(`/v1/hospitals/${encodeURIComponent(String(id))}/images`, signal);
+  return res.ok ? { ok: true, data: imageSet(res.data) } : res;
+}
+
+export type ImageUploadFiles = { main?: File; interior: File[] };
+
+export type ImageUploadFailure = {
+  ok: false;
+  /** 0 = no answer (network down, proxy error page, request cancelled). */
+  status: number;
+  /** "no_files", "invalid_type", "too_large", "too_many", "upload_failed", ...; "" when the server sent none. */
+  error: string;
+  /** Which of the two file groups the error is about; "" when unknown. */
+  field: "main" | "interior" | "";
+  /** On "too_many": how many more detail images the hospital can take. */
+  remaining: number | null;
+};
+export type ImageUploadResult = { ok: true; data: HospitalImageSet & { added: number; updatedAt: string } } | ImageUploadFailure;
+
+/** Sends the chosen files as one multipart request. The browser sets Content-Type itself (it must add the boundary). */
+export async function uploadHospitalImages(id: number, files: ImageUploadFiles, signal?: AbortSignal): Promise<ImageUploadResult> {
+  const body = new FormData();
+  if (files.main) body.append("main", files.main);
+  for (const file of files.interior) body.append("interior", file);
+  try {
+    const res = await fetch(`${BASE_PATH}/api/v1/hospitals/${encodeURIComponent(String(id))}/images`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "X-Requested-With": "admin-next" },
+      body,
+      signal,
+    });
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // An empty or non-JSON body: the status alone says what happened.
+    }
+    const d = obj(data);
+    if (!res.ok) {
+      const remaining = numOrNull(d.remaining);
+      return { ok: false, status: res.status, error: str(d.error), field: d.field === "main" || d.field === "interior" ? d.field : "", remaining };
+    }
+    return { ok: true, data: { ...imageSet(d), added: num(d.added), updatedAt: str(d.updatedAt) } };
+  } catch {
+    return { ok: false, status: 0, error: "", field: "", remaining: null };
+  }
 }
 
 /** Super admin only. Sets the exact state asked for, so pressing twice never flips it back. */
