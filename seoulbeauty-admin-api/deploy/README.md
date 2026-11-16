@@ -541,6 +541,106 @@ Answers: `400 {"error":"no_doctors"|"too_many"|"invalid_field"|"invalid_type"|"t
 `journalctl -u seoulbeauty-admin-api | grep 'hospital doctors'` (`hospital=<id> added=<n>`; no names or file names). A failed request leaves no rows and no photo files.
 Turning it off: `ADMIN_HOSPITALS_DOCTORS=0` + restart (the POST answers 404; the GET stays on with the hospital pages).
 
+## 10. Treatments of a hospital (`ADMIN_HOSPITALS_TREATMENTS`, `ADMIN_HOSPITALS_TREATMENTS_REMOVE`, optional)
+Adds `GET /v1/hospitals/:id/treatments` (assigned treatments with price options, image and question counts, and the treatments still available),
+`POST /v1/hospitals/:id/treatments` (assign up to 300 master treatments), `PATCH /v1/hospitals/:id/treatments/:htId` (promotion star and the minimum age)
+and, behind a second switch, `DELETE /v1/hospitals/:id/treatments/:htId` (release an assignment). Price options, detail images and the "before treatment"
+questions are shown (counts, badges) but edited only in the PHP admin. Needs sections 1 and 6 (hospital pages, write user). With a switch off its routes answer 404
+and nothing below is used; `/v1/me` reports `hospitalsTreatments` and `hospitalsTreatmentsRemove`.
+
+Who may change things (same rule as the PHP page): a super admin always; a hospital account (own hospital only) only while the setting `treatment_mgmt_mode` in the
+PHP table `settings` is `hospital_only` or `both` (missing row = `both`). Otherwise `403 {"error":"forbidden_treatments"}` and the page hides the buttons. If the setting
+cannot be read (no grant, no table) a hospital account is treated as not allowed and the reason is logged as a warning; a super admin is not affected.
+
+What each write does (one transaction of the write pool, parameters only; any error rolls everything back):
+- assign: a treatment the hospital never had is inserted (`status='active'`, `is_active=1`, price 0, promotion off, `registered_by` = `hospital` for a hospital account, else `admin`);
+  one that was released earlier (`is_active=0`, or status `inactive`/`rejected`) is switched back on with promotion and prices reset; one already assigned is skipped.
+  Old price option and image rows of a re-assigned treatment are deleted only when `ADMIN_HOSPITALS_TREATMENTS_REMOVE=1` (that is the switch that holds the DELETE rights).
+  The hospital row is locked, not changed.
+- promotion / minimum age: `UPDATE gangnamunni_hospital_treatments SET is_promoted` / `SET min_age` (null or 0 = no limit, 1..120), always `WHERE id=? AND hospital_id=?`.
+  Without the `min_age` column (or its grant) the list answers `"minAgeSupported":false` and setting an age answers `503 {"error":"min_age_unavailable"}`; promotion keeps working.
+- remove: deletes the assignment's rows in `gangnamunni_hospital_treatment_prices` and `gangnamunni_hospital_treatment_images`, then sets `is_active=0`, promotion off, prices 0
+  on the assignment row (the row stays, like the PHP page). Image FILES are not deleted from disk.
+Listing never writes anything (the PHP page also turns every `pending` assignment into `active` when it opens; this API does not).
+
+**Before the first request take a dump** (writes touch these tables; the `settings` table is only read):
+```bash
+mysqldump --single-transaction <DB_NAME> gangnamunni_hospital_treatments gangnamunni_hospital_treatment_prices gangnamunni_hospital_treatment_images > ~/backup-hospital-treatments-$(date +%F).sql   # outside the web root
+```
+
+### 10.1 Database (run as the DB admin; `<DB_NAME>` = schema from step 1)
+Only what the earlier sections did not already grant. Already there: the read-only user has `SELECT (status, is_active)` and `SELECT (hospital_id, treatment_id, status, is_active)`
+on `gangnamunni_hospital_treatments`, `SELECT (id, name, category_id)` on `gangnamunni_treatment_master` and `SELECT (id, name, sort_order)` on `gangnamunni_treatment_categories`
+(step 1); the write user has `SELECT (hospital_id)` plus `DELETE` on `gangnamunni_hospital_treatments` (section 7) and `SELECT (id, updated_at)` on `gangnamunni_hospitals` (section 6.1).
+The `min_age` column comes from the PHP migration `hairwang_full/gangnamunni/sql/hospital_treatment_min_age_20261021.sql` (not run by this API). If the column does not exist yet, remove
+`min_age` from the four statements that name it (the `sb_admin_ro` SELECT and the `sb_admin_rw` UPDATE, each for `127.0.0.1` and `localhost`; a `GRANT` naming a missing column fails as a whole) and add it later.
+```sql
+-- read-only user
+GRANT SELECT (id, is_promoted, note, registered_by, min_age) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, is_promoted, note, registered_by, min_age) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (hashtag, is_active, sort_order) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (hashtag, is_active, sort_order) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, hospital_treatment_id, option_name, body_part, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, hospital_treatment_id, option_name, body_part, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, hospital_treatment_id, approval_status) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, hospital_treatment_id, approval_status) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, hospital_treatment_id) ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, hospital_treatment_id) ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (`key`, `value`) ON <DB_NAME>.settings TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (`key`, `value`) ON <DB_NAME>.settings TO 'sb_admin_ro'@'localhost';
+-- write user
+GRANT SELECT (id, treatment_id, status, is_active) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, treatment_id, status, is_active) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_rw'@'localhost';
+GRANT INSERT (hospital_id, treatment_id, price_min, price_max, is_promoted, note, status, registered_by, is_active, created_at, updated_at) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (hospital_id, treatment_id, price_min, price_max, is_promoted, note, status, registered_by, is_active, created_at, updated_at) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_rw'@'localhost';
+GRANT UPDATE (status, is_active, reject_reason, is_promoted, price_min, price_max, dosage_value, dosage_unit, min_age, updated_at) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (status, is_active, reject_reason, is_promoted, price_min, price_max, dosage_value, dosage_unit, min_age, updated_at) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_rw'@'localhost';
+GRANT SELECT (id, is_active) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, is_active) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'localhost';
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: gangnamunni_hospital_treatments has the columns above (+ hospital_id SELECT and DELETE from section 7), no more
+```
+`settings` cannot be limited to one row: the read-only user can read every row of that table (`key`, `value`), not only `treatment_mgmt_mode`. The PHP code keeps at least
+`treatment_mgmt_mode` and `treatment_max_per_hospital` there; check the keys in that table first (SELECT key column) and, if it holds anything secret, do not grant it: the API then
+treats hospital accounts as not allowed (fail closed) and super admins keep working. The read-only user is used only by this API and is never exposed to a browser.
+A missing price / image / question table or grant makes only that part of the list empty (price options `[]`, counts `0`); a missing grant on the main tables answers `500`
+(listing) or `503 {"error":"write_unavailable"}` (writes) and the reason is in the journal.
+
+### 10.2 Release (remove) rights - only for `ADMIN_HOSPITALS_TREATMENTS_REMOVE=1`
+Removing an assignment (and re-assigning an old one with leftovers) deletes rows of the two child tables:
+```sql
+GRANT SELECT (id, hospital_treatment_id) ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, hospital_treatment_id) ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_rw'@'localhost';
+GRANT DELETE ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_rw'@'127.0.0.1';
+GRANT DELETE ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_rw'@'localhost';
+GRANT SELECT (id, hospital_treatment_id) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, hospital_treatment_id) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'localhost';
+GRANT DELETE ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'127.0.0.1';
+GRANT DELETE ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'localhost';
+```
+Without them a release answers `503 {"error":"write_unavailable"}` and nothing changes. Leave `ADMIN_HOSPITALS_TREATMENTS_REMOVE=0` until they are in.
+
+### 10.3 Env and turning it on
+```
+ADMIN_HOSPITALS_ENABLED=1
+ADMIN_HOSPITALS_WRITE=1
+ADMIN_HOSPITALS_TREATMENTS=1
+ADMIN_HOSPITALS_TREATMENTS_REMOVE=0        # 1 only after 10.2
+```
+Then `sudo systemctl restart seoulbeauty-admin-api`. Check with a TEST hospital (super admin PHPSESSID; `<ht>` = an `items[].id` of the list, `<tid>` = an `available[].id`):
+```bash
+C='-H Cookie:PHPSESSID=<value>'
+H='-H Content-Type:application/json -H X-Requested-With:admin-next -H Cookie:PHPSESSID=<value>'
+curl -s $C http://127.0.0.1:3300/v1/me                                       # "hospitalsTreatments":true,"hospitalsTreatmentsRemove":false
+curl -s $C http://127.0.0.1:3300/v1/hospitals/<id>/treatments                # {"items":[...],"count":N,"promotedCount":M,"canManage":true,"minAgeSupported":true,"removeEnabled":false,"available":[...]}
+curl -s -X POST $H -d '{"treatmentIds":[<tid>]}' http://127.0.0.1:3300/v1/hospitals/<id>/treatments        # 200 {"added":1,"skipped":0,"items":[...],"count":..,"promotedCount":..,"available":[...]}
+curl -s -X PATCH $H -d '{"isPromoted":true,"minAge":19}' http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>   # 200 {"item":{...},"promotedCount":N}
+curl -s -X DELETE $H http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>                                # only with REMOVE=1 (else 404): {"removed":true,"deleted":{"priceOptions":n,"images":n},...}
+```
+A DELETE needs the same `Content-Type: application/json` and `X-Requested-With: admin-next` headers as the other writes (even with an empty body), else `403 {"error":"csrf"}`.
+Answers: `400 {"error":"no_treatments"|"invalid_treatment"|"invalid_field","field":"isPromoted"|"minAge"}`, `403` (csrf, `forbidden`, `forbidden_treatments`), `404`,
+`503 {"error":"write_unavailable"|"min_age_unavailable"}`. Each write is logged: `journalctl -u seoulbeauty-admin-api | grep 'hospital treatments'`
+(`admin=<id> hospital=<id> assign|update|remove ...`; no names). Turning it off: `ADMIN_HOSPITALS_TREATMENTS=0` (all routes 404) or only `ADMIN_HOSPITALS_TREATMENTS_REMOVE=0`, then restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.

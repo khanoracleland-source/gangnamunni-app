@@ -17,7 +17,7 @@ export type Admin = {
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -119,6 +119,8 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsDelete: obj(d.features).hospitalsDelete === true,
         hospitalsImages: obj(d.features).hospitalsImages === true,
         hospitalsDoctors: obj(d.features).hospitalsDoctors === true,
+        hospitalsTreatments: obj(d.features).hospitalsTreatments === true,
+        hospitalsTreatmentsRemove: obj(d.features).hospitalsTreatmentsRemove === true,
         archive: obj(d.features).archive === true,
       },
     },
@@ -453,7 +455,7 @@ export type WriteFailure = {
 export type WriteResult<T> = { ok: true; data: T } | WriteFailure;
 
 /** Sends a change through the same-origin /api rewrite. The two headers are what the server demands of every writing request. */
-async function sendJson(method: "PATCH" | "POST", path: string, body: unknown): Promise<WriteResult<Json>> {
+async function sendJson(method: "PATCH" | "POST" | "DELETE", path: string, body: unknown = {}): Promise<WriteResult<Json>> {
   try {
     const res = await fetch(`${BASE_PATH}/api${path}`, {
       method,
@@ -656,6 +658,145 @@ export async function addHospitalDoctors(id: number, doctors: DoctorPayload[], p
   } catch {
     return { ok: false, status: 0, error: "", index: null, field: "" };
   }
+}
+
+// ───────── Hospital treatments ─────────
+
+/** One price option of an assigned treatment, read only here. Prices are whole won; 0 means "not entered". */
+export type TreatmentPriceOption = {
+  optionName: string;
+  bodyPart: string;
+  dosageValue: string;
+  dosageUnit: string;
+  regularPrice: number;
+  price: number;
+  isRepresentative: boolean;
+};
+
+/** A treatment assigned to the hospital. `id` is the assignment (hospital treatment) id, `treatmentId` the catalogue entry. */
+export type HospitalTreatment = {
+  id: number;
+  treatmentId: number;
+  name: string;
+  hashtag: string;
+  categoryId: number | null;
+  categoryName: string | null;
+  isPromoted: boolean;
+  note: string;
+  registeredBy: "admin" | "hospital";
+  minAge: number | null;
+  priceOptions: TreatmentPriceOption[];
+  imageCount: number;
+  pendingImageCount: number;
+  questionCount: number;
+};
+
+/** A catalogue treatment that can still be assigned. */
+export type AvailableTreatment = { id: number; name: string; hashtag: string; categoryId: number | null; categoryName: string | null };
+
+/**
+ * What the treatments card shows. The three switches are only sent by the list read: an answer to a change leaves them
+ * undefined and the card keeps the ones it already has.
+ */
+export type HospitalTreatmentSet = {
+  items: HospitalTreatment[];
+  count: number;
+  promotedCount: number;
+  available: AvailableTreatment[];
+  canManage?: boolean;
+  minAgeSupported?: boolean;
+  removeEnabled?: boolean;
+};
+
+function treatmentItem(raw: unknown): HospitalTreatment {
+  const d = obj(raw);
+  return {
+    id: num(d.id),
+    treatmentId: num(d.treatmentId),
+    name: str(d.name),
+    hashtag: str(d.hashtag),
+    categoryId: numOrNull(d.categoryId),
+    categoryName: typeof d.categoryName === "string" ? d.categoryName : null,
+    isPromoted: bool(d.isPromoted),
+    note: str(d.note),
+    registeredBy: d.registeredBy === "hospital" ? "hospital" : "admin",
+    minAge: numOrNull(d.minAge),
+    priceOptions: list(d.priceOptions).map((o): TreatmentPriceOption => {
+      const p = obj(o);
+      return {
+        optionName: str(p.optionName),
+        bodyPart: str(p.bodyPart),
+        dosageValue: text(p.dosageValue),
+        dosageUnit: str(p.dosageUnit),
+        regularPrice: num(p.regularPrice),
+        price: num(p.price),
+        isRepresentative: bool(p.isRepresentative),
+      };
+    }),
+    imageCount: num(d.imageCount),
+    pendingImageCount: num(d.pendingImageCount),
+    questionCount: num(d.questionCount),
+  };
+}
+
+function treatmentSet(v: unknown): HospitalTreatmentSet {
+  const d = obj(v);
+  const items = list(d.items).map(treatmentItem).filter((item) => item.id > 0);
+  const available = list(d.available)
+    .map((raw): AvailableTreatment => {
+      const a = obj(raw);
+      return { id: num(a.id), name: str(a.name), hashtag: str(a.hashtag), categoryId: numOrNull(a.categoryId), categoryName: typeof a.categoryName === "string" ? a.categoryName : null };
+    })
+    .filter((a) => a.id > 0);
+  return {
+    items,
+    count: items.length,
+    promotedCount: numOrNull(d.promotedCount) ?? items.filter((item) => item.isPromoted).length,
+    available,
+    canManage: d.canManage === undefined ? undefined : bool(d.canManage),
+    minAgeSupported: d.minAgeSupported === undefined ? undefined : bool(d.minAgeSupported),
+    removeEnabled: d.removeEnabled === undefined ? undefined : bool(d.removeEnabled),
+  };
+}
+
+const treatmentsPath = (id: number): string => `/v1/hospitals/${encodeURIComponent(String(id))}/treatments`;
+
+/** The assigned treatments, the ones that can still be assigned and what this admin may do. Reads only. */
+export async function hospitalTreatments(id: number, signal?: AbortSignal): Promise<ApiResult<HospitalTreatmentSet>> {
+  const res = await getJson(treatmentsPath(id), signal);
+  return res.ok ? { ok: true, data: treatmentSet(res.data) } : res;
+}
+
+/** Assigns catalogue treatments. The answer is the fresh list; `skipped` are the ones that were already assigned. */
+export async function assignHospitalTreatments(id: number, treatmentIds: number[]): Promise<WriteResult<HospitalTreatmentSet & { added: number; skipped: number }>> {
+  const res = await sendJson("POST", treatmentsPath(id), { treatmentIds });
+  return res.ok ? { ok: true, data: { ...treatmentSet(res.data), added: num(res.data.added), skipped: num(res.data.skipped) } } : res;
+}
+
+/** Sets the exact promotion state and/or the minimum age (null = no limit) of one assignment. */
+export async function patchHospitalTreatment(
+  id: number,
+  htId: number,
+  fields: { isPromoted?: boolean; minAge?: number | null },
+): Promise<WriteResult<{ item: HospitalTreatment | null; promotedCount: number | null }>> {
+  const res = await sendJson("PATCH", `${treatmentsPath(id)}/${encodeURIComponent(String(htId))}`, fields);
+  if (!res.ok) return res;
+  const item = treatmentItem(res.data.item);
+  return { ok: true, data: { item: item.id > 0 ? item : null, promotedCount: numOrNull(res.data.promotedCount) } };
+}
+
+/** Takes one treatment off the hospital; its price options and image rows go with it. */
+export async function removeHospitalTreatment(
+  id: number,
+  htId: number,
+): Promise<WriteResult<HospitalTreatmentSet & { removed: boolean; deleted: { priceOptions: number; images: number } }>> {
+  const res = await sendJson("DELETE", `${treatmentsPath(id)}/${encodeURIComponent(String(htId))}`);
+  if (!res.ok) return res;
+  const deleted = obj(res.data.deleted);
+  return {
+    ok: true,
+    data: { ...treatmentSet(res.data), removed: res.data.removed !== false, deleted: { priceOptions: num(deleted.priceOptions), images: num(deleted.images) } },
+  };
 }
 
 /** Super admin only. Sets the exact state asked for, so pressing twice never flips it back. */

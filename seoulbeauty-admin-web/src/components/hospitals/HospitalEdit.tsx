@@ -5,6 +5,7 @@ import Icon, { type IconName } from "../Icon";
 import ConfirmDialog from "./ConfirmDialog";
 import HospitalDoctors from "./HospitalDoctors";
 import HospitalImages from "./HospitalImages";
+import HospitalTreatments from "./HospitalTreatments";
 import LocationPicker from "./LocationPicker";
 import { GradePill, Notice, Pill } from "./parts";
 import { patchHospital, type HospitalDetail } from "@/lib/api";
@@ -107,13 +108,15 @@ type Props = {
   imagesEnabled?: boolean;
   /** The server lets this panel add doctors itself: the doctors card is then a working card, not a link to the old panel. */
   doctorsEnabled?: boolean;
+  /** The server lets this panel list, assign and unassign treatments itself: the treatments card is then a working card, not a link to the old panel. */
+  treatmentsEnabled?: boolean;
 };
 
 /**
  * The edit form of one hospital. It starts from the loaded values, sends only the fields that differ,
  * and reports a clash with a change made elsewhere instead of overwriting it.
  */
-export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false }: Props) {
+export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false, treatmentsEnabled = false }: Props) {
   const t = useT();
   const original = useMemo(() => draftFromHospital(hospital), [hospital]);
   const [draft, setDraft] = useState<Draft>(original);
@@ -141,6 +144,10 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
   // The doctors card reads its data once it has been opened.
   const [doctorsOpened, setDoctorsOpened] = useState(false);
   if (open.doctors && !doctorsOpened) setDoctorsOpened(true);
+  const [treatmentTotal, setTreatmentTotal] = useState<number | undefined>(undefined);
+  // The treatments card reads its data once it has been opened.
+  const [treatmentsOpened, setTreatmentsOpened] = useState(false);
+  if (open.treatments && !treatmentsOpened) setTreatmentsOpened(true);
 
   const patch = useMemo(() => buildPatch(original, draft), [original, draft]);
   const patchKeys = Object.keys(patch);
@@ -410,7 +417,21 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
       ) : (
         <FoldCard id="doctors" open={open.doctors} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={doctorCount === undefined ? undefined : t("h.e.c.docCount", { n: doctorCount })} />
       )}
-      <FoldCard id="treatments" open={open.treatments} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
+      {treatmentsEnabled ? (
+        <FoldCard id="treatments" open={open.treatments} errors={0} onToggle={toggle} count={treatmentTotal === undefined ? undefined : t("h.e.c.trCount", { n: treatmentTotal })}>
+          <HospitalTreatments
+            hospitalId={hospital.id}
+            opened={treatmentsOpened}
+            onChange={({ count }) => setTreatmentTotal(count)}
+            onUnauthorized={() => {
+              leaving.current = true;
+              window.location.assign(PHP_ADMIN_URL);
+            }}
+          />
+        </FoldCard>
+      ) : (
+        <FoldCard id="treatments" open={open.treatments} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
+      )}
       <FoldCard id="ai" open={open.ai} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
 
       <div className="editbar">

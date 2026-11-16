@@ -140,6 +140,30 @@ export class HospitalsDoctorsEnabledGuard implements CanActivate {
   }
 }
 
+/** Assigning treatments to a hospital. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
+export const hospitalsTreatmentsEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_TREATMENTS === '1';
+
+/** With the treatments switch off every /v1/hospitals/:id/treatments route answers 404 as if it did not exist; nothing else is looked at. */
+@Injectable()
+export class HospitalsTreatmentsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsTreatmentsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** Removing an assignment (it deletes the price option and detail image rows). Only works while the treatments switch is on; the exact value "1". */
+export const hospitalsTreatmentsRemoveEnabled = (): boolean => hospitalsTreatmentsEnabled() && process.env.ADMIN_HOSPITALS_TREATMENTS_REMOVE === '1';
+
+/** With the remove switch off the DELETE route answers 404 as if it did not exist. */
+@Injectable()
+export class HospitalsTreatmentsRemoveEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsTreatmentsRemoveEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 
