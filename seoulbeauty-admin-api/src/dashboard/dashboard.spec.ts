@@ -145,7 +145,7 @@ describe('admin API (PHP admin session + dashboard summary)', () => {
     });
     it('super_admin -> /v1/me, one PHP call for requests within the cache window', async () => {
       const r = await get('/v1/me', SUPER).expect(200);
-      expect(r.body).toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin' } });
+      expect(r.body).toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: false } });
       expect(r.headers['cache-control']).toContain('no-store');
       expect(r.headers['access-control-allow-origin']).toBeUndefined();
       await get('/v1/me', SUPER).expect(200);
@@ -202,9 +202,9 @@ describe('admin API (PHP admin session + dashboard summary)', () => {
       const r = await get('/v1/dashboard/summary', SUPER).expect(200);
       expect(r.body.members).toEqual({ total: 1200, today: 3, last7d: 25, last30d: 110, withdrawn: 37, admins: 4, adminsAlsoMembers: 0 });
     });
-    it('any other database error is not swallowed', async () => {
+    it('any other database error is not swallowed: 500 without details', async () => {
       dbStub.query.mockImplementationOnce(async () => { throw Object.assign(new Error('Access denied'), { code: 'ER_TABLEACCESS_DENIED_ERROR', errno: 1142 }); });
-      await get('/v1/dashboard/summary', SUPER).expect(500);
+      await get('/v1/dashboard/summary', SUPER).expect(500).expect({ error: 'server_error' });
     });
     it('is computed once per 10 s', async () => {
       const now = jest.spyOn(Date, 'now');

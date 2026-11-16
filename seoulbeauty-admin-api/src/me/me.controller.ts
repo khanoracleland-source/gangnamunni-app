@@ -1,13 +1,13 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AdminRequest, SuperAdminGuard } from '../admin-auth/admin.guard';
+import { AdminGuard, hospitalsEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
-@UseGuards(SuperAdminGuard)
+@UseGuards(AdminGuard)
 export class MeController {
-  /** The signed-in super admin, for the top bar (name + role badge). */
+  /** The signed-in admin (top bar: name + role badge), what it may see, and which pages of this panel are switched on. */
   @Get()
-  me(@Req() req: AdminRequest) {
-    const { id, username, name, role } = req.admin;
-    return { admin: { id, username, name, role } };
+  me(@Req() req: ScopedAdminRequest) {
+    const { id, username, name, role, hospitalId, scope } = req.admin;
+    return { admin: { id, username, name, role, hospitalId, scope }, features: { hospitals: hospitalsEnabled() } };
   }
 }

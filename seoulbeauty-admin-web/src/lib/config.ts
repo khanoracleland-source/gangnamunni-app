@@ -1,6 +1,9 @@
 /** URL prefix the app is served under (next.config.ts basePath). */
 export const BASE_PATH = (process.env.NEXT_PUBLIC_BASE_PATH ?? "").trim() || "/admin-next";
 
+/** Where the old (PHP) panel lives on the same origin. Relative image paths stored in the database are relative to it too. */
+export const PHP_BASE_URL = "/hairwang/gangnamunni/";
+
 /** PHP admin dashboard: it shows the login form when nobody is signed in. */
 export const PHP_ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_PHP_LOGIN_URL || "/hairwang/gangnamunni/dashboard.php";
 

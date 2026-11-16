@@ -1,4 +1,6 @@
 import type { IconName } from "@/components/Icon";
+import type { Features, Scope } from "./api";
+import { PHP_BASE_URL } from "./config";
 import type { Locale } from "./i18n";
 
 export type Label = Record<Locale, string>;
@@ -13,12 +15,14 @@ export type MenuItem = {
    */
   status: "new" | "legacy";
   href: string;
+  /** A page of this panel that only a super admin can open (its API refuses everyone else). */
+  superOnly?: boolean;
 };
 
 export type MenuGroup = { key: string; label: Label; icon: IconName; items: MenuItem[] };
 
 /** Where the old panel lives (same origin). */
-const LEGACY = "/hairwang/gangnamunni/";
+const LEGACY = PHP_BASE_URL;
 
 const L = (ko: string, en: string): Label => ({ ko, en });
 const legacy = (key: string, file: string, ko: string, en: string, icon: IconName): MenuItem => ({
@@ -33,13 +37,13 @@ const legacy = (key: string, file: string, ko: string, en: string, icon: IconNam
  * The whole sidebar and the only place that lists pages: same groups and names as the old panel for
  * a super admin. Moving a page here means changing its item to status "new" with an in-app href.
  */
-export const MENU: MenuGroup[] = [
+const MENU: MenuGroup[] = [
   {
     key: "home",
     label: L("대시보드", "Dashboard"),
     icon: "gauge",
     items: [
-      { key: "dashboard", label: L("대시보드", "Dashboard"), icon: "gauge", status: "new", href: "/" },
+      { key: "dashboard", label: L("대시보드", "Dashboard"), icon: "gauge", status: "new", href: "/", superOnly: true },
       legacy("sns_reviews", "admin_sns_reviews.php", "SNS / 앱스토어 심사 관리", "SNS / App Store review", "phone"),
       legacy("menu_guide", "admin_menu_guide.php", "메뉴 안내", "Menu guide", "info"),
       legacy("menu_manager", "admin_menu_manager.php", "메뉴 관리", "Menu manager", "gear"),
@@ -229,3 +233,45 @@ export const MENU: MenuGroup[] = [
     ],
   },
 ];
+
+/** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
+const FEATURE_ROUTES: Record<keyof Features, { key: string; href: string }> = {
+  hospitals: { key: "hospitals", href: "/hospitals" },
+};
+
+/**
+ * The sidebar for one viewer.
+ * - A page behind a feature switch is "new" only while the switch is on; otherwise it stays a link to the old panel.
+ * - scope "own" (hospital accounts): only the pages of this panel they can open. Everything else is reached
+ *   through the single "old admin" link, where the old panel applies its own permissions.
+ * Before the viewer is known (features and scope are null) the menu is the full one with every switch off.
+ */
+export function buildMenu(features: Features | null, scope: Scope | null): MenuGroup[] {
+  const routes = new Map<string, string>();
+  if (features) {
+    for (const name of Object.keys(FEATURE_ROUTES) as (keyof Features)[]) {
+      if (features[name]) routes.set(FEATURE_ROUTES[name].key, FEATURE_ROUTES[name].href);
+    }
+  }
+  const groups = MENU.map((group) => ({
+    ...group,
+    items: group.items.map((item): MenuItem => {
+      const href = routes.get(item.key);
+      return href ? { ...item, status: "new", href } : item;
+    }),
+  }));
+  if (scope !== "own") return groups;
+  return groups
+    .map((group) => ({ ...group, items: group.items.filter((item) => item.status === "new" && !item.superOnly) }))
+    .filter((group) => group.items.length > 0);
+}
+
+/** Is `pathname` (basePath already removed, as usePathname returns it) the page `href` or one below it? */
+export function isActiveRoute(pathname: string, href: string): boolean {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  if (href === "/") return path === "/";
+  return path === href || path.startsWith(`${href}/`);
+}
+
+/** Where the brand link and "home" lead: hospital accounts have no dashboard. */
+export const homeRoute = (scope: Scope | null): string => (scope === "own" ? "/hospitals" : "/");

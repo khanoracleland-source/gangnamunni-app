@@ -46,6 +46,20 @@ export function formatClock(date: Date): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
+/** "2026-11-16 09:30:00" -> "2026.11.16"; anything that does not start with a date -> "—". */
+export function formatDay(value: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  return m ? `${m[1]}.${m[2]}.${m[3]}` : "—";
+}
+
+/** "2026-11-16 09:30:00" -> "2026.11.16 09:30" (the stored time, not converted); no time part -> the date alone. */
+export function formatDayTime(value: string): string {
+  const day = formatDay(value);
+  if (day === "—") return day;
+  const m = /^\d{4}-\d{2}-\d{2}[ T](\d{2}):(\d{2})/.exec(value);
+  return m ? `${day} ${m[1]}:${m[2]}` : day;
+}
+
 /**
  * Formatted values (digits and commas, unit not counted) of at least this length are drawn smaller so a
  * four-column card (about 164px inside at 1200px) never clips them. 11 characters fit at 28px, 10 digits

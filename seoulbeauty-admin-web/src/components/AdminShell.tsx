@@ -2,21 +2,30 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Icon from "./Icon";
 import LangSelect from "./LangSelect";
-import type { Admin } from "@/lib/api";
+import type { Admin, Features } from "@/lib/api";
 import { BASE_PATH, PHP_ADMIN_URL, PHP_LOGOUT_URL } from "@/lib/config";
 import type { MessageKey } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/locale";
-import { MENU } from "@/lib/menu";
+import { buildMenu, homeRoute, isActiveRoute } from "@/lib/menu";
 import { getServerTheme, getTheme, setTheme, subscribeTheme } from "@/lib/theme";
 
 const subscribeNever = () => () => {};
 
+/** Roles that have a translated name; any other role is shown as stored. */
+const ROLE_KEYS = new Map<string, MessageKey>([
+  ["super_admin", "role.super_admin"],
+  ["hospital_super_admin", "role.hospital_super_admin"],
+  ["hospital_admin", "role.hospital_admin"],
+]);
+
 type Props = {
   /** null until /v1/me has answered (or when it refused). */
   admin: Admin | null;
+  /** Pages the server has switched on; null together with `admin`. */
+  features?: Features | null;
   title: string;
   description: string;
   /** Right side of the page heading (last update, refresh button). */
@@ -29,7 +38,7 @@ type Props = {
 };
 
 /** Frame shared by every admin page: top bar, grouped menu on the left, page heading, content. */
-export default function AdminShell({ admin, title, description, actions, intro, screen, children }: Props) {
+export default function AdminShell({ admin, features = null, title, description, actions, intro, screen, children }: Props) {
   const t = useT();
   const locale = useLocale();
   const pathname = usePathname();
@@ -93,8 +102,11 @@ export default function AdminShell({ admin, title, description, actions, intro, 
   const nextTheme = theme === "dark" ? "light" : "dark";
   const themeLabel = nextTheme === "dark" ? t("top.theme.dark") : t("top.theme.light");
   const displayName = admin ? admin.name || admin.username : "";
-  const roleKey = admin ? (`role.${admin.role}` as MessageKey) : null;
-  const roleLabel = admin ? (roleKey === "role.super_admin" ? t("role.super_admin") : admin.role) : "";
+  const roleKey = admin ? ROLE_KEYS.get(admin.role) : undefined;
+  const roleLabel = admin ? (roleKey ? t(roleKey) : admin.role) : "";
+  const scope = admin ? admin.scope : null;
+  // Until the signed-in admin is known (loading, 401/403/error screens) no page group is drawn: the role decides which ones may be shown.
+  const menu = useMemo(() => (admin ? buildMenu(features, scope) : []), [admin, features, scope]);
 
   return (
     <>
@@ -113,7 +125,7 @@ export default function AdminShell({ admin, title, description, actions, intro, 
           >
             <Icon name="menu" />
           </button>
-          <Link href="/" className="brand">
+          <Link href={homeRoute(scope)} className="brand">
             {/* eslint-disable-next-line @next/next/no-img-element -- fixed 32px static file, no optimizer needed */}
             <img className="brand__logo" src={`${BASE_PATH}/seoul_beauty_logo.png`} width={32} height={32} alt="서울미녀" />
             <span className="brand__name">{t("brand")}</span>
@@ -148,12 +160,12 @@ export default function AdminShell({ admin, title, description, actions, intro, 
               {displayName ? <span>{roleLabel}</span> : null}
             </p>
           ) : null}
-          <a className="legacy-link" href={PHP_ADMIN_URL}>
+          <a className={scope === "own" || !admin ? "legacy-link legacy-link--always" : "legacy-link"} href={PHP_ADMIN_URL}>
             <Icon name="external" />
             <span>{t("state.legacy")}</span>
           </a>
-          {MENU.map((group, index) => {
-            const hasActive = group.items.some((item) => item.status === "new" && item.href === pathname);
+          {menu.map((group, index) => {
+            const hasActive = group.items.some((item) => item.status === "new" && isActiveRoute(pathname, item.href));
             const open = (index === 0 || hasActive) !== toggled.has(group.key);
             return (
               <details
@@ -173,7 +185,7 @@ export default function AdminShell({ admin, title, description, actions, intro, 
                   {group.items.map((item) => {
                     const label = item.label[locale];
                     if (item.status === "new") {
-                      const active = pathname === item.href;
+                      const active = isActiveRoute(pathname, item.href);
                       return (
                         <li key={item.key}>
                           <Link href={item.href} className="nav-item" aria-current={active ? "page" : undefined} onClick={() => setDrawerOpen(false)}>
@@ -195,7 +207,7 @@ export default function AdminShell({ admin, title, description, actions, intro, 
               </details>
             );
           })}
-          <p className="legend">{t("menu.legend")}</p>
+          {admin ? <p className="legend">{scope === "own" ? t("menu.legendOwn") : t("menu.legend")}</p> : null}
         </nav>
         {drawerOpen ? <div className="drawer-scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" /> : null}
 

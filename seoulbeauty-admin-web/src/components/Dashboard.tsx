@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminShell from "./AdminShell";
 import Delta from "./Delta";
@@ -7,7 +8,7 @@ import HelpDialog from "./HelpDialog";
 import Icon from "./Icon";
 import Metric, { type MetricId } from "./Metric";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "./StateScreens";
-import { fetchMe, fetchSummary, type Admin, type DashboardSummary } from "@/lib/api";
+import { fetchMe, fetchSummary, type Admin, type DashboardSummary, type Features } from "@/lib/api";
 import { PHP_ADMIN_URL, REFRESH_INTERVAL_MS } from "@/lib/config";
 import { formatClock, formatNumber, formatPercent, percentOf } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
@@ -20,6 +21,7 @@ type State = {
   phase: Phase;
   errorKind: ErrorKind;
   admin: Admin | null;
+  features: Features | null;
   summary: DashboardSummary | null;
   /** When the numbers on screen were received (viewer's clock). */
   updatedAt: Date | null;
@@ -27,12 +29,13 @@ type State = {
   stale: boolean;
 };
 
-const INITIAL: State = { phase: "loading", errorKind: "network", admin: null, summary: null, updatedAt: null, stale: false };
+const INITIAL: State = { phase: "loading", errorKind: "network", admin: null, features: null, summary: null, updatedAt: null, stale: false };
 
 const errorKindOf = (status: number): ErrorKind => (status === 404 ? "disabled" : status === 503 ? "session" : "network");
 
 export default function Dashboard() {
   const t = useT();
+  const router = useRouter();
   const [state, setState] = useState<State>(INITIAL);
   const [busy, setBusy] = useState(false);
   const [period, setPeriod] = useState<Period>("d7");
@@ -57,13 +60,19 @@ export default function Dashboard() {
         window.location.assign(PHP_ADMIN_URL);
         return;
       }
+      // A hospital account has no dashboard (its API answers 403): its home is the hospitals page.
+      if (me.ok && me.data.admin.scope === "own" && me.data.features.hospitals) {
+        halted.current = true;
+        router.replace("/hospitals");
+        return;
+      }
       if (statuses.includes(403)) {
         halted.current = true;
         setState({ ...INITIAL, phase: "forbidden" });
         return;
       }
       if (me.ok && summary.ok) {
-        setState({ phase: "ready", errorKind: "network", admin: me.data, summary: summary.data, updatedAt: new Date(), stale: false });
+        setState({ phase: "ready", errorKind: "network", admin: me.data.admin, features: me.data.features, summary: summary.data, updatedAt: new Date(), stale: false });
         return;
       }
       const kind = errorKindOf(failed ?? 0);
@@ -72,13 +81,13 @@ export default function Dashboard() {
         // A switched-off panel (404) always replaces them.
         s.summary && s.phase === "ready" && kind !== "disabled"
           ? { ...s, stale: true }
-          : { ...INITIAL, phase: "error", errorKind: kind, admin: me.ok ? me.data : s.admin },
+          : { ...INITIAL, phase: "error", errorKind: kind, admin: me.ok ? me.data.admin : s.admin, features: me.ok ? me.data.features : s.features },
       );
     } finally {
       inFlight.current = false;
       setBusy(false);
     }
-  }, []);
+  }, [router]);
 
   // First load, then every minute while the tab is visible. A hidden tab does not poll. Coming back
   // schedules the next fetch relative to the last one: at once when the numbers are already a minute
@@ -117,7 +126,7 @@ export default function Dashboard() {
     void load();
   };
 
-  const { phase, admin, summary, updatedAt, stale } = state;
+  const { phase, admin, features, summary, updatedAt, stale } = state;
   const days = period === "d7" ? 7 : 30;
 
   let screen: React.ReactNode = null;
@@ -144,7 +153,7 @@ export default function Dashboard() {
   );
 
   return (
-    <AdminShell admin={admin} title={t("page.title")} description={t("page.desc")} actions={actions} intro={<PageIntro />} screen={screen}>
+    <AdminShell admin={admin} features={features} title={t("page.title")} description={t("page.desc")} actions={actions} intro={<PageIntro />} screen={screen}>
       <div className="period" role="group" aria-labelledby="period-label">
         <span id="period-label" className="period__label">{t("period.label")}</span>
         <div className="seg">

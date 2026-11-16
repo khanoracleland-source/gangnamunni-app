@@ -4,9 +4,35 @@ import { AdminSessionService, AdminUser } from './admin-session.service';
 
 export type AdminRequest = Request & { admin: AdminUser };
 
+/** What a signed-in admin may see: every hospital ('all') or only the listed ones ('own'; an empty list means nothing). */
+export interface AdminScope {
+  scope: 'all' | 'own';
+  hospitalIds: number[];
+}
+export type ScopedAdmin = AdminUser & AdminScope;
+export type ScopedAdminRequest = Request & { admin: ScopedAdmin };
+
 export const SUPER_ADMIN_ROLE = 'super_admin';
+/** Accounts bound to one hospital (gangnamunni_admins.hospital_id). */
+export const HOSPITAL_ROLES = ['hospital_super_admin', 'hospital_admin'];
 /** Read per request so the switch needs no code change; anything but the exact value "1" is off. */
 export const adminPanelEnabled = (): boolean => process.env.ADMIN_PANEL_ENABLED === '1';
+/** Hospital pages (/v1/hospitals*) and the entry of hospital roles. Same rule: only the exact value "1" turns it on. */
+export const hospitalsEnabled = (): boolean => process.env.ADMIN_HOSPITALS_ENABLED === '1';
+
+/**
+ * Scope of an admin, or null when the role may not use this panel at all.
+ * super_admin sees everything. A hospital role sees only the hospital its account is bound to, and only while the
+ * hospital pages are switched on; without a bound hospital the list is empty (fail closed, never "all").
+ */
+export function scopeOf(admin: AdminUser, hospitalsOn: boolean = hospitalsEnabled()): AdminScope | null {
+  if (admin.role === SUPER_ADMIN_ROLE) return { scope: 'all', hospitalIds: [] };
+  if (hospitalsOn && HOSPITAL_ROLES.includes(admin.role)) {
+    const id = admin.hospitalId;
+    return { scope: 'own', hospitalIds: typeof id === 'number' && Number.isInteger(id) && id > 0 ? [id] : [] };
+  }
+  return null;
+}
 
 /**
  * Global switch (registered as APP_GUARD): with ADMIN_PANEL_ENABLED off every /v1 route answers 404 as if it did not exist.
@@ -36,6 +62,34 @@ export class SuperAdminGuard implements CanActivate {
     if (!s.loggedIn || !s.admin) throw new UnauthorizedException({ error: 'not_logged_in' });
     if (s.admin.role !== SUPER_ADMIN_ROLE) throw new ForbiddenException({ error: 'forbidden' });
     req.admin = s.admin;
+    return true;
+  }
+}
+
+/**
+ * A signed-in super admin, or a hospital role while ADMIN_HOSPITALS_ENABLED is on; attaches req.admin with its scope.
+ * 401 not signed in, 403 any other role (and hospital roles while the switch is off), 503 when PHP cannot be asked.
+ */
+@Injectable()
+export class AdminGuard implements CanActivate {
+  constructor(private readonly sessions: AdminSessionService) {}
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
+    if (!adminPanelEnabled()) throw new NotFoundException({ error: 'not_found' });
+    const req = ctx.switchToHttp().getRequest<ScopedAdminRequest>();
+    const s = await this.sessions.fromCookie(req.headers.cookie);
+    if (!s.loggedIn || !s.admin) throw new UnauthorizedException({ error: 'not_logged_in' });
+    const scope = scopeOf(s.admin);
+    if (!scope) throw new ForbiddenException({ error: 'forbidden' });
+    req.admin = { ...s.admin, ...scope };
+    return true;
+  }
+}
+
+/** With ADMIN_HOSPITALS_ENABLED off the hospital routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class HospitalsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsEnabled()) throw new NotFoundException({ error: 'not_found' });
     return true;
   }
 }
