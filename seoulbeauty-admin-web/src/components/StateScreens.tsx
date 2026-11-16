@@ -47,7 +47,7 @@ export function ForbiddenScreen({ variant = "super" }: { variant?: "super" | "ho
  * "disabled": the whole panel is switched off. "hospitalsOff": only the hospitals page is.
  * "session": the sign-in check is down. "network": the dashboard numbers did not arrive. "load": any other page's data did not arrive.
  */
-export type ErrorKind = "disabled" | "hospitalsOff" | "session" | "network" | "load";
+export type ErrorKind = "disabled" | "hospitalsOff" | "archiveOff" | "session" | "network" | "load";
 
 export function ErrorScreen({ kind, onRetry, retrying }: { kind: ErrorKind; onRetry: () => void; retrying: boolean }) {
   const t = useT();

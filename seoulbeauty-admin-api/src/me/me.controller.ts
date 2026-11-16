@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AdminGuard, hospitalsEnabled, hospitalsWriteEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
+import { AdminGuard, hospitalsDeleteEnabled, hospitalsEnabled, hospitalsWriteEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
 @UseGuards(AdminGuard)
@@ -8,6 +8,8 @@ export class MeController {
   @Get()
   me(@Req() req: ScopedAdminRequest) {
     const { id, username, name, role, hospitalId, scope } = req.admin;
-    return { admin: { id, username, name, role, hospitalId, scope }, features: { hospitals: hospitalsEnabled(), hospitalsWrite: hospitalsWriteEnabled() } };
+    return { admin: { id, username, name, role, hospitalId, scope }, features: { hospitals: hospitalsEnabled(), hospitalsWrite: hospitalsWriteEnabled(),
+      // the routes behind both are super-admin only (403 for other roles); the flags only report the switches
+      hospitalsDelete: hospitalsDeleteEnabled(), archive: hospitalsDeleteEnabled() } };
   }
 }

@@ -13,8 +13,11 @@ export type Admin = {
   scope: Scope;
 };
 
-/** Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well). */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean };
+/**
+ * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
+ * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
+ */
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -110,7 +113,12 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
     ok: true,
     data: {
       admin: { id: num(a.id), username: str(a.username), name: str(a.name), role, hospitalId: hospitalId > 0 ? hospitalId : null, scope },
-      features: { hospitals: obj(d.features).hospitals === true, hospitalsWrite: obj(d.features).hospitalsWrite === true },
+      features: {
+        hospitals: obj(d.features).hospitals === true,
+        hospitalsWrite: obj(d.features).hospitalsWrite === true,
+        hospitalsDelete: obj(d.features).hospitalsDelete === true,
+        archive: obj(d.features).archive === true,
+      },
     },
   };
 }
@@ -429,7 +437,17 @@ export type HospitalFieldsPatch = Partial<{
  * A refused change. `status` 0 = no answer at all; 400 carries per-field codes in `fields`
  * (required, too_long, bad_format, bad_url, duplicate_phone, not_allowed); 409 carries the stored `updatedAt`.
  */
-export type WriteFailure = { ok: false; status: number; fields: Record<string, string>; updatedAt: string };
+export type WriteFailure = {
+  ok: false;
+  status: number;
+  fields: Record<string, string>;
+  updatedAt: string;
+  /** The server's error code ("invalid", "blocked", "conflict", ...); "" when it sent none. */
+  error: string;
+  /** Present on a 409 "blocked" answer to a delete. */
+  blockers: DeleteBlocker[];
+  deletableAfter: string;
+};
 export type WriteResult<T> = { ok: true; data: T } | WriteFailure;
 
 /** Sends a change through the same-origin /api rewrite. The two headers are what the server demands of every writing request. */
@@ -452,11 +470,19 @@ async function sendJson(method: "PATCH" | "POST", path: string, body: unknown): 
     if (!res.ok) {
       const fields: Record<string, string> = {};
       for (const [name, code] of Object.entries(obj(d.fields))) if (typeof code === "string") fields[name] = code;
-      return { ok: false, status: res.status, fields, updatedAt: str(d.updatedAt) };
+      return {
+        ok: false,
+        status: res.status,
+        fields,
+        updatedAt: str(d.updatedAt),
+        error: str(d.error),
+        blockers: blockers(d.blockers),
+        deletableAfter: str(d.deletableAfter),
+      };
     }
     return { ok: true, data: d };
   } catch {
-    return { ok: false, status: 0, fields: {}, updatedAt: "" };
+    return { ok: false, status: 0, fields: {}, updatedAt: "", error: "", blockers: [], deletableAfter: "" };
   }
 }
 
@@ -479,5 +505,209 @@ export async function setHospitalActive(id: number, active: boolean): Promise<Wr
 /** Super admin only. Marks every change the hospital made so far as reviewed. */
 export async function reviewHospitalRevisions(id: number): Promise<WriteResult<Record<string, never>>> {
   const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/revisions/review`, {});
+  return res.ok ? { ok: true, data: {} } : res;
+}
+
+// ───────── Sales card ─────────
+
+export type SalesPeriod = {
+  /** "YYYY-MM-DD", KST */
+  from: string;
+  to: string;
+  bookings: { created: number; cancelled: number; active: number };
+  sales: { paid: number; refunded: number; net: number };
+};
+
+/** The current week (from Monday) and the current month (from the 1st), up to today. */
+export type HospitalStats = { week: SalesPeriod; month: SalesPeriod };
+
+function money(v: unknown): { paid: number; refunded: number; net: number } {
+  const s = obj(v);
+  return { paid: num(s.paid), refunded: num(s.refunded), net: num(s.net) };
+}
+
+function salesPeriod(v: unknown): SalesPeriod {
+  const p = obj(v);
+  const b = obj(p.bookings);
+  return {
+    from: str(p.from),
+    to: str(p.to),
+    bookings: { created: num(b.created), cancelled: num(b.cancelled), active: num(b.active) },
+    sales: money(p.sales),
+  };
+}
+
+export async function fetchHospitalStats(id: number, signal?: AbortSignal): Promise<ApiResult<HospitalStats>> {
+  const res = await getJson(`/v1/hospitals/${encodeURIComponent(String(id))}/stats`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return { ok: true, data: { week: salesPeriod(d.week), month: salesPeriod(d.month) } };
+}
+
+// ───────── Deleting a hospital ─────────
+
+/** Why a hospital cannot be deleted yet. A code this page does not know is kept as "other". */
+export type DeleteBlocker =
+  | { code: "upcoming_bookings"; count: number; lastAt: string }
+  | { code: "open_consultations"; count: number; lastAt: string }
+  | { code: "unsettled"; settlements: number; unsettledPayments: number }
+  | { code: "other"; raw: string };
+
+function blockers(v: unknown): DeleteBlocker[] {
+  return list(v).map((raw): DeleteBlocker => {
+    const b = obj(raw);
+    const code = str(b.code);
+    if (code === "upcoming_bookings") return { code, count: num(b.count), lastAt: str(b.lastAt) };
+    if (code === "open_consultations") return { code, count: num(b.count), lastAt: str(b.lastAt) };
+    if (code === "unsettled") return { code, settlements: num(b.settlements), unsettledPayments: num(b.unsettledPayments) };
+    return { code: "other", raw: code };
+  });
+}
+
+/** What is sealed into the archive: whole-period figures. */
+export type ArchiveSummary = { bookings: number; cancelled: number; sales: { paid: number; refunded: number; net: number } };
+
+export type DeleteCheck = {
+  canDelete: boolean;
+  name: string;
+  blockers: DeleteBlocker[];
+  /** "YYYY-MM-DD HH:MM:SS" or "": the earliest moment the date-based blockers are gone. */
+  deletableAfter: string;
+  stats: ArchiveSummary;
+  willDelete: { images: number; doctors: number; treatments: number };
+};
+
+/** Super admin only. */
+export async function fetchDeleteCheck(id: number, signal?: AbortSignal): Promise<ApiResult<DeleteCheck>> {
+  const res = await getJson(`/v1/hospitals/${encodeURIComponent(String(id))}/delete-check`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const stats = obj(d.stats);
+  const will = obj(d.willDelete);
+  return {
+    ok: true,
+    data: {
+      canDelete: d.canDelete === true,
+      name: str(d.name),
+      blockers: blockers(d.blockers),
+      deletableAfter: str(d.deletableAfter),
+      stats: { bookings: num(stats.bookings), cancelled: num(stats.cancelled), sales: money(stats.sales) },
+      willDelete: { images: num(will.images), doctors: num(will.doctors), treatments: num(will.treatments) },
+    },
+  };
+}
+
+/**
+ * Super admin only. Answers: 400 (`fields.confirmName` = "mismatch"), 409 with `error` "blocked" (see `blockers`)
+ * or "conflict" (the hospital changed since the page was loaded).
+ */
+export async function deleteHospital(id: number, confirmName: string, expectedUpdatedAt: string | null): Promise<WriteResult<{ archiveId: number }>> {
+  const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/delete`, { confirmName, expectedUpdatedAt });
+  return res.ok ? { ok: true, data: { archiveId: num(res.data.archiveId) } } : res;
+}
+
+// ───────── Archive of deleted hospitals ─────────
+
+export type ArchiveItem = {
+  id: number;
+  hospitalId: number;
+  name: string;
+  deletedAt: string;
+  deletedByName: string;
+  bookingsTotal: number;
+  bookingsCancelled: number;
+  salesNet: number;
+  /** A month has passed since the deletion and nobody has acknowledged it yet. */
+  noticeDue: boolean;
+  noticeAckedAt: string;
+};
+
+export type ArchiveList = { items: ArchiveItem[]; total: number; dueCount: number; page: number; perPage: number };
+
+function archiveItem(v: unknown): ArchiveItem {
+  const a = obj(v);
+  return {
+    id: num(a.id),
+    hospitalId: num(a.hospitalId),
+    name: str(a.name),
+    deletedAt: str(a.deletedAt),
+    deletedByName: str(a.deletedByName),
+    bookingsTotal: num(a.bookingsTotal),
+    bookingsCancelled: num(a.bookingsCancelled),
+    salesNet: num(a.salesNet),
+    noticeDue: bool(a.noticeDue),
+    noticeAckedAt: str(a.noticeAckedAt),
+  };
+}
+
+/** Super admin only. A 503 means the archive table has not been created yet. */
+export async function fetchArchiveList(page: number, perPage: number, signal?: AbortSignal): Promise<ApiResult<ArchiveList>> {
+  const res = await getJson(`/v1/hospital-archive?page=${page}&perPage=${perPage}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: { items: list(d.items).map(archiveItem), total: num(d.total), dueCount: num(d.dueCount), page, perPage },
+  };
+}
+
+export type ArchiveDetail = ArchiveItem & {
+  salesPaid: number;
+  salesRefunded: number;
+  snapshot: {
+    /** Scalar fields of the hospital row as stored, in the order sent. */
+    hospital: { key: string; value: string }[];
+    doctors: { id: number; name: string; position: string }[];
+    images: number;
+    treatments: number;
+  };
+};
+
+/** A stored value as one line of text; nested values are left out. */
+function snapshotValue(v: unknown): string | null {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  if (typeof v === "boolean") return v ? "1" : "0";
+  if (Array.isArray(v)) {
+    const parts = v.filter((x): x is string | number => typeof x === "string" || typeof x === "number").map(String);
+    return parts.length === v.length ? parts.join(", ") : null;
+  }
+  return null;
+}
+
+export async function fetchArchiveItem(id: number, signal?: AbortSignal): Promise<ApiResult<ArchiveDetail>> {
+  const res = await getJson(`/v1/hospital-archive/${encodeURIComponent(String(id))}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const snap = obj(d.snapshot);
+  const hospital: { key: string; value: string }[] = [];
+  for (const [key, value] of Object.entries(obj(snap.hospital))) {
+    const shown = snapshotValue(value);
+    if (shown !== null) hospital.push({ key, value: shown });
+  }
+  // Counts may arrive as a number or as the list itself.
+  const count = (v: unknown): number => (Array.isArray(v) ? v.length : num(v));
+  return {
+    ok: true,
+    data: {
+      ...archiveItem(d),
+      salesPaid: num(d.salesPaid),
+      salesRefunded: num(d.salesRefunded),
+      snapshot: {
+        hospital,
+        doctors: list(snap.doctors).map((raw) => {
+          const doc = obj(raw);
+          return { id: num(doc.id), name: text(doc.name), position: text(doc.position ?? doc.specialty) };
+        }),
+        images: count(snap.images ?? snap.imagesCount),
+        treatments: count(snap.treatments ?? snap.treatmentsCount),
+      },
+    },
+  };
+}
+
+/** Super admin only. Marks the one-month notice as seen; repeating it is harmless. */
+export async function ackArchive(id: number): Promise<WriteResult<Record<string, never>>> {
+  const res = await sendJson("POST", `/v1/hospital-archive/${encodeURIComponent(String(id))}/ack`, {});
   return res.ok ? { ok: true, data: {} } : res;
 }

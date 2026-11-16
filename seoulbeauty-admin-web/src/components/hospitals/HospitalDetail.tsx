@@ -7,9 +7,11 @@ import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, NotFoundScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
+import DeleteHospitalDialog from "./DeleteHospitalDialog";
 import HospitalEdit from "./HospitalEdit";
 import ImageDialog, { type ZoomImage } from "./ImageDialog";
 import { ActivePill, Chips, GradePill, Notice, Pill, Section } from "./parts";
+import SalesCard from "./SalesCard";
 import {
   fetchHospital,
   fetchMe,
@@ -116,6 +118,7 @@ export default function HospitalDetail({ id }: { id: string }) {
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [working, setWorking] = useState(false);
   const [confirmError, setConfirmError] = useState<MessageKey | null>(null);
+  const [deleting, setDeleting] = useState(false);
   // 401 / 403 are final for this page view: stop asking.
   const halted = useRef(false);
   // Only a plain positive number can be a hospital; anything else is answered like a missing one, without asking.
@@ -184,6 +187,8 @@ export default function HospitalDetail({ id }: { id: string }) {
   // Changing data is offered only while the server has the write switch on; the server checks the account again on every request.
   const canWrite = me?.features.hospitalsWrite === true;
   const isSuper = me?.admin.role === "super_admin" && me.admin.scope === "all";
+  // Deleting is offered to a super admin only, and only while the server has that switch on.
+  const canDelete = me?.features.hospitalsDelete === true && canWrite && isSuper;
   const editing = canWrite && searchParams.get("edit") === "1";
   const viewHref = h ? `/hospitals/${h.id}` : "/hospitals";
 
@@ -274,6 +279,7 @@ export default function HospitalDetail({ id }: { id: string }) {
             </Notice>
           ) : null}
 
+          <SalesCard hospitalId={h.id} />
           <BasicInfo detail={detail} />
           <StatusInfo detail={detail} onToggle={canWrite && isSuper ? (active) => askConfirm(active ? "activate" : "deactivate") : null} />
           <Hours hours={h.businessHours} />
@@ -353,6 +359,35 @@ export default function HospitalDetail({ id }: { id: string }) {
               <p className="panel panel--empty">{t("h.rev.empty")}</p>
             )}
           </Section>
+
+          {canDelete ? (
+            <Section id="sec-d-danger" title={t("hd.zone.title")} desc={t("hd.zone.desc")}>
+              <div className="danger-zone">
+                <button type="button" className="btn btn--danger" onClick={() => setDeleting(true)} title={t("hd.zone.btnTitle")}>
+                  <Icon name="trash" size={18} />
+                  <span>{t("hd.zone.btn")}</span>
+                </button>
+              </div>
+            </Section>
+          ) : null}
+          {deleting ? (
+            <DeleteHospitalDialog
+              hospitalId={h.id}
+              hospitalName={h.name}
+              isActive={h.isActive}
+              updatedAt={h.updatedAt}
+              onClose={() => setDeleting(false)}
+              onDeactivated={() => {
+                setDeleting(false);
+                setFlash("inactive");
+                retry();
+              }}
+              onReload={() => {
+                setDeleting(false);
+                retry();
+              }}
+            />
+          ) : null}
 
           <ImageDialog image={zoom} onClose={() => setZoom(null)} />
           <ConfirmDialog

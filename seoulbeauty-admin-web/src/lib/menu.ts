@@ -17,6 +17,8 @@ export type MenuItem = {
   href: string;
   /** A page of this panel that only a super admin can open (its API refuses everyone else). */
   superOnly?: boolean;
+  /** Shown only to a super admin while the server has this switch on. */
+  requires?: "archive";
 };
 
 export type MenuGroup = { key: string; label: Label; icon: IconName; items: MenuItem[] };
@@ -66,6 +68,7 @@ const MENU: MenuGroup[] = [
       legacy("content_hub", "admin_content_hub.php", "콘텐츠 허브", "Content hub", "collection"),
       legacy("recommend", "admin_recommend.php", "메인 추천 병원", "Featured hospitals on home", "star"),
       legacy("hospitals", "admin_hospitals.php", "병원 관리", "Hospitals", "hospital"),
+      { key: "hospital_archive", label: L("삭제 병원 보관함", "Archive"), icon: "collection", status: "new", href: "/hospital-archive", superOnly: true, requires: "archive" },
       legacy("hospital_request_review", "admin_requested_hospitals.php", "입점 신청 병원", "Hospitals requesting a listing", "clipboard"),
       legacy("hospital_locations", "admin_hospital_locations.php", "병원 노출 순서", "Hospital display order", "chart"),
       legacy("doctors", "admin_doctors.php", "의사 관리", "Doctors", "people"),
@@ -253,9 +256,10 @@ export function buildMenu(features: Features | null, scope: Scope | null): MenuG
       if (features[name]) routes.set(FEATURE_ROUTES[name].key, FEATURE_ROUTES[name].href);
     }
   }
+  const showArchive = features?.archive === true && scope === "all";
   const groups = MENU.map((group) => ({
     ...group,
-    items: group.items.map((item): MenuItem => {
+    items: group.items.filter((item) => item.requires !== "archive" || showArchive).map((item): MenuItem => {
       const href = routes.get(item.key);
       return href ? { ...item, status: "new", href } : item;
     }),

@@ -6,6 +6,7 @@ import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { MeModule } from './me/me.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HospitalsModule } from './hospitals/hospitals.module';
+import { HospitalArchiveModule } from './hospital-archive/hospital-archive.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -17,6 +18,7 @@ import { HealthController } from './health/health.controller';
     MeModule,
     DashboardModule,
     HospitalsModule,
+    HospitalArchiveModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

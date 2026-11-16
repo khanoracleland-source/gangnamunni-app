@@ -104,6 +104,17 @@ export class HospitalsWriteEnabledGuard implements CanActivate {
     return true;
   }
 }
+/** Deleting hospitals and the archive of deleted ones. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
+export const hospitalsDeleteEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_DELETE === '1';
+
+/** With the delete switch off the delete-check, delete and archive routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class HospitalsDeleteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsDeleteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
 
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';

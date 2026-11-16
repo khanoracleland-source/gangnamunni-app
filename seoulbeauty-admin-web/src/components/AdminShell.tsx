@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Icon from "./Icon";
 import LangSelect from "./LangSelect";
-import type { Admin, Features } from "@/lib/api";
+import { fetchArchiveList, type Admin, type Features } from "@/lib/api";
+import { ARCHIVE_DUE_EVENT } from "@/lib/archive";
 import { BASE_PATH, PHP_ADMIN_URL, PHP_LOGOUT_URL } from "@/lib/config";
 import type { MessageKey } from "@/lib/i18n";
 import { useLocale, useT } from "@/lib/locale";
@@ -99,6 +100,27 @@ export default function AdminShell({ admin, features = null, title, description,
       return next;
     });
 
+  // The archive badge: how many deleted hospitals have a notice waiting. Asked only of a super admin with the archive switched on.
+  const showArchive = admin?.scope === "all" && features?.archive === true;
+  const [archiveDue, setArchiveDue] = useState(0);
+  useEffect(() => {
+    if (!showArchive) return;
+    const controller = new AbortController();
+    void fetchArchiveList(1, 10, controller.signal).then((res) => {
+      if (!controller.signal.aborted && res.ok) setArchiveDue(res.data.dueCount);
+    });
+    const onDue = (e: Event) => {
+      const n = (e as CustomEvent<number>).detail;
+      if (typeof n === "number") setArchiveDue(n);
+    };
+    window.addEventListener(ARCHIVE_DUE_EVENT, onDue);
+    return () => {
+      controller.abort();
+      window.removeEventListener(ARCHIVE_DUE_EVENT, onDue);
+    };
+  }, [showArchive]);
+  const dueBadge = showArchive ? archiveDue : 0;
+
   const nextTheme = theme === "dark" ? "light" : "dark";
   const themeLabel = nextTheme === "dark" ? t("top.theme.dark") : t("top.theme.light");
   const displayName = admin ? admin.name || admin.username : "";
@@ -190,6 +212,9 @@ export default function AdminShell({ admin, features = null, title, description,
                         <li key={item.key}>
                           <Link href={item.href} className="nav-item" aria-current={active ? "page" : undefined} onClick={() => setDrawerOpen(false)}>
                             <span className="nav-item__label">{label}</span>
+                            {item.key === "hospital_archive" && dueBadge > 0 ? (
+                              <span className="nav-badge" role="img" aria-label={t("menu.archiveDue", { n: dueBadge })} title={t("menu.archiveDue", { n: dueBadge })}>{dueBadge}</span>
+                            ) : null}
                           </Link>
                         </li>
                       );
