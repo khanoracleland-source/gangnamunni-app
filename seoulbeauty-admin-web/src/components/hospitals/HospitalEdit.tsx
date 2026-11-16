@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import Icon, { type IconName } from "../Icon";
 import ConfirmDialog from "./ConfirmDialog";
+import HospitalDoctors from "./HospitalDoctors";
 import HospitalImages from "./HospitalImages";
 import LocationPicker from "./LocationPicker";
 import { GradePill, Notice, Pill } from "./parts";
@@ -104,13 +105,15 @@ type Props = {
   doctorCount?: number;
   /** The server lets this panel upload images itself: the images card is then a working card, not a link to the old panel. */
   imagesEnabled?: boolean;
+  /** The server lets this panel add doctors itself: the doctors card is then a working card, not a link to the old panel. */
+  doctorsEnabled?: boolean;
 };
 
 /**
  * The edit form of one hospital. It starts from the loaded values, sends only the fields that differ,
  * and reports a clash with a change made elsewhere instead of overwriting it.
  */
-export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false }: Props) {
+export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false }: Props) {
   const t = useT();
   const original = useMemo(() => draftFromHospital(hospital), [hospital]);
   const [draft, setDraft] = useState<Draft>(original);
@@ -134,6 +137,10 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
   // The images card reads its data once it has been opened.
   const [imagesOpened, setImagesOpened] = useState(false);
   if (open.images && !imagesOpened) setImagesOpened(true);
+  const [doctorTotal, setDoctorTotal] = useState<number | undefined>(doctorCount);
+  // The doctors card reads its data once it has been opened.
+  const [doctorsOpened, setDoctorsOpened] = useState(false);
+  if (open.doctors && !doctorsOpened) setDoctorsOpened(true);
 
   const patch = useMemo(() => buildPatch(original, draft), [original, draft]);
   const patchKeys = Object.keys(patch);
@@ -388,7 +395,21 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
       ) : (
         <FoldCard id="images" open={open.images} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={imageCount === undefined ? undefined : t("h.e.c.imgCount", { n: imageCount })} />
       )}
-      <FoldCard id="doctors" open={open.doctors} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={doctorCount === undefined ? undefined : t("h.e.c.docCount", { n: doctorCount })} />
+      {doctorsEnabled ? (
+        <FoldCard id="doctors" open={open.doctors} errors={0} onToggle={toggle} count={doctorTotal === undefined ? undefined : t("h.e.c.docCount", { n: doctorTotal })}>
+          <HospitalDoctors
+            hospitalId={hospital.id}
+            opened={doctorsOpened}
+            onChange={({ count }) => setDoctorTotal(count)}
+            onUnauthorized={() => {
+              leaving.current = true;
+              window.location.assign(PHP_ADMIN_URL);
+            }}
+          />
+        </FoldCard>
+      ) : (
+        <FoldCard id="doctors" open={open.doctors} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} count={doctorCount === undefined ? undefined : t("h.e.c.docCount", { n: doctorCount })} />
+      )}
       <FoldCard id="treatments" open={open.treatments} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
       <FoldCard id="ai" open={open.ai} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
 

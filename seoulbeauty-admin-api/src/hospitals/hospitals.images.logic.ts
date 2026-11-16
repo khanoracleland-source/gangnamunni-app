@@ -14,9 +14,14 @@ export const MAX_FILES = 1 + DETAIL_LIMIT;
 export const MAX_MAIN_BYTES = 5 * 1024 * 1024;
 export const MAX_INTERIOR_BYTES = 10 * 1024 * 1024;
 
-const RULES: Record<ImageField, { maxBytes: number; extensions: string[]; kinds: ImageKind[] }> = {
+/** Field names with an own rule: the two hospital image fields and the photo of a doctor. */
+export type ImageRuleField = ImageField | 'doctor';
+export const MAX_DOCTOR_PHOTO_BYTES = 5 * 1024 * 1024;
+
+const RULES: Record<ImageRuleField, { maxBytes: number; extensions: string[]; kinds: ImageKind[] }> = {
   main: { maxBytes: MAX_MAIN_BYTES, extensions: ['jpg', 'jpeg', 'png'], kinds: ['jpg', 'png'] },
   interior: { maxBytes: MAX_INTERIOR_BYTES, extensions: ['jpg', 'jpeg', 'png', 'webp'], kinds: ['jpg', 'png', 'webp'] },
+  doctor: { maxBytes: MAX_DOCTOR_PHOTO_BYTES, extensions: ['jpg', 'jpeg', 'png', 'webp'], kinds: ['jpg', 'png', 'webp'] },
 };
 
 /** What the first bytes of a file say it is (JPEG FF D8 FF, PNG 89 50 4E 47 0D 0A 1A 0A, WebP "RIFF"....."WEBP"), or null. */
@@ -37,7 +42,7 @@ export const extensionOf = (name: unknown): string => {
 export type ImageCheck = { ok: true; kind: ImageKind } | { ok: false; error: 'invalid_type' | 'too_large' };
 
 /** Size, extension whitelist and real type of one file of the given field. The extension must agree with the real type. */
-export function checkImage(field: ImageField, originalName: unknown, size: number, head: Buffer): ImageCheck {
+export function checkImage(field: ImageRuleField, originalName: unknown, size: number, head: Buffer): ImageCheck {
   const rule = RULES[field];
   if (!Number.isFinite(size) || size <= 0) return { ok: false, error: 'invalid_type' };
   if (size > rule.maxBytes) return { ok: false, error: 'too_large' };

@@ -481,6 +481,66 @@ multipart body are required), `404`, `503 {"error":"uploads_unavailable"}` (`ADM
 `503 {"error":"write_unavailable"}` (write user or grants). Each upload is logged: `journalctl -u seoulbeauty-admin-api | grep 'hospital images'` (`hospital=<id> added=<n>`; no file names).
 The replaced main image file stays on disk (only the database points to the new one). Turning it off: `ADMIN_HOSPITALS_IMAGES=0` + restart.
 
+## 9. Adding doctors (`ADMIN_HOSPITALS_DOCTORS`, optional)
+Adds `GET /v1/hospitals/:id/doctors` and `POST /v1/hospitals/:id/doctors` (multipart: `doctors` = JSON text of up to 20 rows, `photo` = 0..20 files referred to by
+position). One request inserts the rows into `gangnamunni_doctors` in one transaction and writes the photos into the PHP `gangnamunni` directory, so the PHP admin
+and the app keep reading them from `uploads/hospitals/<hospital id>/doctor_<doctor id>_<32 hex>.<ext>` as before. Editing and deleting doctors stay in the PHP admin.
+Needs sections 1 and 6 (hospital pages, write user). With the switch off the POST answers 404 and nothing below is used.
+
+**Before the first request, dump the database** (a request inserts rows of `gangnamunni_doctors` and updates their `photo_url`):
+```bash
+mysqldump --single-transaction <DB_NAME> gangnamunni_doctors > ~/backup-hospital-doctors-$(date +%F).sql   # keep it outside the web root
+```
+
+### 9.1 Database (run as the DB admin; `<DB_NAME>` = schema from step 1)
+Only what the earlier sections did not already grant. Already there: the read-only user has `SELECT (id, hospital_id, name, specialty, experience, qualification,
+bio, photo_url, status)` on `gangnamunni_doctors` (step 1, hospital pages), and the write user has `SELECT (id, hospital_id, name, specialty)` plus `DELETE` (section 7)
+and `SELECT (id, updated_at)` on `gangnamunni_hospitals` (section 6.1, used to lock the hospital row). The write user still needs the rest of the columns it reads back,
+inserts and updates:
+```sql
+GRANT SELECT (experience, qualification, bio, photo_url, status) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (experience, qualification, bio, photo_url, status) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'localhost';
+GRANT INSERT (hospital_id, name, specialty, experience, qualification, bio, photo_url, status, created_at, updated_at) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (hospital_id, name, specialty, experience, qualification, bio, photo_url, status, created_at, updated_at) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'localhost';
+GRANT UPDATE (photo_url) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (photo_url) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'localhost';
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: gangnamunni_doctors has SELECT / INSERT / UPDATE (photo_url) of the columns above plus DELETE (section 7), nothing more
+```
+A `GRANT` naming a column that does not exist fails as a whole: remove that column and run it again. A missing grant answers `503 {"error":"write_unavailable"}`
+and nothing is changed. The hospital row (`gangnamunni_hospitals`) is not modified by adding doctors (the PHP form does not touch it either).
+
+### 9.2 Upload folder
+Nothing new: photos use the same folder as the hospital images, `ADMIN_UPLOAD_ROOT` and `<gangnamunni>/uploads/hospitals/<id>/` (ACL or shared group,
+systemd `ReadWritePaths=<gangnamunni>/uploads/hospitals`, Apache/proxy limits): everything in section 8.2 and 8.3 applies unchanged. A request carries at most
+20 photos of 5 MB (about 100 MB), within the limits set in 8.3. Rows without a photo need no folder at all; a photo with the folder missing or not writable answers
+`503 {"error":"uploads_unavailable"}` and the inserted rows are rolled back.
+
+### 9.3 Env and turning it on
+```
+ADMIN_HOSPITALS_ENABLED=1
+ADMIN_HOSPITALS_WRITE=1
+ADMIN_HOSPITALS_DOCTORS=1
+ADMIN_UPLOAD_ROOT=/path/to/gangnamunni
+```
+Then `sudo systemctl restart seoulbeauty-admin-api`. Check with a TEST hospital (super admin PHPSESSID; any small JPEG; replace the placeholders):
+```bash
+C='-H Cookie:PHPSESSID=<value>'
+H='-H X-Requested-With:admin-next -H Cookie:PHPSESSID=<value>'      # curl sets the multipart Content-Type itself
+curl -s $C http://127.0.0.1:3300/v1/me                                # "hospitalsDoctors":true
+curl -s $C http://127.0.0.1:3300/v1/hospitals/<id>/doctors            # {"items":[...],"count":N,"addLimit":20}
+curl -s -X POST $H -F 'doctors=[{"name":"Test Doctor","specialty":"Dermatology","experience":10,"qualification":"x","bio":"y","photo":0},{"name":"Second"}]' \
+  -F 'photo=@/tmp/test-doctor.jpg' http://127.0.0.1:3300/v1/hospitals/<id>/doctors
+                                                                      # 200 {"items":[...],"count":N,"addLimit":20,"added":2}; the first item has "photoUrl":"uploads/hospitals/<id>/doctor_<doctor id>_<32 hex>.jpg"
+ls -l $G/uploads/hospitals/<id>/                                      # the photo: mode 0644; open it through the PHP site: <gangnamunni URL>/uploads/hospitals/<id>/<file>
+```
+`photo` is the position (0, 1, ...) of the file in the list of `-F 'photo=@...'` parts, or null/absent for a doctor without a photo. Rows without a name are skipped
+(with their photo); at least one named row is required.
+Answers: `400 {"error":"no_doctors"|"too_many"|"invalid_field"|"invalid_type"|"too_large"|"upload_failed","index":<row>,"field":"name"|"specialty"|"experience"|"qualification"|"bio"|"photo"}`
+(`index` and `field` only when they apply), `403` (csrf: the `X-Requested-With` header and a multipart body are required), `404`,
+`503 {"error":"uploads_unavailable"}` or `503 {"error":"write_unavailable"}` (write user or grants). Each request is logged:
+`journalctl -u seoulbeauty-admin-api | grep 'hospital doctors'` (`hospital=<id> added=<n>`; no names or file names). A failed request leaves no rows and no photo files.
+Turning it off: `ADMIN_HOSPITALS_DOCTORS=0` + restart (the POST answers 404; the GET stays on with the hospital pages).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
@@ -490,7 +550,7 @@ Nothing to add for this API: it is not exposed by Apache. Browsers reach it only
 - Each session lookup refreshes the PHP admin session like a page view does; while the dashboard is open and polling,
   the PHP admin login does not idle out.
 - Hospital answers are not cached by the API: every request reads the database (3 statements for the list, up to 5 for a detail page).
-- The image upload route is the one exception: it requires `Content-Type: multipart/form-data` (same marker header and Origin rule).
+- The image upload and the add-doctors routes are the exceptions: they require `Content-Type: multipart/form-data` (same marker header and Origin rule).
 - Writing routes require `Content-Type: application/json`, the header `X-Requested-With: admin-next`, and an `Origin` (when sent) equal to the request host (`X-Forwarded-Host`, else `Host`); otherwise `403 {"error":"csrf"}`.
 - Image and photo URLs are returned as stored: either absolute (`https://…`) or relative to the PHP admin directory
   (`uploads/hospitals/<id>/…`). Document files are not served by this API; the PHP admin (`hospital_document.php`) opens them.

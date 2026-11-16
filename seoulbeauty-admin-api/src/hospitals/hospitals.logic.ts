@@ -196,7 +196,7 @@ export const num = (v: unknown): number => {
   const x = Number(v);
   return Number.isFinite(x) ? x : 0;
 };
-const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
+export const str = (v: unknown): string => (v === null || v === undefined ? '' : String(v));
 const flag = (v: unknown): boolean => num(v) === 1;
 /** A flag that counts as on when the column is NULL (show_rating, hospital_images.is_active). */
 const flagDefaultOn = (v: unknown): boolean => (v === null || v === undefined ? true : num(v) === 1);

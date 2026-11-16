@@ -17,7 +17,7 @@ export type Admin = {
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -118,6 +118,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsWrite: obj(d.features).hospitalsWrite === true,
         hospitalsDelete: obj(d.features).hospitalsDelete === true,
         hospitalsImages: obj(d.features).hospitalsImages === true,
+        hospitalsDoctors: obj(d.features).hospitalsDoctors === true,
         archive: obj(d.features).archive === true,
       },
     },
@@ -566,6 +567,94 @@ export async function uploadHospitalImages(id: number, files: ImageUploadFiles, 
     return { ok: true, data: { ...imageSet(d), added: num(d.added), updatedAt: str(d.updatedAt) } };
   } catch {
     return { ok: false, status: 0, error: "", field: "", remaining: null };
+  }
+}
+
+// ───────── Hospital doctors ─────────
+
+/** What the doctors card shows: every stored doctor and how many can be added in one go. */
+export type HospitalDoctorSet = { items: HospitalDoctor[]; count: number; addLimit: number };
+
+function doctorSet(v: unknown): HospitalDoctorSet {
+  const d = obj(v);
+  const limit = num(d.addLimit);
+  const items = list(d.items)
+    .map((raw): HospitalDoctor => {
+      const doc = obj(raw);
+      return {
+        id: num(doc.id),
+        name: str(doc.name),
+        specialty: str(doc.specialty),
+        experience: num(doc.experience),
+        qualification: str(doc.qualification),
+        bio: str(doc.bio),
+        photoUrl: str(doc.photoUrl),
+        status: str(doc.status),
+      };
+    })
+    .filter((doc) => doc.id > 0);
+  return { items, count: items.length, addLimit: limit > 0 ? limit : 20 };
+}
+
+export async function hospitalDoctors(id: number, signal?: AbortSignal): Promise<ApiResult<HospitalDoctorSet>> {
+  const res = await getJson(`/v1/hospitals/${encodeURIComponent(String(id))}/doctors`, signal);
+  return res.ok ? { ok: true, data: doctorSet(res.data) } : res;
+}
+
+/** One doctor to add. `photo` is the position of the doctor's file among the sent photo files, or null. */
+export type DoctorPayload = {
+  name: string;
+  specialty: string;
+  experience: number;
+  qualification: string;
+  bio: string;
+  photo: number | null;
+};
+
+export type DoctorAddFailure = {
+  ok: false;
+  /** 0 = no answer (network down, proxy error page, request cancelled). */
+  status: number;
+  /** "no_doctors", "too_many", "invalid_field", "invalid_type", "too_large", "upload_failed", ...; "" when the server sent none. */
+  error: string;
+  /** Position of the doctor in the sent list the error is about; null when the error is about the whole request. */
+  index: number | null;
+  /** The input of that doctor the error is about; "" when unknown. */
+  field: string;
+};
+export type DoctorAddResult = { ok: true; data: HospitalDoctorSet & { added: number } } | DoctorAddFailure;
+
+/**
+ * Sends the doctors as one multipart request: a `doctors` JSON text and one repeated `photo` file field.
+ * The browser sets Content-Type itself (it must add the boundary).
+ */
+export async function addHospitalDoctors(id: number, doctors: DoctorPayload[], photos: File[], signal?: AbortSignal): Promise<DoctorAddResult> {
+  const body = new FormData();
+  body.append("doctors", JSON.stringify(doctors));
+  for (const photo of photos) body.append("photo", photo);
+  try {
+    const res = await fetch(`${BASE_PATH}/api/v1/hospitals/${encodeURIComponent(String(id))}/doctors`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "X-Requested-With": "admin-next" },
+      body,
+      signal,
+    });
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // An empty or non-JSON body: the status alone says what happened.
+    }
+    const d = obj(data);
+    if (!res.ok) {
+      const index = numOrNull(d.index);
+      return { ok: false, status: res.status, error: str(d.error), index: index !== null && index >= 0 ? Math.floor(index) : null, field: str(d.field) };
+    }
+    return { ok: true, data: { ...doctorSet(d), added: num(d.added) } };
+  } catch {
+    return { ok: false, status: 0, error: "", index: null, field: "" };
   }
 }
 

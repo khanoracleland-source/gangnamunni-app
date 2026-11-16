@@ -78,6 +78,9 @@ export const legacyEditUrl = (id: number): string => `${PHP_BASE_URL}admin_hospi
 /** The old panel's image manager of one hospital (edit order, hide, delete): not done in the new panel. */
 export const legacyImagesUrl = (id: number): string => `${PHP_BASE_URL}admin_hospital_images.php?hospital_id=${id}`;
 
+/** The old panel's doctor manager, filtered to one hospital (edit, delete, link treatments): not done in the new panel. */
+export const legacyDoctorsUrl = (id: number): string => `${PHP_BASE_URL}admin_doctors.php?hospital=${id}`;
+
 /** A submitted document, served by the old panel (it checks the viewer's permission itself). */
 export const legacyDocumentUrl = (id: number, doc: "business" | "medical"): string =>
   `${PHP_BASE_URL}hospital_document.php?hospital_id=${id}&doc=${doc}`;

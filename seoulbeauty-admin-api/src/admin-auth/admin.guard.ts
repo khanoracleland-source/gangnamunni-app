@@ -128,6 +128,18 @@ export class HospitalsImagesEnabledGuard implements CanActivate {
   }
 }
 
+/** Adding doctors to a hospital. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
+export const hospitalsDoctorsEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_DOCTORS === '1';
+
+/** With the doctors switch off the add route answers 404 as if it did not exist; nothing else is looked at. */
+@Injectable()
+export class HospitalsDoctorsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsDoctorsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 
