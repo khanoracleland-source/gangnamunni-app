@@ -19,6 +19,8 @@ export const HOSPITAL_ROLES = ['hospital_super_admin', 'hospital_admin'];
 export const adminPanelEnabled = (): boolean => process.env.ADMIN_PANEL_ENABLED === '1';
 /** Hospital pages (/v1/hospitals*) and the entry of hospital roles. Same rule: only the exact value "1" turns it on. */
 export const hospitalsEnabled = (): boolean => process.env.ADMIN_HOSPITALS_ENABLED === '1';
+/** Editing hospitals. Needs the hospital pages on as well; only the exact value "1" turns it on. */
+export const hospitalsWriteEnabled = (): boolean => hospitalsEnabled() && process.env.ADMIN_HOSPITALS_WRITE === '1';
 
 /**
  * Scope of an admin, or null when the role may not use this panel at all.
@@ -90,6 +92,57 @@ export class AdminGuard implements CanActivate {
 export class HospitalsEnabledGuard implements CanActivate {
   canActivate(): boolean {
     if (!adminPanelEnabled() || !hospitalsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the write switch off the writing hospital routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class HospitalsWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
+export const CSRF_HEADER_VALUE = 'admin-next';
+
+/**
+ * CSRF protection of the writing routes: JSON content type, the marker header, and, when the browser sent an Origin,
+ * an Origin host equal to the host the request was addressed to (X-Forwarded-Host when proxied, else Host).
+ * Anything else answers 403 {"error":"csrf"}.
+ */
+@Injectable()
+export class CsrfGuard implements CanActivate {
+  canActivate(ctx: ExecutionContext): boolean {
+    const req = ctx.switchToHttp().getRequest<Request>();
+    const first = (v: string | string[] | undefined): string => (Array.isArray(v) ? v[0] : v || '').split(',')[0].trim().toLowerCase();
+    const type = first(req.headers['content-type']).split(';')[0].trim();
+    const marker = first(req.headers['x-requested-with']);
+    let ok = type === 'application/json' && marker === CSRF_HEADER_VALUE;
+    const origin = first(req.headers.origin);
+    if (ok && origin) {
+      let originHost = '';
+      try {
+        originHost = new URL(origin).host.toLowerCase();
+      } catch {
+        originHost = '';
+      }
+      const target = first(req.headers['x-forwarded-host']) || first(req.headers.host);
+      ok = originHost !== '' && originHost === target;
+    }
+    if (!ok) throw new ForbiddenException({ error: 'csrf' });
+    return true;
+  }
+}
+
+/** Runs after AdminGuard: only a super admin passes (hospital roles may edit their own hospital but nothing else). */
+@Injectable()
+export class SuperAdminRoleGuard implements CanActivate {
+  canActivate(ctx: ExecutionContext): boolean {
+    const req = ctx.switchToHttp().getRequest<ScopedAdminRequest>();
+    if (req.admin?.role !== SUPER_ADMIN_ROLE) throw new ForbiddenException({ error: 'forbidden' });
     return true;
   }
 }

@@ -664,7 +664,8 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .tbl__active { width: 92px; }
 .tbl__rating { width: 96px; font-variant-numeric: tabular-nums; }
 .tbl__date { width: 96px; font-variant-numeric: tabular-nums; }
-.tbl__go { width: 72px; }
+.tbl__go { width: 104px; }
+.tbl__acts { display: flex; gap: 6px; }
 .tbl__link { margin-right: 6px; color: var(--accent-text); font-weight: 600; }
 .tbl__link:hover { text-decoration: underline; text-underline-offset: 2px; }
 .tbl__go .ibtn { background: var(--surface); border-color: var(--control-line); color: var(--ink); }
@@ -750,7 +751,8 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   .tbl td.tbl__name { flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 16px; }
   .tbl td.tbl__name::before, .tbl td.tbl__go::before { content: none; }
   .tbl td.tbl__go { margin-top: auto; padding-top: 8px; }
-  .tbl__go .ibtn { margin-left: auto; min-width: 44px; height: 44px; }
+  .tbl__acts { margin-left: auto; }
+  .tbl__go .ibtn { min-width: 44px; height: 44px; }
   .tbl__link { margin-right: 0; }
 }
 
@@ -805,4 +807,76 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ───────── Hospital edit form ───────── */
+.editform { min-width: 0; }
+.form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.form__wide { grid-column: 1 / -1; min-width: 0; }
+.field__label { display: inline-flex; gap: 4px; }
+.field__req { color: var(--down); }
+.field__hint { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.field__error { color: var(--down); font-size: 13px; font-weight: 600; line-height: 1.5; }
+.input[aria-invalid="true"] { border-color: var(--down); box-shadow: 0 0 0 1px var(--down); }
+.input:disabled { opacity: 0.5; cursor: not-allowed; }
+.input.textarea { height: auto; min-height: 140px; padding: 10px 12px; line-height: 1.6; resize: vertical; }
+select.input { padding-right: 8px; cursor: pointer; }
+.check { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
+.check input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--primary); }
+.locked { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; min-height: 44px; }
+
+.chips--edit { gap: 6px; }
+.chip--edit { display: inline-flex; align-items: center; gap: 2px; padding: 0 0 0 12px; font-size: 14px; line-height: 1.3; }
+.chip--edit span { min-width: 0; padding: 5px 0; overflow-wrap: anywhere; }
+.chip__x { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; background: transparent; border: 0; border-radius: var(--r-pill); color: var(--muted); cursor: pointer; }
+.chip__x:hover { background: var(--surface-2); color: var(--ink); }
+.chipadd { display: flex; gap: 8px; }
+.chipadd .input { flex: 1 1 0; }
+
+.hed { display: grid; gap: 16px; }
+.hed__std { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.hed__note { flex-basis: 100%; }
+.hed__time { width: 132px; flex: none; }
+.hed__date { width: 168px; flex: none; }
+.hed__head, .hed__row { display: grid; grid-template-columns: 88px minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 8px 12px; }
+.hed__head { color: var(--muted); font-size: 13px; font-weight: 600; }
+.hed__list { display: grid; gap: 0; }
+.hed__row { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.hed__day { font-weight: 600; }
+.hed__cell { display: block; min-width: 0; }
+.hed__cell .hed__time { width: 100%; }
+.hed__tl { display: none; margin-bottom: 2px; color: var(--muted); font-size: 13px; }
+.hed__block { display: grid; gap: 8px; }
+.hed__title { font-size: 14px; font-weight: 600; }
+.hed__line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+
+.editbar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-pop); }
+.editbar__status { flex: 1 1 160px; min-width: 0; color: var(--muted); font-size: 14px; }
+
+.status-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.section__tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.dialog__text { font-size: 15px; line-height: 1.6; }
+.dialog__err { margin-top: 16px; }
+.dialog__err .notice { margin-bottom: 0; }
+.dialog__foot { flex-wrap: wrap; gap: 8px; }
+
+@media (max-width: 767px) {
+  .hed__head { display: none; }
+  .hed__row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .hed__day, .hed__status { grid-column: 1 / -1; }
+  .hed__tl { display: block; }
+}
+
+@media (max-width: 576px) {
+  .form { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .hed__std .btn, .hed__line > .btn { flex: 1 1 auto; }
+  .hed__date { width: 100%; flex: 1 1 100%; }
+  .editbar { padding: 12px; }
+  .editbar .btn { flex: 1 1 auto; }
+  .dialog__foot .btn { flex: 1 1 auto; }
+}
+
+@media (pointer: coarse) {
+  .chip__x { width: 44px; height: 44px; }
+  .check { min-height: 44px; }
 }

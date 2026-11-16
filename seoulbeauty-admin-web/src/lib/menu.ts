@@ -235,7 +235,7 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<keyof Features, { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
 };
 
@@ -249,7 +249,7 @@ const FEATURE_ROUTES: Record<keyof Features, { key: string; href: string }> = {
 export function buildMenu(features: Features | null, scope: Scope | null): MenuGroup[] {
   const routes = new Map<string, string>();
   if (features) {
-    for (const name of Object.keys(FEATURE_ROUTES) as (keyof Features)[]) {
+    for (const name of Object.keys(FEATURE_ROUTES) as (keyof typeof FEATURE_ROUTES)[]) {
       if (features[name]) routes.set(FEATURE_ROUTES[name].key, FEATURE_ROUTES[name].href);
     }
   }

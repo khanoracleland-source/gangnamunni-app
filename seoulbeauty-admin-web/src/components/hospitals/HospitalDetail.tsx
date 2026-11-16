@@ -1,15 +1,28 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, NotFoundScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
+import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
+import HospitalEdit from "./HospitalEdit";
 import ImageDialog, { type ZoomImage } from "./ImageDialog";
 import { ActivePill, Chips, GradePill, Notice, Pill, Section } from "./parts";
-import { fetchHospital, fetchMe, type HospitalDetail as HospitalDetailData, type HospitalDoctor, type HospitalImage, type Me } from "@/lib/api";
+import {
+  fetchHospital,
+  fetchMe,
+  reviewHospitalRevisions,
+  setHospitalActive,
+  type HospitalDetail as HospitalDetailData,
+  type HospitalDoctor,
+  type HospitalImage,
+  type Me,
+} from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatDayTime, formatNumber } from "@/lib/format";
+import { DAY_KEYS, failureKey } from "@/lib/hospitalEdit";
 import {
   WEEKDAYS,
   dayHours,
@@ -21,7 +34,6 @@ import {
   mediaUrl,
   specialClosedDates,
   specialOpenDates,
-  type Weekday,
 } from "@/lib/hospitals";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
@@ -44,16 +56,6 @@ const STATUS_KEYS = new Map<string, MessageKey>([
   ["pending", "h.status.pending"],
   ["rejected", "h.status.rejected"],
 ]);
-
-const DAY_KEYS: Record<Weekday, MessageKey> = {
-  "월": "h.day.mon",
-  "화": "h.day.tue",
-  "수": "h.day.wed",
-  "목": "h.day.thu",
-  "금": "h.day.fri",
-  "토": "h.day.sat",
-  "일": "h.day.sun",
-};
 
 /** Image kinds the old panel knows, in the order they are shown; any other stored kind follows under its own name. */
 const IMAGE_TYPES = ["main", "logo", "exterior", "interior", "facility", "etc"] as const;
@@ -88,12 +90,32 @@ const REVISION_VALUE_MAX = 80;
 const clip = (value: string): string => (value.length > REVISION_VALUE_MAX ? `${value.slice(0, REVISION_VALUE_MAX)}…` : value);
 const snake = (field: string): string => field.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 
-/** Everything stored about one hospital, read-only. Editing still happens in the old panel. */
+type Flash = "saved" | "active" | "inactive" | "reviewed";
+const FLASH_KEYS: Record<Flash, MessageKey> = {
+  saved: "h.e.flash.saved",
+  active: "h.e.flash.active",
+  inactive: "h.e.flash.inactive",
+  reviewed: "h.e.flash.reviewed",
+};
+
+/** Something that needs a yes first: switching the hospital on or off, or marking its changes as reviewed. */
+type Confirm = "deactivate" | "activate" | "review";
+
+/**
+ * Everything stored about one hospital. With the server's write switch on, the same page turns into the edit form
+ * (`?edit=1`); otherwise it is read-only and editing happens in the old panel.
+ */
 export default function HospitalDetail({ id }: { id: string }) {
   const t = useT();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [state, setState] = useState<State>(INITIAL);
   const [attempt, setAttempt] = useState(0);
   const [zoom, setZoom] = useState<ZoomImage | null>(null);
+  const [flash, setFlash] = useState<Flash | null>(null);
+  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [working, setWorking] = useState(false);
+  const [confirmError, setConfirmError] = useState<MessageKey | null>(null);
   // 401 / 403 are final for this page view: stop asking.
   const halted = useRef(false);
   // Only a plain positive number can be a hospital; anything else is answered like a missing one, without asking.
@@ -159,28 +181,93 @@ export default function HospitalDetail({ id }: { id: string }) {
   else if (phase === "error") screen = <ErrorScreen kind={state.errorKind} onRetry={retry} retrying={busy} />;
 
   const h = detail?.hospital;
+  // Changing data is offered only while the server has the write switch on; the server checks the account again on every request.
+  const canWrite = me?.features.hospitalsWrite === true;
+  const isSuper = me?.admin.role === "super_admin" && me.admin.scope === "all";
+  const editing = canWrite && searchParams.get("edit") === "1";
+  const viewHref = h ? `/hospitals/${h.id}` : "/hospitals";
+
+  const runConfirm = async () => {
+    if (!h || !confirm || working) return;
+    setWorking(true);
+    setConfirmError(null);
+    const res = confirm === "review" ? await reviewHospitalRevisions(h.id) : await setHospitalActive(h.id, confirm === "activate");
+    setWorking(false);
+    if (res.ok) {
+      setFlash(confirm === "review" ? "reviewed" : confirm === "activate" ? "active" : "inactive");
+      setConfirm(null);
+      retry();
+      return;
+    }
+    if (res.status === 401) {
+      halted.current = true;
+      window.location.assign(PHP_ADMIN_URL);
+      return;
+    }
+    setConfirmError(failureKey(res.status));
+  };
+  const askConfirm = (what: Confirm) => {
+    setConfirmError(null);
+    setConfirm(what);
+  };
+  const confirmSpec: ConfirmSpec | null =
+    confirm === "deactivate"
+      ? { title: t("h.act.deactivate.title"), body: t("h.act.deactivate.body"), confirmLabel: t("h.act.deactivate"), cancelLabel: t("h.c.cancel"), focus: "cancel" }
+      : confirm === "activate"
+        ? { title: t("h.act.activate.title"), body: t("h.act.activate.body"), confirmLabel: t("h.act.activate"), cancelLabel: t("h.c.cancel"), focus: "cancel" }
+        : confirm === "review"
+          ? { title: t("h.rev.confirm.title"), body: t("h.rev.confirm.body"), confirmLabel: t("h.rev.confirm.ok"), cancelLabel: t("h.c.cancel"), focus: "cancel" }
+          : null;
+
   const actions = h ? (
     <div className="page-actions">
       <Link className="btn btn--ghost" href="/hospitals">{t("h.d.back")}</Link>
-      <a className="btn btn--ghost" href={legacyEditUrl(h.id)} title={t("h.d.editHint")}>
-        <Icon name="external" size={18} />
-        <span>{t("h.d.edit")}</span>
-      </a>
+      {canWrite ? (
+        editing ? null : (
+          <Link className="btn btn--primary" href={`${viewHref}?edit=1`} title={t("h.d.editBtnTitle")} onClick={() => setFlash(null)}>
+            <Icon name="edit" size={18} />
+            <span>{t("h.d.editBtn")}</span>
+          </Link>
+        )
+      ) : (
+        <a className="btn btn--ghost" href={legacyEditUrl(h.id)} title={t("h.d.editHint")}>
+          <Icon name="external" size={18} />
+          <span>{t("h.d.edit")}</span>
+        </a>
+      )}
     </div>
   ) : null;
+  const reviewable = canWrite && isSuper && !!h && (h.hasUnreviewedChanges || (detail?.revisions.length ?? 0) > 0);
+  const revisionsDesc = reviewable ? t("h.rev.descWrite") : canWrite ? t("h.rev.descView") : t("h.rev.desc");
 
   return (
     <AdminShell
       admin={me?.admin ?? null}
       features={me?.features ?? null}
       title={h ? h.name || t("h.noName") : t("h.d.title")}
-      description={t("h.d.desc")}
+      description={editing ? t("h.e.desc") : t("h.d.desc")}
       actions={actions}
       screen={screen}
     >
-      {detail && h ? (
+      {detail && h && editing ? (
+        <HospitalEdit
+          key={`${h.id}-${state.settled}`}
+          hospital={h}
+          onSaved={() => {
+            setFlash("saved");
+            router.replace(viewHref);
+            retry();
+          }}
+          onCancel={() => router.replace(viewHref)}
+          onReload={retry}
+        />
+      ) : null}
+      {detail && h && !editing ? (
         <>
-          <Notice>{me?.admin.scope === "own" ? t("h.d.readOnlyOwn") : t("h.d.readOnly")}</Notice>
+          <div role="status">
+            {flash ? <Notice icon="check">{t(FLASH_KEYS[flash])}</Notice> : null}
+          </div>
+          <Notice>{canWrite ? (me?.admin.scope === "own" ? t("h.d.viewHintOwn") : t("h.d.viewHint")) : me?.admin.scope === "own" ? t("h.d.readOnlyOwn") : t("h.d.readOnly")}</Notice>
           {h.hasUnreviewedChanges ? (
             <Notice tone="warn" icon="alert" action={detail.revisions.length > 0 ? <a className="txtbtn" href="#sec-d-revisions">{t("h.rev.jump")}</a> : undefined}>
               {t("h.rev.notice")}
@@ -188,7 +275,7 @@ export default function HospitalDetail({ id }: { id: string }) {
           ) : null}
 
           <BasicInfo detail={detail} />
-          <StatusInfo detail={detail} />
+          <StatusInfo detail={detail} onToggle={canWrite && isSuper ? (active) => askConfirm(active ? "activate" : "deactivate") : null} />
           <Hours hours={h.businessHours} />
 
           <Section id="sec-d-tags" title={t("h.tags.title")} desc={t("h.tags.desc")}>
@@ -224,7 +311,15 @@ export default function HospitalDetail({ id }: { id: string }) {
             )}
           </Section>
 
-          <Section id="sec-d-revisions" title={t("h.rev.title")} desc={t("h.rev.desc")}>
+          <Section id="sec-d-revisions" title={t("h.rev.title")} desc={revisionsDesc}>
+            {reviewable ? (
+              <div className="section__tools">
+                <button type="button" className="btn btn--primary" onClick={() => askConfirm("review")}>
+                  <Icon name="check" size={18} />
+                  <span>{t("h.rev.confirmBtn")}</span>
+                </button>
+              </div>
+            ) : null}
             {detail.revisions.length > 0 ? (
               <ul className="revs">
                 {detail.revisions.map((rev) => {
@@ -260,6 +355,15 @@ export default function HospitalDetail({ id }: { id: string }) {
           </Section>
 
           <ImageDialog image={zoom} onClose={() => setZoom(null)} />
+          <ConfirmDialog
+            spec={confirmSpec}
+            busy={working}
+            error={confirmError ? t(confirmError) : null}
+            onConfirm={runConfirm}
+            onClose={() => {
+              if (!working) setConfirm(null);
+            }}
+          />
         </>
       ) : null}
     </AdminShell>
@@ -315,7 +419,8 @@ function BasicInfo({ detail }: { detail: HospitalDetailData }) {
   );
 }
 
-function StatusInfo({ detail }: { detail: HospitalDetailData }) {
+/** `onToggle(nextActive)` is given only to a super admin while changes are allowed: the hospital's switch is then a button. */
+function StatusInfo({ detail, onToggle }: { detail: HospitalDetailData; onToggle: ((nextActive: boolean) => void) | null }) {
   const t = useT();
   const h = detail.hospital;
   const statusKey = STATUS_KEYS.get(h.status);
@@ -333,6 +438,13 @@ function StatusInfo({ detail }: { detail: HospitalDetailData }) {
         <Field label={t("h.col.created")}>{formatDayTime(h.createdAt)}</Field>
         <Field label={t("h.status.updated")}>{formatDayTime(h.updatedAt)}</Field>
       </dl>
+      {onToggle ? (
+        <div className="status-actions">
+          <button type="button" className="btn btn--ghost" onClick={() => onToggle(!h.isActive)}>
+            {h.isActive ? t("h.act.deactivate") : t("h.act.activate")}
+          </button>
+        </div>
+      ) : null}
     </Section>
   );
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import HospitalDetail from "@/components/hospitals/HospitalDetail";
 
 export const metadata: Metadata = { title: "병원 상세" };
@@ -11,5 +12,10 @@ export const dynamic = "force-dynamic";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <HospitalDetail id={id} />;
+  // The page reads ?edit=1 from the address.
+  return (
+    <Suspense fallback={null}>
+      <HospitalDetail id={id} />
+    </Suspense>
+  );
 }

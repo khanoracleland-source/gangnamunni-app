@@ -200,7 +200,7 @@ export default function HospitalList() {
               </p>
               {hasFilters(query) ? <Link className="txtbtn" href="/hospitals">{t("h.find.reset")}</Link> : null}
             </div>
-            <ListTable list={list} busy={busy} filtered={hasFilters(query)} />
+            <ListTable list={list} busy={busy} filtered={hasFilters(query)} canEdit={me?.features.hospitalsWrite === true} />
             <Pager query={query} total={list.total} />
           </Section>
         </>
@@ -249,7 +249,7 @@ function SearchForm({ initial, onSearch }: { initial: string; onSearch: (search:
   );
 }
 
-function ListTable({ list, busy, filtered }: { list: HospitalListData; busy: boolean; filtered: boolean }) {
+function ListTable({ list, busy, filtered, canEdit }: { list: HospitalListData; busy: boolean; filtered: boolean; canEdit: boolean }) {
   const t = useT();
   if (list.items.length === 0) {
     const message = list.total > 0 ? t("h.list.emptyPage") : filtered ? t("h.list.emptyFiltered") : list.scope === "own" ? t("h.list.emptyOwn") : t("h.list.empty");
@@ -283,14 +283,14 @@ function ListTable({ list, busy, filtered }: { list: HospitalListData; busy: boo
       </thead>
       <tbody role="rowgroup">
         {list.items.map((h) => (
-          <Row key={h.id} hospital={h} />
+          <Row key={h.id} hospital={h} canEdit={canEdit} />
         ))}
       </tbody>
     </table>
   );
 }
 
-function Row({ hospital: h }: { hospital: HospitalListItem }) {
+function Row({ hospital: h, canEdit }: { hospital: HospitalListItem; canEdit: boolean }) {
   const t = useT();
   const name = h.name || t("h.noName");
   const href = `/hospitals/${h.id}`;
@@ -311,9 +311,16 @@ function Row({ hospital: h }: { hospital: HospitalListItem }) {
       </td>
       <td role="cell" className="tbl__date" data-label={t("h.col.created")}>{formatDay(h.createdAt)}</td>
       <td role="cell" className="tbl__go">
-        <Link href={href} className="ibtn tbl__open" aria-label={t("h.col.detailOf", { name })} title={t("h.col.detailOf", { name })}>
-          <Icon name="eye" size={18} />
-        </Link>
+        <div className="tbl__acts">
+          <Link href={href} className="ibtn tbl__open" aria-label={t("h.col.detailOf", { name })} title={t("h.col.detailOf", { name })}>
+            <Icon name="eye" size={18} />
+          </Link>
+          {canEdit ? (
+            <Link href={`${href}?edit=1`} className="ibtn tbl__open" aria-label={t("h.col.editOf", { name })} title={t("h.col.editOf", { name })}>
+              <Icon name="edit" size={18} />
+            </Link>
+          ) : null}
+        </div>
       </td>
     </tr>
   );

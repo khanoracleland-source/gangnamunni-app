@@ -13,8 +13,8 @@ export type Admin = {
   scope: Scope;
 };
 
-/** Which pages of this panel the server has switched on. */
-export type Features = { hospitals: boolean };
+/** Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well). */
+export type Features = { hospitals: boolean; hospitalsWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -110,7 +110,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
     ok: true,
     data: {
       admin: { id: num(a.id), username: str(a.username), name: str(a.name), role, hospitalId: hospitalId > 0 ? hospitalId : null, scope },
-      features: { hospitals: obj(d.features).hospitals === true },
+      features: { hospitals: obj(d.features).hospitals === true, hospitalsWrite: obj(d.features).hospitalsWrite === true },
     },
   };
 }
@@ -398,4 +398,86 @@ export async function fetchHospital(id: number, signal?: AbortSignal): Promise<A
       }),
     },
   };
+}
+
+// ───────── Hospital changes ─────────
+
+/** The hospital fields a PATCH may carry; only the ones that changed are sent. The ad grade is not among them. */
+export type HospitalFieldsPatch = Partial<{
+  name: string;
+  ownerName: string;
+  businessNumber: string;
+  introduction: string;
+  address: string;
+  phone: string;
+  email: string;
+  contactName: string;
+  contactPhone: string;
+  website: string;
+  snsUrl: string;
+  categories: string[];
+  badges: string[];
+  treatmentTags: string[];
+  subwayNames: string[];
+  businessHours: Record<string, unknown>;
+  latitude: number | null;
+  longitude: number | null;
+  showRating: boolean;
+}>;
+
+/**
+ * A refused change. `status` 0 = no answer at all; 400 carries per-field codes in `fields`
+ * (required, too_long, bad_format, bad_url, duplicate_phone, not_allowed); 409 carries the stored `updatedAt`.
+ */
+export type WriteFailure = { ok: false; status: number; fields: Record<string, string>; updatedAt: string };
+export type WriteResult<T> = { ok: true; data: T } | WriteFailure;
+
+/** Sends a change through the same-origin /api rewrite. The two headers are what the server demands of every writing request. */
+async function sendJson(method: "PATCH" | "POST", path: string, body: unknown): Promise<WriteResult<Json>> {
+  try {
+    const res = await fetch(`${BASE_PATH}/api${path}`, {
+      method,
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "X-Requested-With": "admin-next" },
+      body: JSON.stringify(body),
+    });
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // An empty or non-JSON body: the status alone says what happened.
+    }
+    const d = obj(data);
+    if (!res.ok) {
+      const fields: Record<string, string> = {};
+      for (const [name, code] of Object.entries(obj(d.fields))) if (typeof code === "string") fields[name] = code;
+      return { ok: false, status: res.status, fields, updatedAt: str(d.updatedAt) };
+    }
+    return { ok: true, data: d };
+  } catch {
+    return { ok: false, status: 0, fields: {}, updatedAt: "" };
+  }
+}
+
+/** Saves the changed fields. `expectedUpdatedAt` is the `updatedAt` the page was loaded with: if the hospital changed since, the answer is 409. */
+export async function patchHospital(
+  id: number,
+  expectedUpdatedAt: string | null,
+  fields: HospitalFieldsPatch,
+): Promise<WriteResult<{ updatedAt: string }>> {
+  const res = await sendJson("PATCH", `/v1/hospitals/${encodeURIComponent(String(id))}`, { expectedUpdatedAt, fields });
+  return res.ok ? { ok: true, data: { updatedAt: str(res.data.updatedAt) } } : res;
+}
+
+/** Super admin only. Sets the exact state asked for, so pressing twice never flips it back. */
+export async function setHospitalActive(id: number, active: boolean): Promise<WriteResult<{ isActive: boolean; updatedAt: string }>> {
+  const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/active`, { active });
+  return res.ok ? { ok: true, data: { isActive: bool(res.data.isActive), updatedAt: str(res.data.updatedAt) } } : res;
+}
+
+/** Super admin only. Marks every change the hospital made so far as reviewed. */
+export async function reviewHospitalRevisions(id: number): Promise<WriteResult<Record<string, never>>> {
+  const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/revisions/review`, {});
+  return res.ok ? { ok: true, data: {} } : res;
 }

@@ -5,7 +5,7 @@ import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { DashboardModule } from '../dashboard/dashboard.module';
 import { HospitalsModule } from './hospitals.module';
-import { DB } from '../db/db.module';
+import { DB, DB_RW } from '../db/db.module';
 
 const SUPER = 'PHPSESSID=super';
 const HOSPITAL = 'PHPSESSID=hospital12';
@@ -86,7 +86,7 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
   };
 
   async function boot(): Promise<void> {
-    @Global() @Module({ providers: [{ provide: DB, useValue: dbStub }], exports: [DB] }) class TestDbModule {}
+    @Global() @Module({ providers: [{ provide: DB, useValue: dbStub }, { provide: DB_RW, useValue: { get: () => null } }], exports: [DB, DB_RW] }) class TestDbModule {}
     const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, MeModule, DashboardModule, HospitalsModule] }).compile();
     app = mod.createNestApplication();
     await app.init();
@@ -149,7 +149,7 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
         await get('/v1/dashboard/summary', cookie).expect(403).expect({ error: 'forbidden' });
       }
       const me = await get('/v1/me', SUPER).expect(200);
-      expect(me.body).toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: false } });
+      expect(me.body).toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: false, hospitalsWrite: false } });
       expect(dbStub.query).not.toHaveBeenCalled();
     });
     it('ADMIN_PANEL_ENABLED off wins: everything is 404 even with the hospital switch on', async () => {
@@ -175,9 +175,9 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
     });
     it('/v1/me: scope and feature flag per role', async () => {
       expect((await get('/v1/me', SUPER).expect(200)).body)
-        .toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: true } });
+        .toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: true, hospitalsWrite: false } });
       expect((await get('/v1/me', HOSPITAL).expect(200)).body)
-        .toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'hospital_super_admin', hospitalId: 12, scope: 'own' }, features: { hospitals: true } });
+        .toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'hospital_super_admin', hospitalId: 12, scope: 'own' }, features: { hospitals: true, hospitalsWrite: false } });
       expect((await get('/v1/me', HOSPITAL_ADMIN).expect(200)).body.admin).toMatchObject({ role: 'hospital_admin', hospitalId: 12, scope: 'own' });
       expect((await get('/v1/me', UNBOUND).expect(200)).body.admin).toMatchObject({ role: 'hospital_admin', hospitalId: null, scope: 'own' });
     });
