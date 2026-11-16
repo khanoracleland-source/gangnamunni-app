@@ -13,7 +13,11 @@ export default function HelpDialog({ metric, days, onClose }: { metric: MetricId
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (metric && !dialog.open) dialog.showModal();
+    if (metric && !dialog.open) {
+      dialog.showModal();
+      // The close button at the bottom takes focus first (the "x" in the corner would otherwise).
+      dialog.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    }
     if (!metric && dialog.open) dialog.close();
   }, [metric]);
 
@@ -35,8 +39,8 @@ export default function HelpDialog({ metric, days, onClose }: { metric: MetricId
         <div className="dialog__box">
           <div className="dialog__head">
             <h2 id="help-title" className="dialog__title">{t(metricKey(metric, "name"))}</h2>
-            <button type="button" className="icon-btn" onClick={onClose} aria-label={t("m.close")}>
-              <Icon name="close" size={16} />
+            <button type="button" className="ibtn dialog__close" onClick={onClose} aria-label={t("m.close")}>
+              <Icon name="close" />
             </button>
           </div>
           <dl className="dialog__list">
@@ -52,7 +56,7 @@ export default function HelpDialog({ metric, days, onClose }: { metric: MetricId
             ) : null}
           </dl>
           <div className="dialog__foot">
-            <button type="button" className="btn btn--primary" onClick={onClose}>{t("m.close")}</button>
+            <button type="button" className="btn btn--primary" data-autofocus onClick={onClose}>{t("m.close")}</button>
           </div>
         </div>
       ) : null}

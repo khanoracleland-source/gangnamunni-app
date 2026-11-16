@@ -1,86 +1,75 @@
 import type { ReactNode } from "react";
 
-// Line icons drawn on a 16x16 grid. They take the text colour and are sized by the `size` prop.
-const PATHS = {
-  menu: <path d="M2 4h12M2 8h12M2 12h12" />,
-  gauge: (
-    <>
-      <path d="M2.2 11.8A6.2 6.2 0 1 1 13.8 11.8" />
-      <path d="M8 9.6l2.6-3.4" />
-      <circle cx="8" cy="9.6" r="1" />
-    </>
-  ),
+// Line icons drawn on a 20x20 grid (1.5 stroke). They take the text colour and are sized by `size`.
+const NEW = {
+  menu: <path d="M3 6h14M3 10h14M3 14h14" />,
   sun: (
     <>
-      <circle cx="8" cy="8" r="2.8" />
-      <path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" />
+      <circle cx="10" cy="10" r="3.5" />
+      <path d="M10 2.5v1.8M10 15.7v1.8M2.5 10h1.8M15.7 10h1.8M4.7 4.7l1.3 1.3M14 14l1.3 1.3M4.7 15.3 6 14M14 6l1.3-1.3" />
     </>
   ),
-  moon: <path d="M13.5 9.8A6 6 0 0 1 6.2 2.5a6 6 0 1 0 7.3 7.3z" />,
-  refresh: (
+  moon: <path d="M16.5 12A7 7 0 0 1 8 3.5 7 7 0 1 0 16.5 12z" />,
+  logout: <path d="M8 3.5H5A1.5 1.5 0 0 0 3.5 5v10A1.5 1.5 0 0 0 5 16.5h3M12.5 6.5 16 10l-3.5 3.5M16 10H8" />,
+  external: <path d="M8 4.5H5.5A1.5 1.5 0 0 0 4 6v8.5A1.5 1.5 0 0 0 5.5 16H14a1.5 1.5 0 0 0 1.5-1.5V12M11 4h5v5M16 4l-7 7" />,
+  chevron: <path d="M7.4 4.4 13 10l-5.6 5.6" />,
+  help: (
     <>
-      <path d="M13 8a5 5 0 1 1-1.5-3.5" />
-      <path d="M13 2.3v3h-3" />
+      <circle cx="10" cy="10" r="7.5" />
+      <path d="M7.8 8a2.3 2.3 0 1 1 3.4 2c-.8.5-1.2 1-1.2 1.8M10 14.2v.01" />
     </>
   ),
-  logout: (
+  close: <path d="M5 5l10 10M15 5 5 15" />,
+  refresh: <path d="M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2" />,
+  gauge: <path d="M3.5 14a6.5 6.5 0 1 1 13 0M10 14l3-4.5" />,
+  hospital: <path d="M4 16.5V4.5A1 1 0 0 1 5 3.5h10a1 1 0 0 1 1 1v12M2.5 16.5h15M10 6.5v5M7.5 9h5" />,
+  grid: (
     <>
-      <path d="M6 2.5H3.5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1H6" />
-      <path d="M6.5 8h7M11 5.5 13.5 8 11 10.5" />
+      <rect x="3.5" y="3.5" width="5" height="5" rx="1" />
+      <rect x="11.5" y="3.5" width="5" height="5" rx="1" />
+      <rect x="3.5" y="11.5" width="5" height="5" rx="1" />
+      <rect x="11.5" y="11.5" width="5" height="5" rx="1" />
     </>
   ),
-  external: (
-    <>
-      <path d="M9 2.5h4.5V7M13.5 2.5l-6 6" />
-      <path d="M11.5 9.5v3a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1h3" />
-    </>
-  ),
-  chevronUp: <path d="M3.5 10 8 5.5l4.5 4.5" />,
   people: (
     <>
-      <circle cx="6" cy="5.5" r="2.3" />
-      <path d="M1.8 13c.4-2.4 2-3.6 4.2-3.6s3.8 1.2 4.2 3.6" />
-      <circle cx="11.6" cy="6" r="1.8" />
-      <path d="M12.1 9.6c1.4.3 2.2 1.4 2.4 3.1" />
+      <circle cx="10" cy="7" r="3" />
+      <path d="M4 16.5c.6-3 3-4.5 6-4.5s5.4 1.5 6 4.5" />
     </>
   ),
   calendar: (
     <>
-      <rect x="2.5" y="3.5" width="11" height="10" rx="1.2" />
-      <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3M5.8 10l1.6 1.6 3-3.2" />
+      <rect x="3.5" y="4.5" width="13" height="12" rx="1.5" />
+      <path d="M3.5 8.5h13M7 3v3M13 3v3" />
     </>
   ),
-  hospital: (
+  card: (
     <>
-      <path d="M2.5 13.5v-7l5.5-4 5.5 4v7z" />
-      <path d="M8 7v4M6 9h4" />
+      <rect x="2.5" y="5" width="15" height="10" rx="1.5" />
+      <path d="M2.5 8.5h15M5.5 12h3" />
     </>
   ),
-  alert: (
-    <>
-      <path d="M8 2.2 14.3 13H1.7z" />
-      <path d="M8 6.5v3.2M8 11.3v.2" />
-    </>
-  ),
+  chat: <path d="M4 4.5h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H9l-3.5 3v-3H4a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z" />,
   lock: (
     <>
-      <rect x="3.5" y="7" width="9" height="6.5" rx="1.2" />
-      <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
+      <rect x="4.5" y="9" width="11" height="8" rx="1.5" />
+      <path d="M7 9V6.5a3 3 0 0 1 6 0V9" />
     </>
   ),
-  help: (
-    <>
-      <circle cx="8" cy="8" r="6" />
-      <path d="M6.2 6.3a1.9 1.9 0 0 1 3.7.6c0 1.3-1.9 1.5-1.9 2.7M8 11.5v.2" />
-    </>
-  ),
+  alert: <path d="M10 3.5l7 12.5H3L10 3.5zM10 8.5v3.5M10 14v.01" />,
+  unplug: <path d="M3 10h3.5M13.5 10H17M6.5 7v6l3.5-1.5v-3L6.5 7zM13.5 8v4" />,
+} satisfies Record<string, ReactNode>;
+
+// Older icons, drawn on a 16x16 grid. Only the sidebar group headings still use them; they are
+// enlarged to the same footprint as the 20x20 set.
+const OLD = {
+  chevronUp: <path d="M3.5 10 8 5.5l4.5 4.5" />,
   info: (
     <>
       <circle cx="8" cy="8" r="6" />
       <path d="M8 7.2v4M8 4.9v.2" />
     </>
   ),
-  close: <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />,
   globe: (
     <>
       <circle cx="8" cy="8" r="6" />
@@ -149,12 +138,6 @@ const PATHS = {
       <path d="M8 1.8v1.7M8 12.5v1.7M1.8 8h1.7M12.5 8h1.7M3.6 3.6l1.2 1.2M11.2 11.2l1.2 1.2M3.6 12.4l1.2-1.2M11.2 4.8l1.2-1.2" />
     </>
   ),
-  card: (
-    <>
-      <rect x="2" y="3.5" width="12" height="9" rx="1.4" />
-      <path d="M2 6.8h12M4.5 10h2.5" />
-    </>
-  ),
   phone: (
     <>
       <rect x="4.5" y="1.8" width="7" height="12.4" rx="1.5" />
@@ -189,25 +172,40 @@ const PATHS = {
   ),
 } satisfies Record<string, ReactNode>;
 
-export type IconName = keyof typeof PATHS;
+type NewName = keyof typeof NEW;
+type OldName = keyof typeof OLD;
+export type IconName = NewName | OldName;
 
-/** Decorative by default (hidden from assistive tech): the control around it carries the label. */
-export default function Icon({ name, size = 14, className }: { name: IconName; size?: number; className?: string }) {
+const isNew = (name: IconName): name is NewName => name in NEW;
+
+const OLD_SCALE = 1.125;
+
+/** Decorative by default (hidden from assistive tech): the control around it carries the label. The stroke stays 1.5px at every size. */
+export default function Icon({ name, size = 20, className }: { name: IconName; size?: number; className?: string }) {
+  const common = {
+    className: className ? `icon ${className}` : "icon",
+    width: size,
+    height: size,
+    viewBox: "0 0 20 20",
+    fill: "none",
+    stroke: "currentColor",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+    focusable: "false" as const,
+  };
+  if (isNew(name)) {
+    return (
+      <svg {...common} strokeWidth={(1.5 * 20) / size}>
+        {NEW[name]}
+      </svg>
+    );
+  }
   return (
-    <svg
-      className={className ? `icon ${className}` : "icon"}
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {PATHS[name]}
+    <svg {...common}>
+      <g transform={`translate(10 10) scale(${OLD_SCALE}) translate(-8 -8)`} strokeWidth={(1.5 * 20) / (OLD_SCALE * size)}>
+        {OLD[name as OldName]}
+      </g>
     </svg>
   );
 }

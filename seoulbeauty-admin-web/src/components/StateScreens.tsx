@@ -5,26 +5,24 @@ import Icon, { type IconName } from "./Icon";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { useT } from "@/lib/locale";
 
-function StatePanel({ icon, title, children, actions, role }: { icon: IconName; title: string; children: ReactNode; actions: ReactNode; role: "alert" | "status" }) {
+/** Centered message that takes the place of the page: icon in a ring, one heading, one paragraph, buttons. */
+function StateView({ icon, title, children, actions, role }: { icon: IconName; title: string; children: ReactNode; actions: ReactNode; role: "alert" | "status" }) {
   return (
-    <section className="panel" role={role}>
-      <h2 className="panel__head">
-        <Icon name={icon} size={18} />
-        {title}
-      </h2>
-      <div className="panel__body">
-        <p className="panel__text">{children}</p>
-        <div className="panel__actions">{actions}</div>
+    <section className="state" role={role}>
+      <div className="state__in">
+        <div className="state__ring"><Icon name={icon} size={22} /></div>
+        <h1>{title}</h1>
+        <p>{children}</p>
+        <div className="state__acts">{actions}</div>
       </div>
     </section>
   );
 }
 
-function BackLink() {
+function BackLink({ primary }: { primary?: boolean }) {
   const t = useT();
   return (
-    <a className="btn btn--secondary" href={PHP_ADMIN_URL}>
-      <Icon name="external" />
+    <a className={primary ? "btn btn--primary" : "btn btn--ghost"} href={PHP_ADMIN_URL}>
       {t("state.legacy")}
     </a>
   );
@@ -34,9 +32,9 @@ function BackLink() {
 export function ForbiddenScreen() {
   const t = useT();
   return (
-    <StatePanel icon="lock" title={t("state.forbidden.title")} actions={<BackLink />} role="alert">
+    <StateView icon="lock" title={t("state.forbidden.title")} actions={<BackLink primary />} role="alert">
       {t("state.forbidden.body")}
-    </StatePanel>
+    </StateView>
   );
 }
 
@@ -45,14 +43,13 @@ export type ErrorKind = "disabled" | "session" | "network";
 export function ErrorScreen({ kind, onRetry, retrying }: { kind: ErrorKind; onRetry: () => void; retrying: boolean }) {
   const t = useT();
   return (
-    <StatePanel
-      icon="alert"
+    <StateView
+      icon="unplug"
       title={t(`state.${kind}.title`)}
       role="alert"
       actions={
         <>
           <button type="button" className="btn btn--primary" onClick={onRetry} disabled={retrying}>
-            <Icon name="refresh" className={retrying ? "is-spinning" : undefined} />
             {t("state.retry")}
           </button>
           <BackLink />
@@ -60,7 +57,7 @@ export function ErrorScreen({ kind, onRetry, retrying }: { kind: ErrorKind; onRe
       }
     >
       {t(`state.${kind}.body`)}
-    </StatePanel>
+    </StateView>
   );
 }
 
@@ -68,8 +65,18 @@ export function ErrorScreen({ kind, onRetry, retrying }: { kind: ErrorKind; onRe
 export function RedirectingScreen() {
   const t = useT();
   return (
-    <StatePanel icon="lock" title={t("state.redirect.title")} actions={<BackLink />} role="status">
+    <StateView icon="lock" title={t("state.redirect.title")} actions={null} role="status">
       {t("state.redirect.body")}
-    </StatePanel>
+    </StateView>
+  );
+}
+
+/** First load: one line in the middle of the page. */
+export function LoadingScreen() {
+  const t = useT();
+  return (
+    <section className="state" role="status" aria-busy="true">
+      <p className="state__loading">{t("loading")}</p>
+    </section>
   );
 }

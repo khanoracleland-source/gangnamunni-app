@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import AdminShell from "./AdminShell";
 import Delta from "./Delta";
 import HelpDialog from "./HelpDialog";
-import Icon, { type IconName } from "./Icon";
-import Metric, { MetricSkeleton, type MetricId } from "./Metric";
-import { ErrorScreen, ForbiddenScreen, RedirectingScreen, type ErrorKind } from "./StateScreens";
+import Icon from "./Icon";
+import Metric, { type MetricId } from "./Metric";
+import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "./StateScreens";
 import { fetchMe, fetchSummary, type Admin, type DashboardSummary } from "@/lib/api";
 import { PHP_ADMIN_URL, REFRESH_INTERVAL_MS } from "@/lib/config";
 import { formatClock, formatNumber, formatPercent, percentOf } from "@/lib/format";
@@ -118,50 +118,46 @@ export default function Dashboard() {
   };
 
   const { phase, admin, summary, updatedAt, stale } = state;
-  const canRefresh = phase === "ready" || phase === "error";
   const days = period === "d7" ? 7 : 30;
 
+  let screen: React.ReactNode = null;
+  if (phase === "loading") screen = <LoadingScreen />;
+  else if (phase === "redirecting") screen = <RedirectingScreen />;
+  else if (phase === "forbidden") screen = <ForbiddenScreen />;
+  else if (phase === "error") screen = <ErrorScreen kind={state.errorKind} onRetry={refresh} retrying={busy} />;
+
+  const actions = (
+    <div className="updated">
+      <span className={stale ? "updated__text updated__text--stale" : "updated__text"} title={summary?.generatedAt ? t("updated.title", { at: summary.generatedAt }) : undefined}>
+        {stale && updatedAt
+          ? t("updated.failed", { time: formatClock(updatedAt) })
+          : updatedAt
+            ? t("updated", { time: formatClock(updatedAt) })
+            : t("updated.none")}
+      </span>
+      {stale ? <span className="sr-only" role="alert">{t("updated.failedAlert")}</span> : null}
+      <button type="button" className="txtbtn" onClick={refresh} disabled={busy} aria-label={t("refresh.aria")}>
+        <Icon name="refresh" size={18} className={busy ? "is-spinning" : undefined} />
+        {t("refresh")}
+      </button>
+    </div>
+  );
+
   return (
-    <AdminShell
-      admin={admin}
-      title={t("page.title")}
-      description={t("page.desc")}
-      icon="gauge"
-      intro={<PageIntro />}
-    >
-      <div className="toolbar">
-        <div className="toolbar__period">
-          <span id="period-label" className="toolbar__label">{t("period.label")}</span>
-          <div className="segmented" role="group" aria-labelledby="period-label">
-            {(["d7", "d30"] as const).map((p) => (
-              <button key={p} type="button" className={p === period ? "segmented__btn is-active" : "segmented__btn"} aria-pressed={p === period} onClick={() => setPeriod(p)}>
-                {t(`period.${p}`)}
-              </button>
-            ))}
-          </div>
-          <span className="toolbar__hint">{t("period.hint")}</span>
+    <AdminShell admin={admin} title={t("page.title")} description={t("page.desc")} actions={actions} intro={<PageIntro />} screen={screen}>
+      <div className="period" role="group" aria-labelledby="period-label">
+        <span id="period-label" className="period__label">{t("period.label")}</span>
+        <div className="seg">
+          {(["d7", "d30"] as const).map((p) => (
+            <button key={p} type="button" aria-pressed={p === period} onClick={() => setPeriod(p)}>
+              {t(`period.${p}`)}
+            </button>
+          ))}
         </div>
-        <div className="toolbar__refresh">
-          <span className={stale ? "updated updated--stale" : "updated"} title={summary?.generatedAt ? t("updated.title", { at: summary.generatedAt }) : undefined}>
-            {stale && updatedAt
-              ? t("updated.failed", { time: formatClock(updatedAt) })
-              : updatedAt
-                ? t("updated", { time: formatClock(updatedAt) })
-                : t("updated.none")}
-          </span>
-          {stale ? <span className="sr-only" role="alert">{t("updated.failedAlert")}</span> : null}
-          <button type="button" className="btn btn--secondary" onClick={refresh} disabled={!canRefresh || busy} aria-label={t("refresh.aria")}>
-            <Icon name="refresh" className={busy ? "is-spinning" : undefined} />
-            {t("refresh")}
-          </button>
-        </div>
+        <span className="period__hint">{t("period.hint")}</span>
       </div>
 
-      {phase === "loading" ? <LoadingView /> : null}
-      {phase === "redirecting" ? <RedirectingScreen /> : null}
-      {phase === "forbidden" ? <ForbiddenScreen /> : null}
-      {phase === "error" ? <ErrorScreen kind={state.errorKind} onRetry={refresh} retrying={busy} /> : null}
-      {phase === "ready" && summary ? <SummaryView summary={summary} period={period} onHelp={setHelp} /> : null}
+      {summary ? <SummaryView summary={summary} period={period} onHelp={setHelp} /> : null}
 
       <HelpDialog metric={help} days={days} onClose={() => setHelp(null)} />
     </AdminShell>
@@ -181,9 +177,8 @@ function PageIntro() {
   return (
     <details className="intro">
       <summary className="intro__summary">
-        <Icon name="info" size={18} />
         <span>{t("page.help.toggle")}</span>
-        <Icon name="chevronUp" size={12} className="intro__chevron" />
+        <Icon name="chevron" size={16} className="chev" />
       </summary>
       <dl className="intro__list">
         {items.map((item) => (
@@ -197,16 +192,11 @@ function PageIntro() {
   );
 }
 
-function Section({ id, icon, title, desc, children }: { id: string; icon: IconName; title: string; desc: string; children: React.ReactNode }) {
+function Section({ id, title, desc, children }: { id: string; title: string; desc: string; children: React.ReactNode }) {
   return (
     <section className="section" aria-labelledby={id}>
-      <div className="section__head">
-        <h2 id={id} className="section__title">
-          <Icon name={icon} size={20} />
-          {title}
-        </h2>
-        <p className="section__desc">{desc}</p>
-      </div>
+      <h2 id={id}>{title}</h2>
+      <p className="section__desc">{desc}</p>
       {children}
     </section>
   );
@@ -228,14 +218,15 @@ function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; p
 
   return (
     <>
-      <Section id="sec-members" icon="people" title={t("sec.members")} desc={t("sec.members.desc")}>
-        <div className="grid grid--members">
+      <Section id="sec-members" title={t("sec.members")} desc={t("sec.members.desc")}>
+        <div className="grid">
           <Metric
             hero
             id="all"
             value={formatNumber(all)}
             unit="person"
             note={members.admins > 0 ? t("m.all.note", { n: formatNumber(members.admins) }) : t("m.all.noteNone")}
+            split={{ general: formatNumber(general), admins: formatNumber(members.admins) }}
             onHelp={onHelp}
           />
           <Metric id="general" value={formatNumber(general)} unit="person" note={t("m.general.note")} onHelp={onHelp} />
@@ -245,7 +236,7 @@ function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; p
         </div>
       </Section>
 
-      <Section id="sec-bookings" icon="calendar" title={t("sec.bookings")} desc={t("sec.bookings.desc")}>
+      <Section id="sec-bookings" title={t("sec.bookings")} desc={t("sec.bookings.desc")}>
         <div className="grid">
           <Metric id="bookCount" value={formatNumber(b.count)} unit="case" note={<Delta current={b.count} previous={b.prev.count} days={days} />} onHelp={onHelp} />
           <Metric id="bookAmount" value={formatNumber(b.amount)} unit="won" note={<Delta current={b.amount} previous={b.prev.amount} days={days} />} onHelp={onHelp} />
@@ -258,12 +249,27 @@ function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; p
             note={cancelRate === null ? t("m.bookCancel.noteNone") : t("m.bookCancel.note", { rate: formatPercent(cancelRate) })}
             onHelp={onHelp}
           />
-          <Metric id="bookPending" value={formatNumber(b.pending)} unit="case" note={t("m.bookPending.note")} onHelp={onHelp} />
+          <Metric
+            id="bookPending"
+            value={formatNumber(b.pending)}
+            unit="case"
+            note={
+              b.pending > 0 ? (
+                <>
+                  <span className="badge">{t("m.bookPending.badge")}</span>
+                  <span>{t("m.bookPending.note")}</span>
+                </>
+              ) : (
+                t("m.bookPending.note")
+              )
+            }
+            onHelp={onHelp}
+          />
           <Metric id="consult" value={formatNumber(consultations)} unit="case" note={t("m.consult.note", { days })} onHelp={onHelp} />
         </div>
       </Section>
 
-      <Section id="sec-hospitals" icon="hospital" title={t("sec.hospitals")} desc={t("sec.hospitals.desc")}>
+      <Section id="sec-hospitals" title={t("sec.hospitals")} desc={t("sec.hospitals.desc")}>
         <div className="grid">
           <Metric id="hospitals" value={formatNumber(catalog.hospitals)} unit="place" note={t("m.hospitals.note", { n: formatNumber(catalog.hospitalsPending) })} onHelp={onHelp} />
           <Metric id="doctors" value={formatNumber(catalog.doctors)} unit="person" note={t("m.doctors.note")} onHelp={onHelp} />
@@ -271,36 +277,5 @@ function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; p
         </div>
       </Section>
     </>
-  );
-}
-
-/** Same sections and card boxes as the real page, so nothing jumps when the numbers arrive. */
-function LoadingView() {
-  const t = useT();
-  const rows: { id: string; icon: IconName; title: MessageKey; desc: MessageKey; cards: number; hero?: boolean }[] = [
-    { id: "members", icon: "people", title: "sec.members", desc: "sec.members.desc", cards: 5, hero: true },
-    { id: "bookings", icon: "calendar", title: "sec.bookings", desc: "sec.bookings.desc", cards: 7 },
-    { id: "hospitals", icon: "hospital", title: "sec.hospitals", desc: "sec.hospitals.desc", cards: 3 },
-  ];
-  return (
-    <div role="status" aria-busy="true">
-      <span className="sr-only">{t("loading")}</span>
-      {rows.map((row) => (
-        <div key={row.id} className="section" aria-hidden="true">
-          <div className="section__head">
-            <h2 className="section__title">
-              <Icon name={row.icon} size={20} />
-              {t(row.title)}
-            </h2>
-            <p className="section__desc">{t(row.desc)}</p>
-          </div>
-          <div className={row.hero ? "grid grid--members" : "grid"}>
-            {Array.from({ length: row.cards }, (_, i) => (
-              <MetricSkeleton key={i} hero={row.hero && i === 0} />
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

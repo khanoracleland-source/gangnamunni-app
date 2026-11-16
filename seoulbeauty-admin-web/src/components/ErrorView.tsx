@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Icon from "./Icon";
 import { PHP_ADMIN_URL } from "@/lib/config";
-import { setLocale, useLocale, useT } from "@/lib/locale";
-import type { Locale } from "@/lib/i18n";
+import LangSelect from "./LangSelect";
+import { useT } from "@/lib/locale";
 
 type Props = {
   error: Error & { digest?: string };
@@ -19,7 +19,6 @@ type Props = {
  */
 export default function ErrorView({ error, reset }: Props) {
   const t = useT();
-  const locale = useLocale();
   const [copied, setCopied] = useState(false);
   const [at] = useState(() => new Date().toISOString());
 
@@ -50,39 +49,31 @@ export default function ErrorView({ error, reset }: Props) {
 
   return (
     <main className="fatal" role="alert">
-      <div className="fatal__box">
-        <div className="fatal__top">
-          <span className="fatal__icon"><Icon name="alert" size={22} /></span>
-          <label className="lang">
-            <span className="sr-only">{t("top.language")}</span>
-            <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
-              <option value="ko">한국어</option>
-              <option value="en">English</option>
-            </select>
-          </label>
-        </div>
-        <h1 className="fatal__title">{t("err.title")}</h1>
-        <p className="fatal__text">{t("err.body")}</p>
-        <p className="fatal__hint">{t("err.hintTranslate")}</p>
-        <div className="panel__actions">
+      <div className="fatal__lang"><LangSelect /></div>
+      <div className="state__in">
+        <div className="state__ring"><Icon name="alert" size={22} /></div>
+        <h1>{t("err.title")}</h1>
+        <p>{t("err.body")}</p>
+        <p className="state__hint">{t("err.hintTranslate")}</p>
+        <div className="state__acts">
           <button type="button" className="btn btn--primary" onClick={reset}>
-            <Icon name="refresh" />
             {t("err.retry")}
           </button>
-          <button type="button" className="btn btn--secondary" onClick={() => window.location.reload()}>
+          <button type="button" className="btn btn--ghost" onClick={() => window.location.reload()}>
             {t("err.reload")}
           </button>
-          <a className="btn btn--secondary" href={PHP_ADMIN_URL}>
-            <Icon name="external" />
+          <a className="btn btn--ghost" href={PHP_ADMIN_URL}>
             {t("state.legacy")}
           </a>
         </div>
-        <details className="fatal__tech">
+        <details className="state__tech">
           <summary>{t("err.tech")}</summary>
-          <pre className="fatal__pre">{details}</pre>
-          <button type="button" className="btn btn--secondary" onClick={copy}>
-            {copied ? t("err.techCopied") : t("err.techCopy")}
-          </button>
+          <div className="state__techbody">
+            <pre className="state__pre">{details}</pre>
+            <button type="button" className="txtbtn" onClick={copy}>
+              {copied ? t("err.techCopied") : t("err.techCopy")}
+            </button>
+          </div>
         </details>
       </div>
     </main>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Icon from "./Icon";
+import Icon, { type IconName } from "./Icon";
 import { isLongValue } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
@@ -15,6 +15,27 @@ export const metricKey = (id: MetricId, part: "name" | "what" | "period" | "extr
 
 export type MetricUnit = "person" | "case" | "won" | "place" | "item";
 
+type Kind = "mem" | "book" | "pay" | "cons" | "hosp";
+
+/** Kind of number: decides the colour of the left stripe and the icon in front of the name. */
+const KIND: Record<MetricId, { kind: Kind; icon: IconName }> = {
+  all: { kind: "mem", icon: "people" },
+  general: { kind: "mem", icon: "people" },
+  withdrawn: { kind: "mem", icon: "people" },
+  today: { kind: "mem", icon: "people" },
+  signup: { kind: "mem", icon: "people" },
+  bookCount: { kind: "book", icon: "calendar" },
+  bookAmount: { kind: "book", icon: "calendar" },
+  bookCancel: { kind: "book", icon: "calendar" },
+  bookPending: { kind: "book", icon: "calendar" },
+  bookPaid: { kind: "pay", icon: "card" },
+  bookRefund: { kind: "pay", icon: "card" },
+  consult: { kind: "cons", icon: "chat" },
+  hospitals: { kind: "hosp", icon: "hospital" },
+  doctors: { kind: "hosp", icon: "hospital" },
+  treatments: { kind: "hosp", icon: "hospital" },
+};
+
 type Props = {
   id: MetricId;
   /** Already formatted, e.g. "12,345,678". */
@@ -23,38 +44,49 @@ type Props = {
   /** One line under the number: a caption or the change against the previous period. */
   note: ReactNode;
   hero?: boolean;
+  /** Hero only: the two parts of the overall number, already formatted. */
+  split?: { general: string; admins: string };
   onHelp: (id: MetricId) => void;
 };
 
-/** One number: name, "?" button, big value with its unit, one-line explanation. */
-export default function Metric({ id, value, unit, note, hero, onHelp }: Props) {
+/** One number: kind icon + name + "?" button, big value with its unit, one-line explanation. */
+export default function Metric({ id, value, unit, note, hero, split, onHelp }: Props) {
   const t = useT();
   const name = t(metricKey(id, "name"));
-  const long = isLongValue(value);
-  const cls = ["metric", hero ? "metric--hero" : "", long ? "is-long" : ""].filter(Boolean).join(" ");
+  const { kind, icon } = KIND[id];
+  const cls = ["card", `c-${kind}`, hero ? "hero" : "", isLongValue(value) ? "is-long" : ""].filter(Boolean).join(" ");
+  const unitText = t(`unit.${unit}`);
+  const personUnit = t("unit.person");
   return (
     <article className={cls} aria-label={name}>
-      <header className="metric__head">
-        <h3 className="metric__name">{name}</h3>
-        <button type="button" className="help-btn" onClick={() => onHelp(id)} aria-label={t("m.help", { name })} title={t("m.help", { name })}>
-          <Icon name="help" size={16} />
-        </button>
-      </header>
-      <p className="metric__figure">
-        <span className="metric__value">{value}</span>
-        <span className="metric__unit">{t(`unit.${unit}`)}</span>
-      </p>
-      <p className="metric__note">{note}</p>
+      <div className="card__main">
+        <header className="card__top">
+          <Icon name={icon} size={18} className="card__icon" />
+          <h3 className="card__name">{name}</h3>
+          <button type="button" className="q" onClick={() => onHelp(id)} aria-label={t("m.help", { name })} title={t("m.help", { name })}>
+            <Icon name="help" size={18} />
+          </button>
+        </header>
+        <p className="num">
+          <span className="num__value">{value}</span>
+          <span className="num__unit">{unitText}</span>
+        </p>
+        <p className="card__note">{note}</p>
+      </div>
+      {hero && split ? (
+        <p className="split">
+          <span className="split__item">
+            <span>{t("m.general.name")}</span>
+            <b>{split.general}</b>
+            <span>{personUnit}</span>
+          </span>
+          <span className="split__item">
+            <span>{t("m.all.admins")}</span>
+            <b>{split.admins}</b>
+            <span>{personUnit}</span>
+          </span>
+        </p>
+      ) : null}
     </article>
-  );
-}
-
-export function MetricSkeleton({ hero }: { hero?: boolean }) {
-  return (
-    <div className={hero ? "metric metric--hero" : "metric"} aria-hidden="true">
-      <div className="metric__head"><span className="skeleton" style={{ width: "40%", height: 16 }} /></div>
-      <div className="metric__figure"><span className="skeleton" style={{ width: "55%", height: hero ? 44 : 32 }} /></div>
-      <div className="metric__note"><span className="skeleton" style={{ width: "70%", height: 13 }} /></div>
-    </div>
   );
 }
