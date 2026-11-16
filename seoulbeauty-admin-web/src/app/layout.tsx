@@ -9,15 +9,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   // Keeps the browser's page translator away: it rewrites text nodes while React still holds references
   // to them, and the next update (for instance switching 7 to 30 days) then breaks the page.
-  // The panel has its own Korean / Uzbek switch instead.
+  // The panel has its own Korean / English switch instead.
   other: { google: "notranslate" },
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
-// Runs before first paint: puts the saved theme and language on <html>, so a dark-mode or Uzbek user
+// Runs before first paint: puts the saved theme and language on <html>, so a dark-mode or English user
 // never sees a flash of the defaults. Storage can be blocked; then the defaults (light, ko) stay.
-const BOOT_SCRIPT = `try{var d=document.documentElement;var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});d.setAttribute("data-theme",t==="dark"?"dark":"light");var l=localStorage.getItem(${JSON.stringify(LOCALE_STORAGE_KEY)});d.setAttribute("lang",l==="uz"?"uz":"ko")}catch(e){}`;
+const BOOT_SCRIPT = `try{var d=document.documentElement;var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});d.setAttribute("data-theme",t==="dark"?"dark":"light");var l=localStorage.getItem(${JSON.stringify(LOCALE_STORAGE_KEY)});d.setAttribute("lang",l==="en"?"en":"ko")}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -120,7 +120,7 @@ export default function AdminShell({ admin, title, description, icon, intro, chi
             <Icon name="globe" size={16} />
             <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
               <option value="ko">한국어</option>
-              <option value="uz">O&apos;zbekcha</option>
+              <option value="en">English</option>
             </select>
           </label>
           <button

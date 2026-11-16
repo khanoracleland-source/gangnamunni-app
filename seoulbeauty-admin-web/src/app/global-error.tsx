@@ -6,7 +6,7 @@ import { LOCALE_STORAGE_KEY } from "@/lib/i18n";
 import { THEME_STORAGE_KEY } from "@/lib/config";
 
 // Last resort: replaces the whole document, so it brings its own <html>, theme and language setup.
-const BOOT_SCRIPT = `try{var d=document.documentElement;var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});d.setAttribute("data-theme",t==="dark"?"dark":"light");var l=localStorage.getItem(${JSON.stringify(LOCALE_STORAGE_KEY)});d.setAttribute("lang",l==="uz"?"uz":"ko")}catch(e){}`;
+const BOOT_SCRIPT = `try{var d=document.documentElement;var t=localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});d.setAttribute("data-theme",t==="dark"?"dark":"light");var l=localStorage.getItem(${JSON.stringify(LOCALE_STORAGE_KEY)});d.setAttribute("lang",l==="en"?"en":"ko")}catch(e){}`;
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (

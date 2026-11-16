@@ -57,7 +57,7 @@ export default function ErrorView({ error, reset }: Props) {
             <span className="sr-only">{t("top.language")}</span>
             <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)}>
               <option value="ko">한국어</option>
-              <option value="uz">O&apos;zbekcha</option>
+              <option value="en">English</option>
             </select>
           </label>
         </div>
