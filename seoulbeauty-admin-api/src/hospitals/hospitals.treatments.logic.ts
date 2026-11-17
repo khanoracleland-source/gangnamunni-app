@@ -269,6 +269,8 @@ export interface TreatmentsView {
   pricesEnabled: boolean;
   /** state of the questions switch (false also when the question texts could not be read) */
   questionsEnabled: boolean;
+  /** state of the images switch (the gallery of the detail images) */
+  imagesEnabled: boolean;
   /** units for the price form; only filled when the actor may manage and the prices switch is on */
   priceUnits: string[];
   available: AvailableItem[];

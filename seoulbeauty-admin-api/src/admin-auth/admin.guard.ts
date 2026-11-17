@@ -188,6 +188,18 @@ export class HospitalsTreatmentsQuestionsEnabledGuard implements CanActivate {
   }
 }
 
+/** Detail images of an assignment (list, add, delete, reorder, review). Only works while the treatments switch is on; the exact value "1". */
+export const hospitalsTreatmentsImagesEnabled = (): boolean => hospitalsTreatmentsEnabled() && process.env.ADMIN_HOSPITALS_TREATMENTS_IMAGES === '1';
+
+/** With the images switch off the treatment image routes answer 404 as if they did not exist. */
+@Injectable()
+export class HospitalsTreatmentsImagesEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsTreatmentsImagesEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 

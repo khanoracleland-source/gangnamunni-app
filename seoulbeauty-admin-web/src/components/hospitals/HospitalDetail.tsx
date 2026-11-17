@@ -270,6 +270,7 @@ export default function HospitalDetail({ id }: { id: string }) {
           doctorCount={detail.doctors.length}
           doctorsEnabled={me?.features.hospitalsDoctors === true}
           treatmentsEnabled={me?.features.hospitalsTreatments === true}
+          treatmentImagesEnabled={me?.features.hospitalsTreatmentsImages === true}
         />
       ) : null}
       {detail && h && !editing ? (

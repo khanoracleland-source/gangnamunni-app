@@ -225,6 +225,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
     process.env.ADMIN_HOSPITALS_TREATMENTS_REMOVE = '1';
     delete process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES;
     delete process.env.ADMIN_HOSPITALS_TREATMENTS_QUESTIONS;
+    delete process.env.ADMIN_HOSPITALS_TREATMENTS_IMAGES;
     questionTextsReadable = true; failQuestionInsertAt = null; questionInsertCount = 0; questionsWriteTable = true;
     unitsRows = ['회', 'ml', 'IU', 'Box']; priceColumns = true; failPriceInsertAt = null; priceInsertCount = 0;
     phpCalls.length = 0; roCalls.length = 0; rwCalls.length = 0; txEvents.length = 0;
@@ -259,7 +260,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
   });
   afterAll(() => {
     global.fetch = realFetch;
-    for (const k of ['ADMIN_PANEL_ENABLED', 'ADMIN_HOSPITALS_ENABLED', 'ADMIN_HOSPITALS_WRITE', 'ADMIN_HOSPITALS_TREATMENTS', 'ADMIN_HOSPITALS_TREATMENTS_REMOVE', 'ADMIN_HOSPITALS_TREATMENTS_PRICES', 'ADMIN_HOSPITALS_TREATMENTS_QUESTIONS']) delete process.env[k];
+    for (const k of ['ADMIN_PANEL_ENABLED', 'ADMIN_HOSPITALS_ENABLED', 'ADMIN_HOSPITALS_WRITE', 'ADMIN_HOSPITALS_TREATMENTS', 'ADMIN_HOSPITALS_TREATMENTS_REMOVE', 'ADMIN_HOSPITALS_TREATMENTS_PRICES', 'ADMIN_HOSPITALS_TREATMENTS_QUESTIONS', 'ADMIN_HOSPITALS_TREATMENTS_IMAGES']) delete process.env[k];
   });
 
   const get = (p: string, cookie?: string) => { let r = request(app.getHttpServer()).get(p); if (cookie) r = r.set('Cookie', cookie); return r; };
@@ -320,7 +321,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
 
     it('all on -> /v1/me reports both flags and keeps the others', async () => {
       expect((await get('/v1/me', SUPER)).body.features).toEqual({
-        hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: true, hospitalsTreatmentsRemove: true, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false,
+        hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: true, hospitalsTreatmentsRemove: true, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false,
       });
     });
 
@@ -362,7 +363,25 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       expect(r.body).toMatchObject({ count: 2, promotedCount: 1, canManage: true, minAgeSupported: true, removeEnabled: true });
       // 11 was removed (is_active=0) so it is available again; 30 is inactive in the master
       expect(r.body.available).toEqual([{ id: 11, name: '필러', hashtag: '#필러', categoryId: 1, categoryName: '주사' }]);
-      expect(Object.keys(r.body).sort()).toEqual(['available', 'canManage', 'count', 'items', 'minAgeSupported', 'priceUnits', 'pricesEnabled', 'promotedCount', 'questionsEnabled', 'removeEnabled']);
+      expect(Object.keys(r.body).sort()).toEqual(['available', 'canManage', 'count', 'imagesEnabled', 'items', 'minAgeSupported', 'priceUnits', 'pricesEnabled', 'promotedCount', 'questionsEnabled', 'removeEnabled']);
+    });
+
+    it('imagesEnabled follows ADMIN_HOSPITALS_TREATMENTS_IMAGES (off by default, only the exact value 1) and does not change the image counts', async () => {
+      delete process.env.ADMIN_HOSPITALS_TREATMENTS_IMAGES;
+      const off = await get('/v1/hospitals/12/treatments', SUPER);
+      expect(off.body.imagesEnabled).toBe(false);
+      for (const v of ['0', 'true', '']) {
+        process.env.ADMIN_HOSPITALS_TREATMENTS_IMAGES = v;
+        expect((await get('/v1/hospitals/12/treatments', SUPER)).body.imagesEnabled).toBe(false);
+      }
+      process.env.ADMIN_HOSPITALS_TREATMENTS_IMAGES = '1';
+      const on = await get('/v1/hospitals/12/treatments', SUPER);
+      expect(on.body.imagesEnabled).toBe(true);
+      expect(on.body.items.find((i: any) => i.id === 101)).toMatchObject({ imageCount: 2, pendingImageCount: 1 });
+      expect((await get('/v1/hospitals/12/treatments', HOSPITAL)).body.imagesEnabled).toBe(true);
+      process.env.ADMIN_HOSPITALS_TREATMENTS = '0';
+      expect((await get('/v1/hospitals/12/treatments', SUPER)).status).toBe(404);
+      expect((await get('/v1/me', SUPER)).body.features.hospitalsTreatmentsImages).toBe(false);
     });
 
     it('writes nothing and uses only SELECT with parameters', async () => {

@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, HOSPITAL_ROLES } from '../admin-auth/admin.guard';
+import { hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, HOSPITAL_ROLES } from '../admin-auth/admin.guard';
 import { DB, Db, DB_RW, RwDb, RwDbProvider } from '../db/db.module';
 import { canSee, num, Query, Scope, seesNothing, str } from './hospitals.logic';
 import { lockHospitalQuery } from './hospitals.images.logic';
@@ -40,7 +40,7 @@ export class HospitalsTreatmentsService {
   }
 
   /** A super admin always may; a hospital account depends on the PHP setting. If the setting cannot be read, a hospital account may not (fail closed). */
-  private async canManage(role: string): Promise<boolean> {
+  async canManage(role: string): Promise<boolean> {
     if (canManageTreatments(role, '')) return true;
     let mode = DEFAULT_MGMT_MODE;
     try {
@@ -103,7 +103,7 @@ export class HospitalsTreatmentsService {
     return {
       items, count: items.length, promotedCount: items.filter((i) => i.isPromoted).length,
       canManage, minAgeSupported, removeEnabled: hospitalsTreatmentsRemoveEnabled(),
-      pricesEnabled, questionsEnabled: hospitalsTreatmentsQuestionsEnabled() && (!canManage || questionsReadable), priceUnits: canManage && pricesEnabled ? await this.units() : [], available,
+      pricesEnabled, imagesEnabled: hospitalsTreatmentsImagesEnabled(), questionsEnabled: hospitalsTreatmentsQuestionsEnabled() && (!canManage || questionsReadable), priceUnits: canManage && pricesEnabled ? await this.units() : [], available,
     };
   }
 

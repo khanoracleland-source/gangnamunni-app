@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AdminGuard, hospitalsDeleteEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsTreatmentsEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
+import { AdminGuard, hospitalsDeleteEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsTreatmentsEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
 @UseGuards(AdminGuard)
@@ -13,6 +13,6 @@ export class MeController {
       hospitalsDelete: hospitalsDeleteEnabled(), archive: hospitalsDeleteEnabled(),
       hospitalsImages: hospitalsImagesEnabled(), hospitalsDoctors: hospitalsDoctorsEnabled(),
       hospitalsTreatments: hospitalsTreatmentsEnabled(), hospitalsTreatmentsRemove: hospitalsTreatmentsRemoveEnabled(), hospitalsTreatmentsPrices: hospitalsTreatmentsPricesEnabled(),
-      hospitalsTreatmentsQuestions: hospitalsTreatmentsQuestionsEnabled() } };
+      hospitalsTreatmentsQuestions: hospitalsTreatmentsQuestionsEnabled(), hospitalsTreatmentsImages: hospitalsTreatmentsImagesEnabled() } };
   }
 }

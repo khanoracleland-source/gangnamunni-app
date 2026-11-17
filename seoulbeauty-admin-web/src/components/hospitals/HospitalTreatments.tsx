@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import Icon from "../Icon";
 import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
 import HospitalTreatmentPrices from "./HospitalTreatmentPrices";
+import HospitalTreatmentImages from "./HospitalTreatmentImages";
 import HospitalTreatmentQuestions from "./HospitalTreatmentQuestions";
 import { Pill } from "./parts";
 import {
@@ -30,6 +31,7 @@ import {
   type TreatmentAction,
 } from "@/lib/hospitalTreatments";
 import { canEditPrices } from "@/lib/hospitalTreatmentPrices";
+import { canOpenImages } from "@/lib/hospitalTreatmentImages";
 import { canEditQuestions } from "@/lib/hospitalTreatmentQuestions";
 import { formatNumber } from "@/lib/format";
 import { legacyTreatmentsUrl } from "@/lib/hospitals";
@@ -46,6 +48,8 @@ type Props = {
   opened: boolean;
   /** The number of assigned treatments was read or changed. */
   onChange: (info: { count: number }) => void;
+  /** The server lets this panel manage the detail images of a treatment itself (the image chip then opens the image window). */
+  imagesFeature?: boolean;
   /** The server says the admin session ended. */
   onUnauthorized: () => void;
 };
@@ -60,6 +64,7 @@ function merged(prev: HospitalTreatmentSet, next: HospitalTreatmentSet): Hospita
     pricesEnabled: next.pricesEnabled ?? prev.pricesEnabled,
     priceUnits: next.priceUnits ?? prev.priceUnits,
     questionsEnabled: next.questionsEnabled ?? prev.questionsEnabled,
+    imagesEnabled: next.imagesEnabled ?? prev.imagesEnabled,
   };
 }
 
@@ -73,9 +78,9 @@ const withItems = (set: HospitalTreatmentSet, items: HospitalTreatment[]): Hospi
 /**
  * The body of the "add / manage treatments" card: the assigned treatments (promotion star, minimum age, unassign),
  * and a panel to assign more. Every action is its own request; the hospital form's own changes are never touched.
- * Prices and pre-treatment questions have their own windows (when switched on); images stay in the old panel and are only counted here.
+ * Prices, pre-treatment questions and detail images have their own windows (when switched on); without the image window the images are only counted here.
  */
-export default function HospitalTreatments({ hospitalId, opened, onChange, onUnauthorized }: Props) {
+export default function HospitalTreatments({ hospitalId, opened, onChange, imagesFeature = false, onUnauthorized }: Props) {
   const t = useT();
   // null = not answered yet.
   const [load, setLoad] = useState<{ set: HospitalTreatmentSet } | { failed: true } | null>(null);
@@ -99,6 +104,8 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
   const [priceFor, setPriceFor] = useState<HospitalTreatment | null>(null);
   // The treatment whose pre-treatment questions are being edited.
   const [questionFor, setQuestionFor] = useState<HospitalTreatment | null>(null);
+  // The treatment whose detail images are being managed.
+  const [imagesFor, setImagesFor] = useState<HospitalTreatment | null>(null);
 
   const [confirmFor, setConfirmFor] = useState<HospitalTreatment | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -264,6 +271,16 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
     } else void refresh();
   };
 
+  // The image window read or changed the images: the row's chip follows (the window itself keeps the list).
+  const imagesChanged = (id: number, counts: { imageCount: number; pendingImageCount: number }) => {
+    setLoad((prev) => {
+      if (!prev || !("set" in prev)) return prev;
+      const changed = prev.set.items.some((item) => item.id === id && (item.imageCount !== counts.imageCount || item.pendingImageCount !== counts.pendingImageCount));
+      if (!changed) return prev;
+      return { set: withItems(prev.set, prev.set.items.map((item) => (item.id === id ? { ...item, ...counts } : item))) };
+    });
+  };
+
   const questionsSaved = (saved: HospitalTreatment | null, saveCount: number) => {
     // The window closes itself (it calls onClose when its closing animation ends).
     const id = questionFor?.id;
@@ -318,6 +335,7 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
   const canRemove = canManage && set.removeEnabled === true;
   const priceEdit = canEditPrices(set);
   const questionEdit = canEditQuestions(set);
+  const imageEdit = canOpenImages(imagesFeature, set);
   const ageShown = set.minAgeSupported === true;
   const pills = categoryPills(set.available);
   const won = (n: number): string => (n > 0 ? t("h.e.tr.won", { n: formatNumber(n) }) : t("h.e.tr.price.missing"));
@@ -414,12 +432,33 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
         <span className="sr-only">{t("h.e.tr.col.by")}: </span>
         {item.registeredBy === "admin" ? t("h.e.tr.by.admin") : t("h.e.tr.by.hospital")}
       </span>
-      <span className="htr__chip" title={t("h.e.tr.col.img")}>
-        <Icon name="image" size={14} />
-        <span className="sr-only">{t("h.e.tr.col.img")}: </span>
-        {t("h.e.tr.img.count", { n: item.imageCount })}
-        {item.pendingImageCount > 0 ? <span className="htr__review">{t("h.e.tr.img.pending", { n: item.pendingImageCount })}</span> : null}
-      </span>
+      {imageEdit ? (
+        <button
+          type="button"
+          className={item.imageCount > 0 ? "htr__chip htr__chip--btn htr__chip--qon" : canManage ? "htr__chip htr__chip--btn htr__chip--qadd" : "htr__chip htr__chip--btn htr__chip--qon"}
+          disabled={pending[item.id] === true}
+          title={t("h.e.tr.col.img")}
+          aria-label={t(canManage ? "h.e.ti.chip.manage" : "h.e.ti.chip.view", { name: item.name, n: item.imageCount, p: item.pendingImageCount })}
+          onClick={() => setImagesFor(item)}
+        >
+          {item.imageCount === 0 && canManage ? (
+            <svg className="icon" width={12} height={12} viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          ) : (
+            <Icon name="image" size={14} />
+          )}
+          {item.imageCount === 0 && canManage ? t("h.e.ti.chip.add") : t("h.e.tr.img.count", { n: item.imageCount })}
+          {item.pendingImageCount > 0 ? <span className="htr__review">{t("h.e.tr.img.pending", { n: item.pendingImageCount })}</span> : null}
+        </button>
+      ) : (
+        <span className="htr__chip" title={t("h.e.tr.col.img")}>
+          <Icon name="image" size={14} />
+          <span className="sr-only">{t("h.e.tr.col.img")}: </span>
+          {t("h.e.tr.img.count", { n: item.imageCount })}
+          {item.pendingImageCount > 0 ? <span className="htr__review">{t("h.e.tr.img.pending", { n: item.pendingImageCount })}</span> : null}
+        </span>
+      )}
       {questionEdit && item.questions !== undefined ? (
         <button
           type="button"
@@ -697,6 +736,19 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
           units={set.priceUnits ?? []}
           onSaved={pricesSaved}
           onClose={() => setPriceFor(null)}
+          onStale={() => void refresh()}
+          onUnauthorized={() => onUnauthorizedRef.current()}
+        />
+      ) : null}
+
+      {imageEdit && imagesFor ? (
+        <HospitalTreatmentImages
+          key={imagesFor.id}
+          hospitalId={hospitalId}
+          item={imagesFor}
+          canManage={canManage}
+          onChanged={(counts) => imagesChanged(imagesFor.id, counts)}
+          onClose={() => setImagesFor(null)}
           onStale={() => void refresh()}
           onUnauthorized={() => onUnauthorizedRef.current()}
         />

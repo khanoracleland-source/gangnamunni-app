@@ -17,7 +17,7 @@ export type Admin = {
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -123,6 +123,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsTreatmentsRemove: obj(d.features).hospitalsTreatmentsRemove === true,
         hospitalsTreatmentsPrices: obj(d.features).hospitalsTreatmentsPrices === true,
         hospitalsTreatmentsQuestions: obj(d.features).hospitalsTreatmentsQuestions === true,
+        hospitalsTreatmentsImages: obj(d.features).hospitalsTreatmentsImages === true,
         archive: obj(d.features).archive === true,
       },
     },
@@ -721,6 +722,8 @@ export type HospitalTreatmentSet = {
   priceUnits?: string[];
   /** The question window is switched on (and the question texts were read). */
   questionsEnabled?: boolean;
+  /** The detail image window is switched on. */
+  imagesEnabled?: boolean;
 };
 
 function treatmentItem(raw: unknown): HospitalTreatment {
@@ -775,6 +778,7 @@ function treatmentSet(v: unknown): HospitalTreatmentSet {
     pricesEnabled: d.pricesEnabled === undefined ? undefined : bool(d.pricesEnabled),
     priceUnits: d.priceUnits === undefined ? undefined : list(d.priceUnits).filter((u): u is string => typeof u === "string" && u.trim() !== ""),
     questionsEnabled: d.questionsEnabled === undefined ? undefined : bool(d.questionsEnabled),
+    imagesEnabled: d.imagesEnabled === undefined ? undefined : bool(d.imagesEnabled),
   };
 }
 
@@ -837,6 +841,130 @@ export async function saveTreatmentQuestions(
   if (!res.ok) return res;
   const item = treatmentItem(res.data.item);
   return { ok: true, data: { item: item.id > 0 ? item : null, count: numOrNull(res.data.count) } };
+}
+
+// ───────── Treatment detail page images ─────────
+
+export type TreatmentImageStatus = "pending" | "approved" | "rejected";
+
+/** One detail image of a treatment. `url` is stored as the server keeps it (relative to the old panel's folder, or a full address). */
+export type TreatmentImage = {
+  id: number;
+  url: string;
+  caption: string;
+  status: TreatmentImageStatus;
+  uploadedBy: "admin" | "hospital";
+  rejectReason: string;
+  reviewedAt: string;
+  reviewedBy: string;
+  sortOrder: number;
+};
+
+/** Every image of one treatment in the order the server keeps them, whether the admin may approve / reject, and the treatment's own default image. */
+export type TreatmentImageSet = { items: TreatmentImage[]; canReview: boolean; defaultImageUrl: string | null };
+
+function treatmentImage(raw: unknown): TreatmentImage {
+  const d = obj(raw);
+  return {
+    id: num(d.id),
+    url: str(d.url),
+    caption: str(d.caption),
+    status: d.status === "pending" || d.status === "rejected" ? d.status : "approved",
+    uploadedBy: d.uploadedBy === "hospital" ? "hospital" : "admin",
+    rejectReason: str(d.rejectReason),
+    reviewedAt: str(d.reviewedAt),
+    reviewedBy: str(d.reviewedBy),
+    sortOrder: num(d.sortOrder),
+  };
+}
+
+const treatmentImageList = (v: unknown): TreatmentImage[] => list(v).map(treatmentImage).filter((i) => i.id > 0);
+
+const treatmentImagesPath = (id: number, htId: number): string => `${treatmentsPath(id)}/${encodeURIComponent(String(htId))}/images`;
+
+/** Reads the images of one treatment. Reads only. */
+export async function treatmentImages(id: number, htId: number, signal?: AbortSignal): Promise<ApiResult<TreatmentImageSet>> {
+  const res = await getJson(treatmentImagesPath(id, htId), signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const def = str(d.defaultImageUrl).trim();
+  return { ok: true, data: { items: treatmentImageList(d.items), canReview: bool(d.canReview), defaultImageUrl: def === "" ? null : def } };
+}
+
+/** What a refused image request says: the status (0 = no answer) and the server's error code ("" when it sent none). */
+export type TreatmentImageFailure = { ok: false; status: number; error: string };
+export type TreatmentImageResult<T> = { ok: true; data: T } | TreatmentImageFailure;
+
+/** What an image change answers: the changed row (when the action has one) and the fresh list. */
+export type TreatmentImageChange = { item: TreatmentImage | null; items: TreatmentImage[] };
+
+function imageChange(d: Json): TreatmentImageChange {
+  const item = treatmentImage(d.item);
+  return { item: item.id > 0 ? item : null, items: treatmentImageList(d.items) };
+}
+
+function imageFailure(res: Exclude<WriteResult<Json>, { ok: true }>): TreatmentImageFailure {
+  return { ok: false, status: res.status, error: res.error };
+}
+
+/**
+ * Adds one image: a file OR an address, plus a caption, as one multipart request. When a file is given the address is not sent.
+ * The browser sets Content-Type itself (it must add the boundary).
+ */
+export async function addTreatmentImage(
+  id: number,
+  htId: number,
+  input: { file: File | null; imageUrl: string; caption: string },
+  signal?: AbortSignal,
+): Promise<TreatmentImageResult<TreatmentImageChange>> {
+  const body = new FormData();
+  if (input.file) body.append("image", input.file);
+  else body.append("imageUrl", input.imageUrl);
+  body.append("caption", input.caption);
+  try {
+    const res = await fetch(`${BASE_PATH}/api${treatmentImagesPath(id, htId)}`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "X-Requested-With": "admin-next" },
+      body,
+      signal,
+    });
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // An empty or non-JSON body: the status alone says what happened.
+    }
+    const d = obj(data);
+    if (!res.ok) return { ok: false, status: res.status, error: str(d.error) };
+    return { ok: true, data: imageChange(d) };
+  } catch {
+    return { ok: false, status: 0, error: "" };
+  }
+}
+
+/** Deletes one image (the stored file goes too, when the server can). The answer is the fresh list. */
+export async function deleteTreatmentImage(id: number, htId: number, imageId: number): Promise<TreatmentImageResult<TreatmentImageChange>> {
+  const res = await sendJson("DELETE", `${treatmentImagesPath(id, htId)}/${encodeURIComponent(String(imageId))}`);
+  return res.ok ? { ok: true, data: imageChange(res.data) } : imageFailure(res);
+}
+
+/** Moves one approved image one place up or down among the approved ones. The answer is the fresh list. */
+export async function moveTreatmentImage(id: number, htId: number, imageId: number, direction: "up" | "down"): Promise<TreatmentImageResult<TreatmentImageChange>> {
+  const res = await sendJson("POST", `${treatmentImagesPath(id, htId)}/${encodeURIComponent(String(imageId))}/move`, { direction });
+  return res.ok ? { ok: true, data: imageChange(res.data) } : imageFailure(res);
+}
+
+/** Super admin only: approves a pending image, or rejects it with a reason. */
+export async function reviewTreatmentImage(
+  id: number,
+  htId: number,
+  imageId: number,
+  decision: { decision: "approve" } | { decision: "reject"; reason: string },
+): Promise<TreatmentImageResult<TreatmentImageChange>> {
+  const res = await sendJson("POST", `${treatmentImagesPath(id, htId)}/${encodeURIComponent(String(imageId))}/review`, decision);
+  return res.ok ? { ok: true, data: imageChange(res.data) } : imageFailure(res);
 }
 
 /** Takes one treatment off the hospital; its price options and image rows go with it. */

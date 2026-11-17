@@ -8,12 +8,14 @@ import { HospitalsImagesReadController, HospitalsImagesWriteController } from '.
 import { HospitalsImagesService } from './hospitals.images.service';
 import { HospitalsTreatmentsPricesController, HospitalsTreatmentsQuestionsController, HospitalsTreatmentsReadController, HospitalsTreatmentsRemoveController, HospitalsTreatmentsWriteController } from './hospitals.treatments.controller';
 import { HospitalsTreatmentsService } from './hospitals.treatments.service';
+import { HospitalsTreatmentImagesReadController, HospitalsTreatmentImagesUploadController, HospitalsTreatmentImagesWriteController } from './hospitals.treatments.images.controller';
+import { HospitalsTreatmentImagesService } from './hospitals.treatments.images.service';
 import { HospitalsService } from './hospitals.service';
 import { HospitalsWriteController } from './hospitals.write.controller';
 import { HospitalsWriteService } from './hospitals.write.service';
 
 @Module({
-  controllers: [HospitalsController, HospitalsStatsController, HospitalsDeleteCheckController, HospitalsDeleteController, HospitalsWriteController, HospitalsImagesReadController, HospitalsImagesWriteController, HospitalsDoctorsReadController, HospitalsDoctorsWriteController, HospitalsTreatmentsReadController, HospitalsTreatmentsWriteController, HospitalsTreatmentsRemoveController, HospitalsTreatmentsPricesController, HospitalsTreatmentsQuestionsController],
-  providers: [HospitalsService, HospitalsWriteService, HospitalsDeleteService, HospitalsImagesService, HospitalsDoctorsService, HospitalsTreatmentsService],
+  controllers: [HospitalsController, HospitalsStatsController, HospitalsDeleteCheckController, HospitalsDeleteController, HospitalsWriteController, HospitalsImagesReadController, HospitalsImagesWriteController, HospitalsDoctorsReadController, HospitalsDoctorsWriteController, HospitalsTreatmentsReadController, HospitalsTreatmentsWriteController, HospitalsTreatmentsRemoveController, HospitalsTreatmentsPricesController, HospitalsTreatmentsQuestionsController, HospitalsTreatmentImagesReadController, HospitalsTreatmentImagesUploadController, HospitalsTreatmentImagesWriteController],
+  providers: [HospitalsService, HospitalsWriteService, HospitalsDeleteService, HospitalsImagesService, HospitalsDoctorsService, HospitalsTreatmentsService, HospitalsTreatmentImagesService],
 })
 export class HospitalsModule {}

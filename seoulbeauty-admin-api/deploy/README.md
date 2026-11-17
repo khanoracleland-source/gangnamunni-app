@@ -545,8 +545,8 @@ Turning it off: `ADMIN_HOSPITALS_DOCTORS=0` + restart (the POST answers 404; the
 Adds `GET /v1/hospitals/:id/treatments` (assigned treatments with price options, image and question counts, and the treatments still available),
 `POST /v1/hospitals/:id/treatments` (assign up to 300 master treatments), `PATCH /v1/hospitals/:id/treatments/:htId` (promotion star and the minimum age)
 and, behind a second switch, `DELETE /v1/hospitals/:id/treatments/:htId` (release an assignment). Price options are edited through `PUT .../prices` behind a third switch (10.4); the "before treatment"
-questions are edited through `PUT .../questions` behind a fourth switch (10.5); detail images are shown (count, badge) but edited only in the PHP admin. Needs sections 1 and 6 (hospital pages, write user). With a switch off its routes answer 404
-and nothing below is used; `/v1/me` reports `hospitalsTreatments`, `hospitalsTreatmentsRemove`, `hospitalsTreatmentsPrices` and `hospitalsTreatmentsQuestions`.
+questions are edited through `PUT .../questions` behind a fourth switch (10.5); detail images are listed, added, deleted, reordered and reviewed through a fifth switch (10.6). Needs sections 1 and 6 (hospital pages, write user). With a switch off its routes answer 404
+and nothing below is used; `/v1/me` reports `hospitalsTreatments`, `hospitalsTreatmentsRemove`, `hospitalsTreatmentsPrices`, `hospitalsTreatmentsQuestions` and `hospitalsTreatmentsImages`.
 
 Who may change things (same rule as the PHP page): a super admin always; a hospital account (own hospital only) only while the setting `treatment_mgmt_mode` in the
 PHP table `settings` is `hospital_only` or `both` (missing row = `both`). Otherwise `403 {"error":"forbidden_treatments"}` and the page hides the buttons. If the setting
@@ -722,6 +722,95 @@ Logged as `hospital treatments: admin=<id> hospital=<id> questions treatment=<ht
 Turning it off: `ADMIN_HOSPITALS_TREATMENTS_QUESTIONS=0`, restart (the route answers 404; the list keeps showing counts only). Removing the rights if needed:
 `REVOKE INSERT, DELETE ON <DB_NAME>.gangnamunni_treatment_questions FROM 'sb_admin_rw'@'127.0.0.1';` (and `'localhost'`).
 
+### 10.6 Detail images of an assignment (`ADMIN_HOSPITALS_TREATMENTS_IMAGES`, optional; run as the DB admin; `<DB_NAME>` = schema from step 1)
+Adds the "시술 상세페이지 이미지" gallery of one assignment (table `gangnamunni_hospital_treatment_images`; the pictures are shown only on that hospital's treatment page):
+- `GET  /v1/hospitals/:id/treatments/:htId/images` -> `{"items":[{"id","url","caption","status","uploadedBy","rejectReason","reviewedAt","reviewedBy","sortOrder"}],"canReview":true|false,"defaultImageUrl":"..."|null}`; every status is listed
+  (a hospital account must see its rejected pictures); `url` is returned as stored (relative `uploads/treatments/<file>` or an absolute `https://` address). Nothing is written. A released assignment is still readable.
+  `defaultImageUrl` = `gangnamunni_treatment_master.default_image_url` of the assignment's treatment (active master row, not blank), else `null`; a missing column or grant also gives `null` (never an error).
+- `POST /v1/hospitals/:id/treatments/:htId/images` (multipart) with `image` (one file, JPG / PNG / GIF / WebP, at most 10 MB) OR `imageUrl` (http / https, at most 2048 bytes) and an optional `caption`
+  (at most 200 characters; the PHP page does not cut it, the column is `VARCHAR(200)`, so this API rejects it). A file wins over the address. A hospital account's picture is stored `pending` / `hospital` and waits
+  for a super admin; a super admin's is `approved` / `admin` at once (decided by the server, never by the request). `sort_order` = highest + 1 (the first picture gets 0). Answer `200 {"item":{...},"items":[...]}`.
+  The extension must agree with the real type (JPEG `FF D8 FF`, PNG, GIF `GIF87a`/`GIF89a`, WebP `RIFF....WEBP`); the stored extension always comes from the real type. The file is stored as
+  `<ADMIN_UPLOAD_ROOT>/uploads/treatments/treat_<unix time>_<8 hex>.<ext>` (folder 0755, file 0644) and `image_url` holds `uploads/treatments/<file>` (the same folder and value as the PHP admin).
+- `DELETE /v1/hospitals/:id/treatments/:htId/images/:imageId` -> `{"items":[...]}`. The row is deleted first; afterwards the file is removed only when `image_url` starts with `uploads/treatments/`, has no `..` and stays inside
+  the upload root. A file that cannot be removed is only logged (warning); the answer is still 200. Pictures added by address have no file.
+- `POST .../images/:imageId/move` `{"direction":"up"|"down"}` -> `{"items":[...]}`: only an `approved` picture can be moved (otherwise `409 {"error":"not_approved"}`), and only among the approved ones
+  (the order the patient sees). The approved pictures are put, in their new order, into the places the approved ones held (ordered by `sort_order, id`, rows locked); pending / rejected pictures keep their relative places.
+  ALL rows are numbered 0..n-1 again in one transaction. Past the first / last approved picture `409 {"error":"cannot_move"}`.
+- `POST .../images/:imageId/review` `{"decision":"approve"|"reject","reason":"..."}` -> `{"item":{...},"items":[...]}`; super admin only (`403 {"error":"forbidden_review"}` for a hospital account).
+  A rejection needs a reason (trimmed, 1..1000 characters). `UPDATE ... WHERE id=? AND hospital_treatment_id=? AND approval_status='pending'`: a picture that is not pending any more (or does not exist) answers
+  `409 {"error":"already_reviewed"}`. `reviewed_by` = the admin's name (at most 100 characters), `reviewed_at` = `NOW()`; on approval `reject_reason` is set to NULL.
+Same people may use the writes as for the other treatment writes (`canManage`, section 10; otherwise `403 {"error":"forbidden_treatments"}`); a hospital account only reaches its own hospital. Every write is one transaction
+of the write pool in which the assignment row is locked (`SELECT ... FOR UPDATE`, not changed). `GET /v1/hospitals/:id/treatments` also answers `imagesEnabled`; the counts `imageCount` / `pendingImageCount` are unchanged.
+This API never runs `ALTER TABLE` / `CREATE TABLE`: the table comes from the PHP migration (the PHP page creates it on first use); without it (or without the read grant) the list answers
+`503 {"error":"images_unavailable"}` and a write `503 {"error":"write_unavailable"}`.
+
+**Before the first write take a dump** (outside the web root): `mysqldump --single-transaction <DB_NAME> gangnamunni_hospital_treatment_images > ~/backup-treatment-images-$(date +%F).sql` and note that the files live in `<gangnamunni>/uploads/treatments/`.
+
+Database. Already granted: the read-only user's `SELECT (id, hospital_treatment_id, approval_status)` on the image table (10.1) and its access to `gangnamunni_hospital_treatments` (`id`, `hospital_id`), `gangnamunni_hospitals` (`id`) and
+`settings` (10.1); the write user's `SELECT (id, treatment_id, status, is_active)` and `SELECT (hospital_id)` on `gangnamunni_hospital_treatments` (10.1, section 7), which is all the assignment lock needs. Still missing - run these
+(check the columns with `SHOW COLUMNS FROM gangnamunni_hospital_treatment_images` and `... gangnamunni_treatment_master` first; a `GRANT` naming a missing column fails as a whole):
+```sql
+-- read-only user: the rest of the columns of the list
+GRANT SELECT (image_url, caption, sort_order, uploaded_by, reject_reason, reviewed_at, reviewed_by) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (image_url, caption, sort_order, uploaded_by, reject_reason, reviewed_at, reviewed_by) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_ro'@'localhost';
+-- read-only user: the standard picture of the treatment (the list answers null without it; id, is_active are already granted by step 1 / 10.1)
+GRANT SELECT (default_image_url) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (default_image_url) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'localhost';
+-- write user
+GRANT SELECT (id, hospital_treatment_id, image_url, sort_order, approval_status) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, hospital_treatment_id, image_url, sort_order, approval_status) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'localhost';
+GRANT INSERT (hospital_treatment_id, hospital_id, treatment_id, image_url, caption, sort_order, approval_status, uploaded_by) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (hospital_treatment_id, hospital_id, treatment_id, image_url, caption, sort_order, approval_status, uploaded_by) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'localhost';
+GRANT UPDATE (sort_order, approval_status, reject_reason, reviewed_at, reviewed_by) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (sort_order, approval_status, reject_reason, reviewed_at, reviewed_by) ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'localhost';
+GRANT DELETE ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'127.0.0.1';   -- already there if 10.2 was run; running it again is harmless
+GRANT DELETE ON <DB_NAME>.gangnamunni_hospital_treatment_images TO 'sb_admin_rw'@'localhost';
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: ..._treatment_images has SELECT (5 columns above), INSERT (8), UPDATE (5) and DELETE
+SHOW GRANTS FOR 'sb_admin_ro'@'127.0.0.1';   -- check: ..._treatment_images has SELECT (id, hospital_treatment_id, approval_status, + the 7 above); ..._treatment_master has SELECT (..., default_image_url)
+```
+Without the INSERT / UPDATE / DELETE rights the answer is `503 {"error":"write_unavailable"}` and nothing changes (an uploaded file of that request is removed again).
+
+Upload folder (only for file uploads; pictures added by address need none of this). Same method as section 8.2, but for the folder the PHP page already uses, `<gangnamunni>/uploads/treatments/`:
+```bash
+G=/path/to/gangnamunni            # = ADMIN_UPLOAD_ROOT
+ls -ld $G/uploads/treatments; ps -o user= -C httpd | sort -u            # PHP / Apache usually owns it
+sudo mkdir -p $G/uploads/treatments
+sudo setfacl -R -m u:sbapi:rwX $G/uploads/treatments
+sudo setfacl -R -d -m u:sbapi:rwX $G/uploads/treatments
+sudo setfacl -m u:sbapi:--x $G $G/uploads                          # traverse only (already done for 8.2)
+sudo systemctl edit seoulbeauty-admin-api      # the drop-in of 8.2: put the new folder on the ReadWritePaths line (a second path, separated by a space, or a second ReadWritePaths= line)
+#   [Service]
+#   ReadWritePaths=/path/to/gangnamunni/uploads/hospitals /path/to/gangnamunni/uploads/treatments
+sudo systemctl daemon-reload && sudo systemctl restart seoulbeauty-admin-api
+sudo -u sbapi sh -c 'touch $G/uploads/treatments/_probe && rm $G/uploads/treatments/_probe'      # the service user can write
+```
+With the shared-group way of 8.2 do the same `chgrp` / `chmod g+rwX` / `chmod g+s` on `$G/uploads/treatments`. The API creates the folder (0755) when it is missing and the parent is writable; files are 0644, so Apache keeps reading them.
+SELinux: keep the type Apache may read (`ls -Z $G/uploads/treatments`). Files the PHP admin wrote earlier stay untouched, but the API can only remove (on DELETE) what its user may delete in that folder - give the ACL above `-R` (done) so
+old files are covered too; a file that still cannot be removed is only logged. A folder that cannot be used answers `503 {"error":"uploads_unavailable"}`. Apache / proxy limits: one file of at most 10 MB per request, so the limits of 8.3 are enough.
+
+Env (needs sections 6 and 10, and the 10.6 grants first; leave `0` until then), then `sudo systemctl restart seoulbeauty-admin-api`:
+```
+ADMIN_HOSPITALS_TREATMENTS=1
+ADMIN_HOSPITALS_TREATMENTS_IMAGES=1
+ADMIN_UPLOAD_ROOT=/path/to/gangnamunni     # only for file uploads
+```
+`/v1/me` then reports `"hospitalsTreatmentsImages":true`. Check with a TEST hospital (headers as in 10.3; `<ht>` = an `items[].id` of the list, `<img>` = an `items[].id` of the image list; the file upload uses `multipart/form-data`, so no `Content-Type` header of your own):
+```bash
+curl -s $C http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/images                       # {"items":[...],"canReview":true}
+curl -s -X POST -H X-Requested-With:admin-next -H Cookie:PHPSESSID=<value> -F image=@test.jpg -F caption=test http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/images
+curl -s -X POST -H X-Requested-With:admin-next -H Cookie:PHPSESSID=<value> -F imageUrl=https://example.com/a.jpg http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/images
+curl -s -X POST $H -d '{"direction":"up"}' http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/images/<img>/move
+curl -s -X POST $H -d '{"decision":"reject","reason":"too blurry"}' http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/images/<img>/review
+curl -s -X DELETE $H http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/images/<img>
+ls -l $G/uploads/treatments | tail -3                                                              # the uploaded file: -rw-r--r--, readable by Apache
+```
+Answers: add `400 {"error":"image_required"|"invalid_url"|"invalid_image"|"too_large"|"caption_too_long"|"upload_failed"}`, move `400 {"error":"invalid_field","field":"direction"}` and `409 {"error":"not_approved"|"cannot_move"}`,
+review `400 {"error":"invalid_field","field":"decision"|"reason"|"reason_required"|"reason_too_long"}` (the last two without `field`) and `409 {"error":"already_reviewed"}`, `403` (csrf, `forbidden`, `forbidden_treatments`, `forbidden_review`),
+`404` (switch off, hospital out of scope, assignment not of this hospital, image not of this assignment), `503 {"error":"images_unavailable"|"write_unavailable"|"uploads_unavailable"}`.
+Each write is logged: `hospital treatments: admin=<id> hospital=<id> image add|delete|move-up|move-down|approve|reject treatment=<ht> image=<id>` (never the address, caption or reason).
+Turning it off: `ADMIN_HOSPITALS_TREATMENTS_IMAGES=0`, restart (the image routes answer 404; the list keeps the counts).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
@@ -731,7 +820,7 @@ Nothing to add for this API: it is not exposed by Apache. Browsers reach it only
 - Each session lookup refreshes the PHP admin session like a page view does; while the dashboard is open and polling,
   the PHP admin login does not idle out.
 - Hospital answers are not cached by the API: every request reads the database (3 statements for the list, up to 5 for a detail page).
-- The image upload and the add-doctors routes are the exceptions: they require `Content-Type: multipart/form-data` (same marker header and Origin rule).
+- The image upload, the add-doctors and the treatment image add routes are the exceptions: they require `Content-Type: multipart/form-data` (same marker header and Origin rule).
 - Writing routes require `Content-Type: application/json`, the header `X-Requested-With: admin-next`, and an `Origin` (when sent) equal to the request host (`X-Forwarded-Host`, else `Host`); otherwise `403 {"error":"csrf"}`.
 - Image and photo URLs are returned as stored: either absolute (`https://…`) or relative to the PHP admin directory
   (`uploads/hospitals/<id>/…`). Document files are not served by this API; the PHP admin (`hospital_document.php`) opens them.

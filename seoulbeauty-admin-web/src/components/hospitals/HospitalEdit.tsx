@@ -110,13 +110,15 @@ type Props = {
   doctorsEnabled?: boolean;
   /** The server lets this panel list, assign and unassign treatments itself: the treatments card is then a working card, not a link to the old panel. */
   treatmentsEnabled?: boolean;
+  /** The server lets this panel manage the detail images of a treatment itself. */
+  treatmentImagesEnabled?: boolean;
 };
 
 /**
  * The edit form of one hospital. It starts from the loaded values, sends only the fields that differ,
  * and reports a clash with a change made elsewhere instead of overwriting it.
  */
-export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false, treatmentsEnabled = false }: Props) {
+export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false, treatmentsEnabled = false, treatmentImagesEnabled = false }: Props) {
   const t = useT();
   const original = useMemo(() => draftFromHospital(hospital), [hospital]);
   const [draft, setDraft] = useState<Draft>(original);
@@ -422,6 +424,7 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
           <HospitalTreatments
             hospitalId={hospital.id}
             opened={treatmentsOpened}
+            imagesFeature={treatmentImagesEnabled}
             onChange={({ count }) => setTreatmentTotal(count)}
             onUnauthorized={() => {
               leaving.current = true;
