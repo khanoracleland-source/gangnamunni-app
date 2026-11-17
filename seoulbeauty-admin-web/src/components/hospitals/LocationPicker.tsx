@@ -292,6 +292,17 @@ export default function LocationPicker({ open, address, lat, lng, onAddress, onC
     }, byPlace));
   }, [moveTo]);
 
+  // Opened without a saved position: the search box shows the address and one quiet lookup places the marker (not saved until the form is).
+  const openedLookup = useRef(false);
+  useEffect(() => {
+    if (status !== "ready" || openedLookup.current) return;
+    openedLookup.current = true;
+    const { address: addr, lat: la, lng: ln } = latest.current;
+    if (addr.trim() === "") return;
+    setQuery((q) => (q === "" ? addr.trim() : q));
+    if (!validPair(la, ln)) geocodeAddress(true);
+  }, [status, geocodeAddress]);
+
   // The address field was edited and left while the map could not answer yet: the quiet lookup runs once the map is ready.
   useEffect(() => {
     if (status !== "ready" || syncTick === handledTick.current) return;
