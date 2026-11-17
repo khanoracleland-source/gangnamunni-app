@@ -215,7 +215,6 @@ export default function HospitalList() {
   return (
     <AdminShell admin={me?.admin ?? null} features={me?.features ?? null} title={t("h.title")} description={t("h.desc")} screen={screen}>
       {scope === "own" ? <Notice>{t("h.scope.own")}</Notice> : null}
-      {searchParams.get("rejected") === "1" ? <div role="status"><Notice icon="check">{t("rv.flash.rejected")}</Notice></div> : null}
 
       {list ? (
         <>

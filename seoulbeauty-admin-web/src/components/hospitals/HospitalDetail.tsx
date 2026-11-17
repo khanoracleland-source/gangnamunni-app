@@ -41,6 +41,7 @@ import {
 } from "@/lib/hospitals";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
+import { toast } from "sonner";
 
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "notFound" | "error";
 
@@ -94,14 +95,12 @@ const REVISION_VALUE_MAX = 80;
 const clip = (value: string): string => (value.length > REVISION_VALUE_MAX ? `${value.slice(0, REVISION_VALUE_MAX)}…` : value);
 const snake = (field: string): string => field.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 
-type Flash = "saved" | "active" | "inactive" | "reviewed" | "approved" | "already";
+type Flash = "saved" | "active" | "inactive" | "reviewed";
 const FLASH_KEYS: Record<Flash, MessageKey> = {
   saved: "h.e.flash.saved",
   active: "h.e.flash.active",
   inactive: "h.e.flash.inactive",
   reviewed: "h.e.flash.reviewed",
-  approved: "rv.flash.approved",
-  already: "rv.err.reviewed",
 };
 
 /** Something that needs a yes first: switching the hospital on or off, or marking its changes as reviewed. */
@@ -213,7 +212,8 @@ export default function HospitalDetail({ id }: { id: string }) {
           : await setHospitalActive(h.id, confirm === "activate");
     setWorking(false);
     if (res.ok) {
-      setFlash(confirm === "approve" ? "approved" : confirm === "review" ? "reviewed" : confirm === "activate" ? "active" : "inactive");
+      if (confirm === "approve") toast.success(t("rv.flash.approved"));
+      else setFlash(confirm === "review" ? "reviewed" : confirm === "activate" ? "active" : "inactive");
       setConfirm(null);
       retry();
       return;
@@ -224,7 +224,7 @@ export default function HospitalDetail({ id }: { id: string }) {
       return;
     }
     if (res.status === 409 && res.error === "already_reviewed") {
-      setFlash("already");
+      toast.warning(t("rv.err.reviewed"));
       setConfirm(null);
       retry();
       return;
@@ -301,7 +301,7 @@ export default function HospitalDetail({ id }: { id: string }) {
       {detail && h && !editing ? (
         <>
           <div role="status">
-            {flash === "already" ? <Notice tone="warn" icon="alert">{t(FLASH_KEYS[flash])}</Notice> : flash ? <Notice icon="check">{t(FLASH_KEYS[flash])}</Notice> : null}
+            {flash ? <Notice icon="check">{t(FLASH_KEYS[flash])}</Notice> : null}
           </div>
           {pending ? (
             <div className="notice notice--warn notice--pending" role="alert">
@@ -448,11 +448,12 @@ export default function HospitalDetail({ id }: { id: string }) {
               onClose={() => setRejecting(false)}
               onRejected={() => {
                 setRejecting(false);
-                router.push("/hospitals?pending=1&rejected=1");
+                toast.success(t("rv.flash.rejected"));
+                router.push("/hospitals?pending=1");
               }}
               onReload={() => {
                 setRejecting(false);
-                setFlash("already");
+                toast.warning(t("rv.err.reviewed"));
                 retry();
               }}
             />

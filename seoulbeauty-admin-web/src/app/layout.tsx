@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { THEME_STORAGE_KEY } from "@/lib/config";
 import { LOCALE_STORAGE_KEY } from "@/lib/i18n";
+import AppToaster from "@/components/AppToaster";
 
 export const metadata: Metadata = {
   title: { default: "서울미녀 관리자", template: "%s | 서울미녀 관리자" },
@@ -25,7 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: BOOT_SCRIPT }} />
       </head>
-      <body className="notranslate">{children}</body>
+      <body className="notranslate">
+        {children}
+        <AppToaster />
+      </body>
     </html>
   );
 }
