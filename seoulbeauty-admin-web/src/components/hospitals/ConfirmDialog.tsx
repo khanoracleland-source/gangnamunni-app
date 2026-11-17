@@ -10,6 +10,8 @@ export type ConfirmSpec = {
   /** What the question is about (a hospital's name), shown between the title and the text. */
   name?: string;
   body: string;
+  /** A further line after the text, in the same style. */
+  note?: string;
   confirmLabel: string;
   cancelLabel: string;
   /** Which button takes focus first: "cancel" for choices that are hard to take back. */
@@ -68,8 +70,9 @@ export default function ConfirmDialog({
               <Icon name="close" />
             </button>
           </div>
-          {spec.name ? <p className="dialog__text dialog__text--strong">{spec.name}</p> : null}
+          {spec.name ? <p className="dialog__text dialog__text--strong" translate="no">{spec.name}</p> : null}
           <p className="dialog__text">{spec.body}</p>
+          {spec.note ? <p className="dialog__text">{spec.note}</p> : null}
           {error ? (
             <div className="dialog__err">
               <Notice tone="warn" icon="alert">{error}</Notice>

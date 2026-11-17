@@ -915,6 +915,60 @@ Rollback: `ADMIN_HOSPITALS_DOCUMENTS=0` + restart (both routes 404, buttons disa
 and the ACL (`sudo setfacl -R -x u:sbapi $G/uploads/hospital_apply; sudo setfacl -R -k $G/uploads/hospital_apply`). Restore of data: the dump above for the columns; files removed by a replace or delete are gone (keep a copy of
 `$G/uploads/hospital_apply/` before testing on real hospitals: `sudo tar czf ~/hospital_apply-$(date +%F).tgz -C $G/uploads hospital_apply`, outside the web root).
 
+## 12. Approving / rejecting applications (`ADMIN_HOSPITALS_REVIEW`, optional)
+Adds `POST /v1/hospitals/:id/approve` and `POST /v1/hospitals/:id/reject` for a hospital whose `status` is `pending` (super admin only; any other role gets 403).
+Only the status columns change. **No hospital login account is created, no e-mail is sent, no notification is written**: after an approval the hospital still needs its
+account from the PHP admin. `/v1/me` reports `hospitalsReview`. Needs sections 1 and 6 (hospital pages, write user). With the switch off both routes answer 404 and nothing below is used.
+
+What each call does, in ONE transaction of the write pool: locks the row (`SELECT id, status ... FOR UPDATE`); unknown id -> `404 {"error":"not_found"}`; status other than `pending` ->
+`409 {"error":"already_reviewed"}`; then
+- approve: `status='approved', is_active=1, ad_grade='none', reviewed_by=<admin name, at most 100 characters>, reviewed_at=NOW(), updated_at=NOW()` -> `200 {"ok":true,"id":<id>,"status":"approved"}`;
+- reject (body `{"reason":"<text>"}`, trimmed, 1..1000 characters; empty or missing -> `400 {"error":"reason_required","fields":{"reason":"required|bad_format|too_long"}}`):
+  `status='rejected', is_active=0, reject_reason=<reason>, rejection_reason=<reason>, reviewed_by, reviewed_at=NOW(), updated_at=NOW()` -> `200 {"ok":true,"id":<id>,"status":"rejected"}`.
+The UPDATE repeats `AND status = 'pending'`, so two admins at once cannot both succeed. A rejected hospital stays out of the Nest list and detail (they show approved and, to super admins, pending ones only).
+
+### 12.1 Database (run as the DB admin; `<DB_NAME>` = schema from step 1)
+The write user needs to read `status` (it already reads `id`, 6.1) and update exactly these columns of `gangnamunni_hospitals`:
+```sql
+GRANT SELECT (status) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (status) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'localhost';
+GRANT UPDATE (status, is_active, ad_grade, reviewed_by, reviewed_at, reject_reason, rejection_reason, updated_at) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (status, is_active, ad_grade, reviewed_by, reviewed_at, reject_reason, rejection_reason, updated_at) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'localhost';
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: the new lines name only the columns above
+```
+Some of these columns may already be granted by sections 6 and 7 (`is_active`, `updated_at`, `ad_grade`); granting a column twice is harmless. No `ALTER` / `CREATE` is needed.
+After this section the write user can update `status` and `ad_grade` (applications only: the code requires `status = 'pending'`), so the check in 6.1 that says "no ad_grade / status" no longer applies.
+A missing grant answers `503 {"error":"write_unavailable"}` and nothing is changed. Before the first real use dump the table:
+```bash
+mysqldump --single-transaction <DB_NAME> gangnamunni_hospitals > ~/backup-hospital-review-$(date +%F).sql   # keep it outside the web root
+```
+
+### 12.2 Env and turning it on
+```
+ADMIN_HOSPITALS_ENABLED=1
+ADMIN_HOSPITALS_WRITE=1
+ADMIN_HOSPITALS_REVIEW=1
+```
+Then `sudo systemctl restart seoulbeauty-admin-api`. Check with a TEST application (a `pending` row; super admin PHPSESSID):
+```bash
+C='-H Cookie:PHPSESSID=<value>'
+H='-H Content-Type:application/json -H X-Requested-With:admin-next -H Cookie:PHPSESSID=<value>'
+curl -s $C http://127.0.0.1:3300/v1/me | grep -o '"hospitalsReview":[a-z]*'                                    # true
+curl -s $C 'http://127.0.0.1:3300/v1/hospitals?pending=1'                                                       # the pending applications
+curl -s -X POST $H -d '{"reason":""}' http://127.0.0.1:3300/v1/hospitals/<pendingId>/reject                       # 400 {"error":"reason_required",...}
+curl -s -X POST $H -d '{"reason":"test"}' http://127.0.0.1:3300/v1/hospitals/<pendingId>/reject                   # 200 {"ok":true,"id":<id>,"status":"rejected"}
+curl -s -X POST $H -d '{"reason":"test"}' http://127.0.0.1:3300/v1/hospitals/<pendingId>/reject                   # 409 {"error":"already_reviewed"}
+curl -s -X POST $H -d '{}' http://127.0.0.1:3300/v1/hospitals/<otherPendingId>/approve                            # 200 {"ok":true,"id":<id>,"status":"approved"}
+curl -s -X POST $H -d '{}' http://127.0.0.1:3300/v1/hospitals/<otherPendingId>/approve                            # 409 {"error":"already_reviewed"}
+curl -s -X POST -H Content-Type:application/json -H Cookie:PHPSESSID=<value> -d '{}' http://127.0.0.1:3300/v1/hospitals/<id>/approve   # 403 {"error":"csrf"}
+```
+Answers: `400` `reason_required`; `403` (`csrf`, or a role that is not super admin); `404` `not_found` (switch off or unknown id); `409` `already_reviewed`; `503` `write_unavailable`.
+Guard order: switch (404) -> CSRF (403) -> signed in / role (401, 403) -> id (404) -> body (400) -> database.
+Every review is logged: `journalctl -u seoulbeauty-admin-api | grep 'hospital review'` -> `hospital review: admin=<id> hospital=<id> status=<approved|rejected>` (never the reason).
+Rollback: `ADMIN_HOSPITALS_REVIEW=0` + restart (both routes 404, buttons disappear; reviewed rows stay as they are). To also close the door at the database:
+`REVOKE SELECT (status), UPDATE (status, reviewed_by, reviewed_at, reject_reason, rejection_reason) ON <DB_NAME>.gangnamunni_hospitals FROM 'sb_admin_rw'@'127.0.0.1';` and the same for `'localhost'`
+(leave `is_active`, `ad_grade`, `updated_at` if sections 6 / 7 still need them). A review itself is undone by restoring the dump above or by editing the row in the database.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.

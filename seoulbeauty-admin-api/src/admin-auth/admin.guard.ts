@@ -116,6 +116,18 @@ export class HospitalsDeleteEnabledGuard implements CanActivate {
   }
 }
 
+/** Approving / rejecting hospital applications (status only). Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
+export const hospitalsReviewEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_REVIEW === '1';
+
+/** With the review switch off the approve and reject routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class HospitalsReviewEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsReviewEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Uploading hospital images. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
 export const hospitalsImagesEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_IMAGES === '1';
 

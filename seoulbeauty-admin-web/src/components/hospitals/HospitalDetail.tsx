@@ -9,10 +9,12 @@ import { ErrorScreen, ForbiddenScreen, LoadingScreen, NotFoundScreen, Redirectin
 import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
 import DeleteHospitalDialog from "./DeleteHospitalDialog";
 import HospitalEdit from "./HospitalEdit";
+import RejectHospitalDialog from "./RejectHospitalDialog";
 import ImageDialog, { type ZoomImage } from "./ImageDialog";
 import { ActivePill, Chips, DocumentList, GradePill, Notice, Pill, Section } from "./parts";
 import SalesCard from "./SalesCard";
 import {
+  approveHospital,
   fetchHospital,
   fetchMe,
   reviewHospitalRevisions,
@@ -92,16 +94,18 @@ const REVISION_VALUE_MAX = 80;
 const clip = (value: string): string => (value.length > REVISION_VALUE_MAX ? `${value.slice(0, REVISION_VALUE_MAX)}…` : value);
 const snake = (field: string): string => field.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 
-type Flash = "saved" | "active" | "inactive" | "reviewed";
+type Flash = "saved" | "active" | "inactive" | "reviewed" | "approved" | "already";
 const FLASH_KEYS: Record<Flash, MessageKey> = {
   saved: "h.e.flash.saved",
   active: "h.e.flash.active",
   inactive: "h.e.flash.inactive",
   reviewed: "h.e.flash.reviewed",
+  approved: "rv.flash.approved",
+  already: "rv.err.reviewed",
 };
 
 /** Something that needs a yes first: switching the hospital on or off, or marking its changes as reviewed. */
-type Confirm = "deactivate" | "activate" | "review";
+type Confirm = "deactivate" | "activate" | "review" | "approve";
 
 /**
  * Everything stored about one hospital. With the server's write switch on, the same page turns into the edit form
@@ -119,6 +123,7 @@ export default function HospitalDetail({ id }: { id: string }) {
   const [working, setWorking] = useState(false);
   const [confirmError, setConfirmError] = useState<MessageKey | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   // 401 / 403 are final for this page view: stop asking.
   const halted = useRef(false);
   // Only a plain positive number can be a hospital; anything else is answered like a missing one, without asking.
@@ -191,6 +196,8 @@ export default function HospitalDetail({ id }: { id: string }) {
   const isSuper = me?.admin.role === "super_admin" && me.admin.scope === "all";
   // Deleting is offered to a super admin only, and only while the server has that switch on.
   const canDelete = me?.features.hospitalsDelete === true && canWrite && isSuper;
+  // Approving or rejecting an application: a super admin only, while the server has that switch on.
+  const canReview = me?.features.hospitalsReview === true && pending && isSuper;
   const editing = canWrite && searchParams.get("edit") === "1";
   const viewHref = h ? `/hospitals/${h.id}` : "/hospitals";
 
@@ -198,10 +205,15 @@ export default function HospitalDetail({ id }: { id: string }) {
     if (!h || !confirm || working) return;
     setWorking(true);
     setConfirmError(null);
-    const res = confirm === "review" ? await reviewHospitalRevisions(h.id) : await setHospitalActive(h.id, confirm === "activate");
+    const res =
+      confirm === "approve"
+        ? await approveHospital(h.id)
+        : confirm === "review"
+          ? await reviewHospitalRevisions(h.id)
+          : await setHospitalActive(h.id, confirm === "activate");
     setWorking(false);
     if (res.ok) {
-      setFlash(confirm === "review" ? "reviewed" : confirm === "activate" ? "active" : "inactive");
+      setFlash(confirm === "approve" ? "approved" : confirm === "review" ? "reviewed" : confirm === "activate" ? "active" : "inactive");
       setConfirm(null);
       retry();
       return;
@@ -209,6 +221,12 @@ export default function HospitalDetail({ id }: { id: string }) {
     if (res.status === 401) {
       halted.current = true;
       window.location.assign(PHP_ADMIN_URL);
+      return;
+    }
+    if (res.status === 409 && res.error === "already_reviewed") {
+      setFlash("already");
+      setConfirm(null);
+      retry();
       return;
     }
     setConfirmError(failureKey(res.status));
@@ -222,6 +240,8 @@ export default function HospitalDetail({ id }: { id: string }) {
       ? { title: t("h.act.deactivate.title"), body: t("h.act.deactivate.body"), confirmLabel: t("h.act.deactivate"), cancelLabel: t("h.c.cancel"), focus: "cancel" }
       : confirm === "activate"
         ? { title: t("h.act.activate.title"), body: t("h.act.activate.body"), confirmLabel: t("h.act.activate"), cancelLabel: t("h.c.cancel"), focus: "cancel" }
+        : confirm === "approve"
+          ? { title: t("rv.approve.title"), name: h?.name || t("h.noName"), body: t("rv.approve.body"), note: t("rv.approve.note"), confirmLabel: t("rv.approve"), cancelLabel: t("h.c.cancel"), focus: "cancel" }
         : confirm === "review"
           ? { title: t("h.rev.confirm.title"), body: t("h.rev.confirm.body"), confirmLabel: t("h.rev.confirm.ok"), cancelLabel: t("h.c.cancel"), focus: "cancel" }
           : null;
@@ -281,7 +301,7 @@ export default function HospitalDetail({ id }: { id: string }) {
       {detail && h && !editing ? (
         <>
           <div role="status">
-            {flash ? <Notice icon="check">{t(FLASH_KEYS[flash])}</Notice> : null}
+            {flash === "already" ? <Notice tone="warn" icon="alert">{t(FLASH_KEYS[flash])}</Notice> : flash ? <Notice icon="check">{t(FLASH_KEYS[flash])}</Notice> : null}
           </div>
           {pending ? (
             <div className="notice notice--warn notice--pending" role="alert">
@@ -290,10 +310,18 @@ export default function HospitalDetail({ id }: { id: string }) {
                 <b className="notice__title">{t("h.pd.title")}</b>
                 <span className="notice__body">{t("h.pd.body")}</span>
               </p>
-              <a className="txtbtn" href={legacyViewUrl(h.id)} target="_blank" rel="noopener noreferrer">
-                <Icon name="external" size={16} />
-                <span>{t("h.pd.legacy")}</span>
-              </a>
+              {canReview ? (
+                <div className="notice__actions">
+                  <button type="button" className="btn btn--primary" onClick={() => askConfirm("approve")} disabled={working}>{t("rv.approve")}</button>
+                  <button type="button" className="btn btn--ghost btn--reject" onClick={() => setRejecting(true)} disabled={working}>{t("rv.reject")}</button>
+                </div>
+              ) : null}
+              {me?.features.hospitalsReview === true ? null : (
+                <a className="txtbtn" href={legacyViewUrl(h.id)} target="_blank" rel="noopener noreferrer">
+                  <Icon name="external" size={16} />
+                  <span>{t("h.pd.legacy")}</span>
+                </a>
+              )}
             </div>
           ) : (
           <Notice>{canWrite ? (me?.admin.scope === "own" ? t("h.d.viewHintOwn") : t("h.d.viewHint")) : me?.admin.scope === "own" ? t("h.d.readOnlyOwn") : t("h.d.readOnly")}</Notice>
@@ -408,6 +436,23 @@ export default function HospitalDetail({ id }: { id: string }) {
               }}
               onReload={() => {
                 setDeleting(false);
+                retry();
+              }}
+            />
+          ) : null}
+
+          {rejecting ? (
+            <RejectHospitalDialog
+              hospitalId={h.id}
+              hospitalName={h.name || t("h.noName")}
+              onClose={() => setRejecting(false)}
+              onRejected={() => {
+                setRejecting(false);
+                router.push("/hospitals?pending=1&rejected=1");
+              }}
+              onReload={() => {
+                setRejecting(false);
+                setFlash("already");
                 retry();
               }}
             />

@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AdminGuard, hospitalsDeleteEnabled, hospitalsDocumentsEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsTreatmentsEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
+import { AdminGuard, hospitalsDeleteEnabled, hospitalsDocumentsEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsReviewEnabled, hospitalsTreatmentsEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
 @UseGuards(AdminGuard)
@@ -9,8 +9,8 @@ export class MeController {
   me(@Req() req: ScopedAdminRequest) {
     const { id, username, name, role, hospitalId, scope } = req.admin;
     return { admin: { id, username, name, role, hospitalId, scope }, features: { hospitals: hospitalsEnabled(), hospitalsWrite: hospitalsWriteEnabled(),
-      // the routes behind both are super-admin only (403 for other roles); the flags only report the switches
-      hospitalsDelete: hospitalsDeleteEnabled(), archive: hospitalsDeleteEnabled(),
+      // the routes behind these flags are super-admin only (403 for other roles); the flags only report the switches
+      hospitalsDelete: hospitalsDeleteEnabled(), archive: hospitalsDeleteEnabled(), hospitalsReview: hospitalsReviewEnabled(),
       hospitalsImages: hospitalsImagesEnabled(), hospitalsDocuments: hospitalsDocumentsEnabled(), hospitalsDoctors: hospitalsDoctorsEnabled(),
       hospitalsTreatments: hospitalsTreatmentsEnabled(), hospitalsTreatmentsRemove: hospitalsTreatmentsRemoveEnabled(), hospitalsTreatmentsPrices: hospitalsTreatmentsPricesEnabled(),
       hospitalsTreatmentsQuestions: hospitalsTreatmentsQuestionsEnabled(), hospitalsTreatmentsImages: hospitalsTreatmentsImagesEnabled() } };

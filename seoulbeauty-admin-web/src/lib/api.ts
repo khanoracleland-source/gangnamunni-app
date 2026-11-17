@@ -17,7 +17,7 @@ export type Admin = {
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -118,6 +118,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitals: obj(d.features).hospitals === true,
         hospitalsWrite: obj(d.features).hospitalsWrite === true,
         hospitalsDelete: obj(d.features).hospitalsDelete === true,
+        hospitalsReview: obj(d.features).hospitalsReview === true,
         hospitalsImages: obj(d.features).hospitalsImages === true,
         hospitalsDocuments: obj(d.features).hospitalsDocuments === true,
         hospitalsDoctors: obj(d.features).hospitalsDoctors === true,
@@ -1052,6 +1053,18 @@ export async function setHospitalActive(id: number, active: boolean): Promise<Wr
 export async function reviewHospitalRevisions(id: number): Promise<WriteResult<Record<string, never>>> {
   const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/revisions/review`, {});
   return res.ok ? { ok: true, data: {} } : res;
+}
+
+/** Super admin only, pending applications only. 409 `already_reviewed`: somebody decided it first. */
+export async function approveHospital(id: number): Promise<WriteResult<{ status: string }>> {
+  const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/approve`, {});
+  return res.ok ? { ok: true, data: { status: str(res.data.status) } } : res;
+}
+
+/** Super admin only, pending applications only. `reason` is required (400 `reason_required` when empty); 409 `already_reviewed`. */
+export async function rejectHospital(id: number, reason: string): Promise<WriteResult<{ status: string }>> {
+  const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/reject`, { reason });
+  return res.ok ? { ok: true, data: { status: str(res.data.status) } } : res;
 }
 
 // ───────── Map ─────────

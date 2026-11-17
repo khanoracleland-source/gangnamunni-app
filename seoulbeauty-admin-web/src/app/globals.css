@@ -625,8 +625,12 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .notice .txtbtn { flex: none; }
 .notice__title { display: block; font-size: 15px; font-weight: 700; }
 .notice__body { display: block; }
+.notice__actions { flex: none; display: flex; gap: 8px; align-self: center; }
+.btn--reject { color: var(--down); border-color: var(--down); }
 @media (max-width: 639px) {
   .notice--pending .txtbtn { width: 100%; justify-content: center; }
+  .notice__actions { flex: 1 1 100%; flex-wrap: wrap; }
+  .notice__actions .btn { flex: 1 1 calc(50% - 4px); }
 }
 .notice + .section { margin-top: 32px; }
 
@@ -1241,7 +1245,13 @@ html[data-theme="dark"] .btn--danger { background: #B02A37; }
 
 .dialog--wide { width: min(560px, calc(100% - 32px)); }
 .dialog__name { margin-bottom: 12px; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
-.dialog__text--strong { margin-top: 12px; font-weight: 600; }
+.dialog__text--strong { margin-top: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.field__meta { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.field__count { margin-left: auto; color: var(--muted); font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.field__count--max { color: var(--down); font-weight: 600; }
+@media (max-width: 639px) {
+  .dialog--reject .dialog__foot .btn { flex: 1 1 calc(50% - 4px); }
+}
 .dialog__text + .dialog__text { margin-top: 8px; }
 .dialog__sub { margin: 16px 0 4px; font-size: 14px; line-height: 22px; font-weight: 700; }
 .dialog__bullets { padding-left: 20px; list-style: disc; font-size: 15px; line-height: 1.6; }
