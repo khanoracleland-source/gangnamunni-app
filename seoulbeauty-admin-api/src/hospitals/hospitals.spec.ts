@@ -149,7 +149,7 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
         await get('/v1/dashboard/summary', cookie).expect(403).expect({ error: 'forbidden' });
       }
       const me = await get('/v1/me', SUPER).expect(200);
-      expect(me.body).toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: false, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false } });
+      expect(me.body).toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: false, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDocuments: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false } });
       expect(dbStub.query).not.toHaveBeenCalled();
     });
     it('ADMIN_PANEL_ENABLED off wins: everything is 404 even with the hospital switch on', async () => {
@@ -175,9 +175,9 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
     });
     it('/v1/me: scope and feature flag per role', async () => {
       expect((await get('/v1/me', SUPER).expect(200)).body)
-        .toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: true, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false } });
+        .toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'super_admin', hospitalId: null, scope: 'all' }, features: { hospitals: true, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDocuments: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false } });
       expect((await get('/v1/me', HOSPITAL).expect(200)).body)
-        .toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'hospital_super_admin', hospitalId: 12, scope: 'own' }, features: { hospitals: true, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false } });
+        .toEqual({ admin: { id: 7, username: 'boss', name: '김관리', role: 'hospital_super_admin', hospitalId: 12, scope: 'own' }, features: { hospitals: true, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDocuments: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false } });
       expect((await get('/v1/me', HOSPITAL_ADMIN).expect(200)).body.admin).toMatchObject({ role: 'hospital_admin', hospitalId: 12, scope: 'own' });
       expect((await get('/v1/me', UNBOUND).expect(200)).body.admin).toMatchObject({ role: 'hospital_admin', hospitalId: null, scope: 'own' });
     });
@@ -283,12 +283,12 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
           hasUnreviewedChanges: true, mainImageUrl: 'uploads/hospitals/12/main.jpg', profileImageUrl: 'https://cdn.example.com/p.jpg',
           appliedBy: 'member1', appliedAt: '2026-10-01 09:00:00', createdAt: '2026-10-02 10:00:00', updatedAt: '2026-11-01 11:00:00',
         },
-        documents: { business: true, medical: false },
+        documents: { business: true, medical: false }, documentsEditable: false,
         images: [{ id: 3, url: 'uploads/hospitals/12/a.jpg', type: 'interior', sortOrder: 1, isActive: true }],
         doctors: [{ id: 4, name: '이의사', specialty: '피부과', experience: 10, qualification: '전문의', bio: '', photoUrl: 'uploads/hospitals/12/doctor_4.jpg', status: 'active' }],
         revisions: [{ id: 5, field: 'phone', oldValue: '02-1', newValue: '02-2', changedAt: '2026-11-10 12:00:00' }],
       });
-      expect(Object.keys(r.body)).toEqual(['hospital', 'documents', 'images', 'doctors', 'revisions']);
+      expect(Object.keys(r.body)).toEqual(['hospital', 'documents', 'documentsEditable', 'images', 'doctors', 'revisions']);
     });
     it('hospital role: its own hospital is served, with the scope in SQL too', async () => {
       const r = await get('/v1/hospitals/12', HOSPITAL).expect(200);

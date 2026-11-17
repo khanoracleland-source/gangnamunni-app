@@ -17,7 +17,7 @@ export type Admin = {
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -119,6 +119,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsWrite: obj(d.features).hospitalsWrite === true,
         hospitalsDelete: obj(d.features).hospitalsDelete === true,
         hospitalsImages: obj(d.features).hospitalsImages === true,
+        hospitalsDocuments: obj(d.features).hospitalsDocuments === true,
         hospitalsDoctors: obj(d.features).hospitalsDoctors === true,
         hospitalsTreatments: obj(d.features).hospitalsTreatments === true,
         hospitalsTreatmentsRemove: obj(d.features).hospitalsTreatmentsRemove === true,
@@ -338,6 +339,8 @@ export type HospitalDetail = {
   };
   /** Only whether each document was handed in (null when the server did not send it); the files open in the old panel. */
   documents: { business: boolean; medical: boolean } | null;
+  /** The server lets this admin upload, replace and delete the documents of this hospital. */
+  documentsEditable: boolean;
   images: HospitalImage[];
   doctors: HospitalDoctor[];
   /** Changes made by the applicant that nobody has reviewed yet. */
@@ -389,6 +392,7 @@ export async function fetchHospital(id: number, signal?: AbortSignal): Promise<A
         updatedAt: str(h.updatedAt),
       },
       documents: isObj(d.documents) ? { business: bool(documents.business), medical: bool(documents.medical) } : null,
+      documentsEditable: d.documentsEditable === true,
       images: list(d.images)
         .map((raw) => {
           const i = obj(raw);
@@ -579,6 +583,59 @@ export async function uploadHospitalImages(id: number, files: ImageUploadFiles, 
   } catch {
     return { ok: false, status: 0, error: "", field: "", remaining: null };
   }
+}
+
+// ───────── Hospital documents ─────────
+
+export type DocumentKey = "business" | "medical";
+export type HospitalDocuments = { business: boolean; medical: boolean };
+export type DocumentFailure = {
+  ok: false;
+  /** 0 = no answer (network down, proxy error page, request cancelled). */
+  status: number;
+  /** "file_required", "invalid_file", "too_large", "upload_failed", "no_document", "forbidden_documents", ...; "" when the server sent none. */
+  error: string;
+};
+export type DocumentResult = { ok: true; documents: HospitalDocuments } | DocumentFailure;
+
+const documentPath = (id: number, doc: DocumentKey): string => `/v1/hospitals/${encodeURIComponent(String(id))}/documents/${doc}`;
+
+function documentsOf(d: Json): HospitalDocuments {
+  const documents = obj(d.documents);
+  return { business: bool(documents.business), medical: bool(documents.medical) };
+}
+
+/** Sends one document file as multipart. The browser sets Content-Type itself (it must add the boundary). */
+export async function uploadHospitalDocument(id: number, doc: DocumentKey, file: File, signal?: AbortSignal): Promise<DocumentResult> {
+  const body = new FormData();
+  body.append("file", file);
+  try {
+    const res = await fetch(`${BASE_PATH}/api${documentPath(id, doc)}`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "X-Requested-With": "admin-next" },
+      body,
+      signal,
+    });
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // An empty or non-JSON body: the status alone says what happened.
+    }
+    const d = obj(data);
+    if (!res.ok) return { ok: false, status: res.status, error: str(d.error) };
+    return { ok: true, documents: documentsOf(d) };
+  } catch {
+    return { ok: false, status: 0, error: "" };
+  }
+}
+
+/** Removes the stored document. The answer is the fresh document state. */
+export async function deleteHospitalDocument(id: number, doc: DocumentKey): Promise<DocumentResult> {
+  const res = await sendJson("DELETE", documentPath(id, doc));
+  return res.ok ? { ok: true, documents: documentsOf(res.data) } : { ok: false, status: res.status, error: res.error };
 }
 
 // ───────── Hospital doctors ─────────

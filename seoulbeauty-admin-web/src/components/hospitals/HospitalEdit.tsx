@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import Icon, { type IconName } from "../Icon";
 import ConfirmDialog from "./ConfirmDialog";
+import HospitalDocuments from "./HospitalDocuments";
 import HospitalDoctors from "./HospitalDoctors";
 import HospitalImages from "./HospitalImages";
 import HospitalTreatments from "./HospitalTreatments";
@@ -96,6 +97,10 @@ type Props = {
   hospital: HospitalDetail["hospital"];
   /** Which documents the hospital handed in (null when the server did not send it). */
   documents: HospitalDetail["documents"];
+  /** The server lets this panel upload, replace and delete the documents itself (the rows then get buttons or a view-only note). */
+  documentsEnabled?: boolean;
+  /** This admin may change the documents of this hospital. */
+  documentsEditable?: boolean;
   /** The change was stored. */
   onSaved: () => void;
   /** The admin left the form without saving. */
@@ -119,7 +124,7 @@ type Props = {
  * The edit form of one hospital. It starts from the loaded values, sends only the fields that differ,
  * and reports a clash with a change made elsewhere instead of overwriting it.
  */
-export default function HospitalEdit({ hospital, documents, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false, treatmentsEnabled = false, treatmentImagesEnabled = false }: Props) {
+export default function HospitalEdit({ hospital, documents, documentsEnabled = false, documentsEditable = false, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false, treatmentsEnabled = false, treatmentImagesEnabled = false }: Props) {
   const t = useT();
   const original = useMemo(() => draftFromHospital(hospital), [hospital]);
   const [draft, setDraft] = useState<Draft>(original);
@@ -387,8 +392,20 @@ export default function HospitalEdit({ hospital, documents, onSaved, onCancel, o
       </FoldCard>
 
       <FoldCard id="docs" open={open.docs} errors={0} onToggle={toggle}>
-        <p className="field__hint ecard__desc">{t("h.docs.desc")}</p>
-        <DocumentList hospitalId={hospital.id} documents={documents} />
+        <p className="field__hint ecard__desc">{t(documentsEnabled && documents ? "h.docs.descEdit" : "h.docs.desc")}</p>
+        {documentsEnabled && documents ? (
+          <HospitalDocuments
+            hospitalId={hospital.id}
+            documents={documents}
+            editable={documentsEditable}
+            onUnauthorized={() => {
+              leaving.current = true;
+              window.location.assign(PHP_ADMIN_URL);
+            }}
+          />
+        ) : (
+          <DocumentList hospitalId={hospital.id} documents={documents} />
+        )}
       </FoldCard>
       {imagesEnabled ? (
         <FoldCard id="images" open={open.images} errors={0} onToggle={toggle} count={imageTotal === undefined ? undefined : t("h.e.c.imgCount", { n: imageTotal })}>

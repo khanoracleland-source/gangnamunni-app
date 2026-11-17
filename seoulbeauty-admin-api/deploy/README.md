@@ -221,7 +221,7 @@ GRANT SELECT (hospital_id, reviewed) ON <DB_NAME>.gangnamunni_hospital_revisions
 GRANT UPDATE (reviewed) ON <DB_NAME>.gangnamunni_hospital_revisions TO 'sb_admin_rw'@'127.0.0.1';
 GRANT UPDATE (reviewed) ON <DB_NAME>.gangnamunni_hospital_revisions TO 'sb_admin_rw'@'localhost';
 
-SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: no INSERT / DELETE, no ad_grade / status / rating / cert_*
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: no INSERT / DELETE, no ad_grade / status / rating; cert_* only after section 11
 ```
 The read-only `sb_admin_ro` of step 1 stays as it is (it does the existence and duplicate-phone checks).
 
@@ -811,6 +811,110 @@ review `400 {"error":"invalid_field","field":"decision"|"reason"|"reason_require
 Each write is logged: `hospital treatments: admin=<id> hospital=<id> image add|delete|move-up|move-down|approve|reject treatment=<ht> image=<id>` (never the address, caption or reason).
 Turning it off: `ADMIN_HOSPITALS_TREATMENTS_IMAGES=0`, restart (the image routes answer 404; the list keeps the counts).
 
+## 11. Submitted documents (`ADMIN_HOSPITALS_DOCUMENTS`, optional)
+Adds `POST /v1/hospitals/:id/documents/:doc` (upload or replace; multipart, one file in the field `file`) and `DELETE /v1/hospitals/:id/documents/:doc`
+(`:doc` = `business` for the business registration or `medical` for the medical institution licence). Who may use it: a super admin and the hospital account bound to
+that hospital (any other hospital answers 404). The files are the same ones the application form stores and the PHP viewer (`hospital_document.php`) opens;
+this API never serves them. The hospital detail answer gets `documentsEditable` (true only with the switch on and an allowed account); `/v1/me` reports `hospitalsDocuments`.
+Needs sections 1 and 6 (hospital pages, write user). With the switch off both routes answer 404 and nothing below is used.
+
+What is stored: `gangnamunni_hospitals.cert_business` / `cert_medical` = `uploads/hospital_apply/hospital_<id>/cert_<business|medical>_<32 hex>.<jpg|png|pdf>`
+(the shape `hospital_document.php` accepts). The name is random, the extension comes from the real file type (first bytes: JPEG, PNG, `%PDF-`), never from the name the browser
+sent; JPG / PNG / PDF only, at most 5 MB. Nothing is written to `gangnamunni_hospital_revisions` (those rows are written by the applicant's own page, not by admin edits, and
+neither PHP admin nor section 6 writes them) and `updated_at` is not touched, so an open edit form does not get a false `409`.
+
+**Before the first upload, dump the column data** (an upload updates one of the two columns, a delete empties it):
+```bash
+mysqldump --single-transaction <DB_NAME> gangnamunni_hospitals > ~/backup-hospital-documents-$(date +%F).sql   # keep it outside the web root; the files themselves are in <gangnamunni>/uploads/hospital_apply/
+```
+
+### 11.1 Database (run as the DB admin; `<DB_NAME>` = schema from step 1)
+The read-only user already reads both columns (step 1). The write user needs to read and update exactly these two columns, nothing else new
+(`id` is already granted in 6.1; `status` is checked by the read-only user):
+```sql
+GRANT SELECT (cert_business, cert_medical) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (cert_business, cert_medical) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'localhost';
+GRANT UPDATE (cert_business, cert_medical) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (cert_business, cert_medical) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'localhost';
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: the new lines name only cert_business, cert_medical; nothing about ad_grade / status / rating
+```
+No `ALTER` / `CREATE` is needed. A missing grant answers `503 {"error":"documents_unavailable"}` and nothing is changed (the file just written is removed again).
+This note replaces the older "no cert_*" remark of 6.1 for the write user: from now on it may read and update these two columns.
+
+### 11.2 Upload folder (on the server)
+Same method as section 8.2, for `<gangnamunni>/uploads/hospital_apply/` (the folder the application form already uses; PHP / Apache usually owns it). The API creates
+`hospital_<id>/` (0755) and the files (0644), so PHP can read them for the viewer:
+```bash
+G=/path/to/gangnamunni
+ls -ld $G/uploads $G/uploads/hospital_apply; ps -o user= -C httpd | sort -u
+sudo mkdir -p $G/uploads/hospital_apply                                   # normally exists already
+sudo setfacl -R -m u:sbapi:rwX $G/uploads/hospital_apply                  # -R: also the applicants' existing folders, so a replaced / deleted old file can be removed
+sudo setfacl -R -d -m u:sbapi:rwX $G/uploads/hospital_apply              # default: new entries
+sudo setfacl -m u:sbapi:--x $G $G/uploads                                 # traverse only (already done for 8.2)
+sudo systemctl edit seoulbeauty-admin-api      # the drop-in of 8.2: add the folder as one more ReadWritePaths entry (a second path separated by a space, or a second line)
+#   [Service]
+#   ReadWritePaths=/path/to/gangnamunni/uploads/hospitals /path/to/gangnamunni/uploads/treatments /path/to/gangnamunni/uploads/hospital_apply
+sudo systemctl daemon-reload && sudo systemctl restart seoulbeauty-admin-api
+sudo -u sbapi sh -c 'touch $G/uploads/hospital_apply/_probe && rm $G/uploads/hospital_apply/_probe'     # the service user can write
+```
+With the shared-group way of 8.2 do the same `chgrp` / `chmod g+rwX` / `chmod g+s` on `$G/uploads/hospital_apply`. The folder must exist before the service starts (a missing
+`ReadWritePaths` path stops the unit). SELinux (Rocky): keep the type Apache may read (`ls -Z $G/uploads/hospital_apply`; see `ausearch -m avc -ts recent`). Files the application form wrote
+earlier (mode 0600 / 0644, owner Apache) are only removed on replace / delete when the ACL above covers them; a file that cannot be removed is only logged and stays on disk.
+A folder that cannot be used answers `503 {"error":"uploads_unavailable"}`; a `hospital_<id>` folder that is a symbolic link is refused the same way.
+
+**Direct URL protection must stay as it is.** In the repository the documents are shut off by `gangnamunni/uploads/.htaccess` (`<FilesMatch "^cert_(business|medical)_">` -> denied for every
+folder below `uploads/`, so also `hospital_apply/hospital_<id>/`); there is NO separate `uploads/hospital_apply/.htaccess` in the repository. The new names start with `cert_business_` / `cert_medical_`, so
+they are covered. Check on the server, after the first upload (a TEST hospital), that the file is not reachable by its address, only through the PHP viewer:
+```bash
+test -f $G/uploads/.htaccess && grep -n 'cert_(business|medical)' $G/uploads/.htaccess        # the rule is there
+ls -l $G/uploads/hospital_apply/.htaccess 2>&1                                                  # absent is expected; if the server has one, leave it untouched
+curl -s -o /dev/null -w '%{http_code}\n' https://seoulbeauty.app/<path to gangnamunni>/uploads/hospital_apply/hospital_<id>/<file>      # must be 403 (or 404), never 200
+```
+Apache must have `AllowOverride` enough for `.htaccess` (`FileInfo AuthConfig Limit`, as for the other upload folders); if the direct address answers 200, STOP: turn the switch off
+(`ADMIN_HOSPITALS_DOCUMENTS=0`) and fix that first.
+
+### 11.3 Apache / proxy limits
+One file of at most 5 MB per request; the limits of 8.3 (much larger) are enough.
+
+### 11.4 Env and turning it on
+```
+ADMIN_HOSPITALS_ENABLED=1
+ADMIN_HOSPITALS_WRITE=1
+ADMIN_HOSPITALS_DOCUMENTS=1
+ADMIN_UPLOAD_ROOT=/path/to/gangnamunni
+```
+Then `sudo systemctl restart seoulbeauty-admin-api`. Check with a TEST hospital (super admin PHPSESSID; any small JPEG / PNG / PDF; the multipart request needs no `Content-Type` of your own):
+```bash
+C='-H Cookie:PHPSESSID=<value>'
+M='-H X-Requested-With:admin-next -H Cookie:PHPSESSID=<value>'                       # upload (curl sets the multipart Content-Type)
+J='-H Content-Type:application/json -H X-Requested-With:admin-next -H Cookie:PHPSESSID=<value>'   # delete
+curl -s $C http://127.0.0.1:3300/v1/me | grep -o '"hospitalsDocuments":[a-z]*'                         # true
+curl -s $C http://127.0.0.1:3300/v1/hospitals/<id> | grep -o '"documentsEditable":[a-z]*'               # true (super admin, or the account bound to <id>)
+curl -s -X POST $M -F 'file=@/tmp/business.pdf' http://127.0.0.1:3300/v1/hospitals/<id>/documents/business
+                                                                                      # 200 {"documents":{"business":true,"medical":false}}
+curl -s -X POST $M -F 'file=@/tmp/licence.jpg' http://127.0.0.1:3300/v1/hospitals/<id>/documents/medical     # upload / replace the other one
+curl -s -X POST $M -F 'file=@/tmp/new.png' http://127.0.0.1:3300/v1/hospitals/<id>/documents/business        # replace: the old file disappears after the commit
+ls -l $G/uploads/hospital_apply/hospital_<id>/                                         # cert_business_<32 hex>.png, mode 0644; folder 0755
+curl -s -X DELETE $J http://127.0.0.1:3300/v1/hospitals/<id>/documents/business      # 200 {"documents":{"business":false,"medical":true}}
+curl -s -X DELETE $J http://127.0.0.1:3300/v1/hospitals/<id>/documents/business      # 404 {"error":"no_document"}
+```
+Then open the hospital in the PHP admin: the document link (`hospital_document.php?hospital_id=<id>&doc=business`) must show the new file. Negative checks: a text file named `x.pdf` -> `400 invalid_file`;
+a hospital account on another hospital's id -> `404 {"error":"not_found"}`; no `X-Requested-With` header -> `403 {"error":"csrf"}`.
+
+Answers: `400 {"error":"file_required"|"invalid_file"|"too_large"|"upload_failed"}`, `403` (`csrf`, `forbidden` = a role that may not use the panel, `forbidden_documents`), `404` (`not_found`: switch off, hospital outside the
+account's scope / not approved / unknown, wrong `:doc`; `no_document`: DELETE of a document that does not exist), `503` (`documents_unavailable` = write user, grants or columns; `uploads_unavailable` = upload folder).
+Guard order of the upload: switch (404) -> CSRF (403) -> signed in / role (401, 403) -> scope and `:doc` (404) -> only then the file is read.
+Every change is logged: `journalctl -u seoulbeauty-admin-api | grep 'hospital documents'` -> `hospital documents: admin=<id> hospital=<id> doc=<business|medical> upload|replace|delete` (never a path, a file name or content).
+
+How a change is made: the new file is written first; then one transaction locks the hospital row and updates only that one column; only after the commit is the OLD file removed, and only when its stored value has the exact
+viewer shape for that document and its real path (links resolved) is a regular file inside `uploads/hospital_apply/` (anything else is left alone). A failed update removes the new file and keeps the old one. A delete empties the
+column first and removes the file afterwards (best-effort).
+
+Rollback: `ADMIN_HOSPITALS_DOCUMENTS=0` + restart (both routes 404, buttons disappear; the documents stay and the PHP viewer keeps working). To also close the door at the database:
+`REVOKE SELECT (cert_business, cert_medical), UPDATE (cert_business, cert_medical) ON <DB_NAME>.gangnamunni_hospitals FROM 'sb_admin_rw'@'127.0.0.1';` and the same for `'localhost'`; remove the `hospital_apply` entry from `ReadWritePaths`
+and the ACL (`sudo setfacl -R -x u:sbapi $G/uploads/hospital_apply; sudo setfacl -R -k $G/uploads/hospital_apply`). Restore of data: the dump above for the columns; files removed by a replace or delete are gone (keep a copy of
+`$G/uploads/hospital_apply/` before testing on real hospitals: `sudo tar czf ~/hospital_apply-$(date +%F).tgz -C $G/uploads hospital_apply`, outside the web root).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
@@ -820,8 +924,8 @@ Nothing to add for this API: it is not exposed by Apache. Browsers reach it only
 - Each session lookup refreshes the PHP admin session like a page view does; while the dashboard is open and polling,
   the PHP admin login does not idle out.
 - Hospital answers are not cached by the API: every request reads the database (3 statements for the list, up to 5 for a detail page).
-- The image upload, the add-doctors and the treatment image add routes are the exceptions: they require `Content-Type: multipart/form-data` (same marker header and Origin rule).
+- The image upload, the document upload, the add-doctors and the treatment image add routes are the exceptions: they require `Content-Type: multipart/form-data` (same marker header and Origin rule).
 - Writing routes require `Content-Type: application/json`, the header `X-Requested-With: admin-next`, and an `Origin` (when sent) equal to the request host (`X-Forwarded-Host`, else `Host`); otherwise `403 {"error":"csrf"}`.
 - Image and photo URLs are returned as stored: either absolute (`https://…`) or relative to the PHP admin directory
-  (`uploads/hospitals/<id>/…`). Document files are not served by this API; the PHP admin (`hospital_document.php`) opens them.
+  (`uploads/hospitals/<id>/…`). Document files are not served by this API; the PHP admin (`hospital_document.php`) opens them (they can be uploaded, replaced and deleted here: section 11).
 - Time windows use the connection time zone `+09:00` (KST), set by the API on every connection.

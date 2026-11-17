@@ -190,7 +190,7 @@ describe('admin API: hospital images (list and upload)', () => {
     });
 
     it('all on -> /v1/me reports hospitalsImages and keeps the other flags', async () => {
-      expect((await get('/v1/me', SUPER)).body.features).toEqual({ hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: true, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false });
+      expect((await get('/v1/me', SUPER)).body.features).toEqual({ hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: true, hospitalsDocuments: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false });
       expect((await get('/v1/me', HOSPITAL)).body.features.hospitalsImages).toBe(true);
     });
 

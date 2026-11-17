@@ -24,7 +24,7 @@ export class HospitalsController {
 
   @Get(':id')
   async detail(@Req() req: ScopedAdminRequest, @Param('id') rawId: string) {
-    const found = await this.hospitals.detail(scopeOfRequest(req), parseHospitalId(rawId));
+    const found = await this.hospitals.detail(scopeOfRequest(req), parseHospitalId(rawId), req.admin.role);
     if (!found) throw new NotFoundException({ error: 'not_found' });
     return found;
   }

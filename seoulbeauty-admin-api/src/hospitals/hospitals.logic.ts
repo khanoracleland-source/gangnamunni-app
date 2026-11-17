@@ -305,6 +305,8 @@ export interface DetailRows {
   images: Row[];
   doctors: Row[];
   revisions: Row[];
+  /** May the caller upload / replace / delete the documents of this hospital (the switch is on and the account is allowed). */
+  documentsEditable?: boolean;
 }
 
 export function buildDetail(d: DetailRows) {
@@ -347,6 +349,7 @@ export function buildDetail(d: DetailRows) {
     },
     // Presence only: the files are opened through the PHP admin, which checks the right to see them.
     documents: { business: flag(h.has_cert_business), medical: flag(h.has_cert_medical) },
+    documentsEditable: d.documentsEditable === true,
     images: d.images.map((r) => ({
       id: num(r.id), url: str(r.image_url), type: str(r.image_type), sortOrder: num(r.sort_order), isActive: flagDefaultOn(r.is_active),
     })),

@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { hospitalsDocumentsEnabled } from '../admin-auth/admin.guard';
 import { DB, Db } from '../db/db.module';
+import { canWriteDocuments } from './hospitals.documents.logic';
 import {
   buildDetail, buildStats, canSee, countQuery, detailOptionalQuery, detailQuery, doctorsQuery, emptyList, groupTreatments, HospitalDetail, HospitalList,
   imagesQuery, listQuery, ListQuery, num, Query, revisionsQuery, Scope, seesNothing, statsQuery, toListItem, TreatmentGroup, treatmentOptionsQuery,
@@ -47,7 +49,7 @@ export class HospitalsService {
   }
 
   /** null = not found, not approved, or outside the caller's scope (the three are indistinguishable on purpose). */
-  async detail(scope: Scope, id: number): Promise<HospitalDetail | null> {
+  async detail(scope: Scope, id: number, role = ''): Promise<HospitalDetail | null> {
     if (id <= 0 || seesNothing(scope) || !canSee(scope, id)) return null;
     const hospital = (await this.rows(detailQuery(scope, id)))[0];
     if (!hospital) return null;
@@ -57,6 +59,6 @@ export class HospitalsService {
       this.rows(doctorsQuery(id), true),
       num(hospital.has_unreviewed_changes) === 1 ? this.rows(revisionsQuery(id), true) : Promise.resolve([]),
     ]);
-    return buildDetail({ hospital, optional: optional[0], images, doctors, revisions });
+    return buildDetail({ hospital, optional: optional[0], images, doctors, revisions, documentsEditable: hospitalsDocumentsEnabled() && canWriteDocuments(role, scope, id) });
   }
 }

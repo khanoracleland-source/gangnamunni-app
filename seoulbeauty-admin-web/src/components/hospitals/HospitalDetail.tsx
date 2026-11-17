@@ -258,6 +258,8 @@ export default function HospitalDetail({ id }: { id: string }) {
           key={`${h.id}-${state.settled}`}
           hospital={h}
           documents={detail.documents}
+          documentsEnabled={me?.features.hospitalsDocuments === true}
+          documentsEditable={detail.documentsEditable}
           onSaved={() => {
             setFlash("saved");
             router.replace(viewHref);

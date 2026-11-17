@@ -37,9 +37,9 @@ export function GradePill({ grade, long }: { grade: AdGrade; long?: boolean }) {
 }
 
 /** One line of guidance above the content (who sees what, read-only reminder). */
-export function Notice({ icon = "info", tone = "info", children, action }: { icon?: IconName; tone?: "info" | "warn"; children: string; action?: ReactNode }) {
+export function Notice({ icon = "info", tone = "info", children, action }: { icon?: IconName; tone?: "info" | "warn" | "ok"; children: string; action?: ReactNode }) {
   return (
-    <div className={tone === "warn" ? "notice notice--warn" : "notice"} role={tone === "warn" ? "alert" : "note"}>
+    <div className={tone === "warn" ? "notice notice--warn" : tone === "ok" ? "notice notice--ok" : "notice"} role={tone === "warn" ? "alert" : "note"}>
       <Icon name={icon} size={18} />
       <p className="notice__text">{children}</p>
       {action}
@@ -75,21 +75,44 @@ export function DocumentList({ hospitalId, documents }: { hospitalId: number; do
   );
 }
 
-function DocumentRow({ name, submitted, href }: { name: string; submitted: boolean; href: string }) {
+/** What the edit page adds to a document row: its buttons, the panel under them and which row the panel belongs to. */
+export type DocumentRowEdit = { nameId: string; active: boolean; actions: ReactNode; panel: ReactNode };
+
+export function DocumentRow({ name, submitted, href, edit }: { name: string; submitted: boolean; href: string; edit?: DocumentRowEdit }) {
   const t = useT();
+  const open = submitted ? (
+    <a className={edit ? "txtbtn doc__wide" : "txtbtn"} href={href} target="_blank" rel="noopener noreferrer" aria-label={t("h.docs.openOf", { name })}>
+      <Icon name="external" size={16} />
+      <span>{t("h.docs.open")}</span>
+    </a>
+  ) : null;
+  const pill = <Pill tone={submitted ? "on" : "warn"}>{submitted ? t("h.docs.submitted") : t("h.docs.missing")}</Pill>;
+  if (!edit) {
+    return (
+      <li className="panel doc">
+        <div className="doc__text">
+          <p className="doc__name">{name}</p>
+          <p className="doc__note">{t("h.docs.required")}</p>
+        </div>
+        {pill}
+        {open}
+      </li>
+    );
+  }
   return (
-    <li className="panel doc">
-      <div className="doc__text">
-        <p className="doc__name">{name}</p>
-        <p className="doc__note">{t("h.docs.required")}</p>
+    <li className="panel doc doc--edit" data-active={edit.active ? "true" : undefined}>
+      <div className="doc__head">
+        <div className="doc__text">
+          <p className="doc__name" id={edit.nameId} tabIndex={-1}>{name}</p>
+          <p className="doc__note">{t("h.docs.required")}</p>
+        </div>
+        {pill}
       </div>
-      <Pill tone={submitted ? "on" : "warn"}>{submitted ? t("h.docs.submitted") : t("h.docs.missing")}</Pill>
-      {submitted ? (
-        <a className="txtbtn" href={href} target="_blank" rel="noopener noreferrer" aria-label={t("h.docs.openOf", { name })}>
-          <Icon name="external" size={16} />
-          <span>{t("h.docs.open")}</span>
-        </a>
-      ) : null}
+      <div className="doc__acts">
+        {open}
+        {edit.actions}
+      </div>
+      {edit.panel}
     </li>
   );
 }

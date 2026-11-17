@@ -128,6 +128,18 @@ export class HospitalsImagesEnabledGuard implements CanActivate {
   }
 }
 
+/** Uploading, replacing and deleting the submitted documents of a hospital. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
+export const hospitalsDocumentsEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_DOCUMENTS === '1';
+
+/** With the documents switch off the document routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class HospitalsDocumentsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsDocumentsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Adding doctors to a hospital. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
 export const hospitalsDoctorsEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_DOCTORS === '1';
 
