@@ -46,10 +46,10 @@ const focusField = (key: string): void => {
   document.getElementById(`f-${key}`)?.focus();
 };
 
-type CardId = "basic" | "tags" | "hours" | "loc" | "docs" | "images" | "doctors" | "treatments" | "ai";
+type CardId = "basic" | "tags" | "hours" | "loc" | "docs" | "images" | "doctors" | "treatments";
 
 /** Cards in page order, like the old panel. The first four are edited here; the rest open the old panel. */
-const CARD_IDS: readonly CardId[] = ["basic", "tags", "hours", "loc", "docs", "images", "doctors", "treatments", "ai"];
+const CARD_IDS: readonly CardId[] = ["basic", "tags", "hours", "loc", "docs", "images", "doctors", "treatments"];
 
 /** The card that holds each editable field: a card with an error must be open before the field can be focused. */
 const FIELD_CARD: Record<string, CardId> = {
@@ -73,13 +73,11 @@ const CARD_TITLE_KEYS: Record<CardId, MessageKey> = {
   images: "h.e.c.images",
   doctors: "h.e.c.doctors",
   treatments: "h.e.c.treatments",
-  ai: "h.e.c.ai",
 };
 const CARD_DESC_KEYS: Partial<Record<CardId, MessageKey>> = {
   images: "h.e.c.images.desc",
   doctors: "h.e.c.doctors.desc",
   treatments: "h.e.c.treatments.desc",
-  ai: "h.e.c.ai.desc",
 };
 const CARD_ICONS: Record<CardId, IconName> = {
   basic: "hospital",
@@ -90,7 +88,6 @@ const CARD_ICONS: Record<CardId, IconName> = {
   images: "image",
   doctors: "userPlus",
   treatments: "clipboard",
-  ai: "sparkle",
 };
 
 type Props = {
@@ -456,7 +453,6 @@ export default function HospitalEdit({ hospital, documents, documentsEnabled = f
       ) : (
         <FoldCard id="treatments" open={open.treatments} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
       )}
-      <FoldCard id="ai" open={open.ai} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
 
       <div className="editbar">
         <p className="editbar__status" role="status" aria-live="polite">
