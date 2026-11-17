@@ -1,5 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { AdminGuard, CsrfGuard, HospitalsTreatmentsEnabledGuard, HospitalsTreatmentsRemoveEnabledGuard, ScopedAdminRequest } from '../admin-auth/admin.guard';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { AdminGuard, CsrfGuard, HospitalsTreatmentsEnabledGuard, HospitalsTreatmentsPricesEnabledGuard, HospitalsTreatmentsRemoveEnabledGuard, ScopedAdminRequest } from '../admin-auth/admin.guard';
 import { parseHospitalId, Scope } from './hospitals.logic';
 import { HospitalsTreatmentsService } from './hospitals.treatments.service';
 
@@ -49,5 +49,17 @@ export class HospitalsTreatmentsRemoveController {
   @HttpCode(200)
   remove(@Req() req: ScopedAdminRequest, @Param('id') rawId: string, @Param('htId') rawHt: string) {
     return this.treatments.remove(scopeOfRequest(req), actorOf(req), parseHospitalId(rawId), parseHospitalId(rawHt));
+  }
+}
+
+/** Replacing the price options of one assignment. Guard order: prices switch (404) -> CSRF (403 csrf) -> signed in / role (401, 403); then scope (404), management rule (403) and body (400). */
+@Controller('v1/hospitals')
+@UseGuards(HospitalsTreatmentsPricesEnabledGuard, CsrfGuard, AdminGuard)
+export class HospitalsTreatmentsPricesController {
+  constructor(private readonly treatments: HospitalsTreatmentsService) {}
+
+  @Put(':id/treatments/:htId/prices')
+  save(@Req() req: ScopedAdminRequest, @Param('id') rawId: string, @Param('htId') rawHt: string, @Body() body: unknown) {
+    return this.treatments.savePrices(scopeOfRequest(req), actorOf(req), parseHospitalId(rawId), parseHospitalId(rawHt), body);
   }
 }

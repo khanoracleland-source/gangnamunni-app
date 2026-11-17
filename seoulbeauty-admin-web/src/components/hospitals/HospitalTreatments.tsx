@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Icon from "../Icon";
 import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
+import HospitalTreatmentPrices from "./HospitalTreatmentPrices";
 import { Pill } from "./parts";
 import {
   assignHospitalTreatments,
@@ -27,6 +28,7 @@ import {
   visibleAvailable,
   type TreatmentAction,
 } from "@/lib/hospitalTreatments";
+import { canEditPrices } from "@/lib/hospitalTreatmentPrices";
 import { formatNumber } from "@/lib/format";
 import { legacyTreatmentsUrl } from "@/lib/hospitals";
 import type { MessageKey } from "@/lib/i18n";
@@ -53,6 +55,8 @@ function merged(prev: HospitalTreatmentSet, next: HospitalTreatmentSet): Hospita
     canManage: next.canManage ?? prev.canManage,
     minAgeSupported: next.minAgeSupported ?? prev.minAgeSupported,
     removeEnabled: next.removeEnabled ?? prev.removeEnabled,
+    pricesEnabled: next.pricesEnabled ?? prev.pricesEnabled,
+    priceUnits: next.priceUnits ?? prev.priceUnits,
   };
 }
 
@@ -66,7 +70,7 @@ const withItems = (set: HospitalTreatmentSet, items: HospitalTreatment[]): Hospi
 /**
  * The body of the "add / manage treatments" card: the assigned treatments (promotion star, minimum age, unassign),
  * and a panel to assign more. Every action is its own request; the hospital form's own changes are never touched.
- * Prices, images and pre-visit questions stay in the old panel and are only counted here.
+ * Prices have their own window (when switched on); images and pre-visit questions stay in the old panel and are only counted here.
  */
 export default function HospitalTreatments({ hospitalId, opened, onChange, onUnauthorized }: Props) {
   const t = useT();
@@ -87,6 +91,9 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
   const [assigning, setAssigning] = useState(false);
   const [addError, setAddError] = useState<MessageKey | null>(null);
+
+  // The treatment whose prices are being edited.
+  const [priceFor, setPriceFor] = useState<HospitalTreatment | null>(null);
 
   const [confirmFor, setConfirmFor] = useState<HospitalTreatment | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -242,6 +249,15 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
     setAddError(failure(res, "assign").key);
   };
 
+  const pricesSaved = (saved: HospitalTreatment | null) => {
+    // The window closes itself (it calls onClose when its closing animation ends).
+    const id = priceFor?.id;
+    setStatus({ tone: "ok", text: t("h.e.tp.saved") });
+    if (saved && id === saved.id) {
+      setLoad((prev) => (prev && "set" in prev ? { set: withItems(prev.set, prev.set.items.map((item) => (item.id === saved.id ? saved : item))) } : prev));
+    } else void refresh();
+  };
+
   const confirmRemove = async () => {
     const item = confirmFor;
     if (!item || removing) return;
@@ -285,6 +301,7 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
 
   const canManage = set.canManage === true;
   const canRemove = canManage && set.removeEnabled === true;
+  const priceEdit = canEditPrices(set);
   const ageShown = set.minAgeSupported === true;
   const pills = categoryPills(set.available);
   const won = (n: number): string => (n > 0 ? t("h.e.tr.won", { n: formatNumber(n) }) : t("h.e.tr.price.missing"));
@@ -504,7 +521,15 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
                     {item.note ? <p className="htr__note" translate="no" title={item.note}>{notePreview(item.note)}</p> : null}
                   </div>
                 </div>
-                <div className="htr__priceblock">{prices(item)}</div>
+                <div className="htr__priceblock">
+                  {prices(item)}
+                  {priceEdit ? (
+                    <button type="button" className="btn btn--ghost htr__pedit" disabled={pending[item.id] === true} aria-label={t("h.e.tp.openerFor", { name: item.name })} onClick={() => setPriceFor(item)}>
+                      <Icon name="coin" size={16} />
+                      <span>{t("h.e.tp.opener")}</span>
+                    </button>
+                  ) : null}
+                </div>
                 <div className="htr__side">
                   {meta(item)}
                   <div className="htr__ctl">
@@ -622,12 +647,25 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
       ) : null}
 
       <div className="htr__manage">
-        <p className="field__hint">{t("h.e.tr.manageHint")}</p>
+        <p className="field__hint">{t(priceEdit ? "h.e.tr.manageHintPrices" : "h.e.tr.manageHint")}</p>
         <a className="btn btn--ghost" href={legacyTreatmentsUrl(hospitalId)}>
           <Icon name="external" size={18} />
-          <span>{t("h.e.tr.manage")}</span>
+          <span>{t(priceEdit ? "h.e.tr.managePrices" : "h.e.tr.manage")}</span>
         </a>
       </div>
+
+      {priceEdit && priceFor ? (
+        <HospitalTreatmentPrices
+          key={priceFor.id}
+          hospitalId={hospitalId}
+          item={priceFor}
+          units={set.priceUnits ?? []}
+          onSaved={pricesSaved}
+          onClose={() => setPriceFor(null)}
+          onStale={() => void refresh()}
+          onUnauthorized={() => onUnauthorizedRef.current()}
+        />
+      ) : null}
 
       <ConfirmDialog spec={confirmSpec} busy={removing} error={removeError ? t(removeError) : null} onConfirm={() => void confirmRemove()} onClose={() => setConfirmFor(null)} />
     </div>

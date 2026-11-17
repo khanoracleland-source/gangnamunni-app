@@ -17,7 +17,7 @@ export type Admin = {
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -121,6 +121,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsDoctors: obj(d.features).hospitalsDoctors === true,
         hospitalsTreatments: obj(d.features).hospitalsTreatments === true,
         hospitalsTreatmentsRemove: obj(d.features).hospitalsTreatmentsRemove === true,
+        hospitalsTreatmentsPrices: obj(d.features).hospitalsTreatmentsPrices === true,
         archive: obj(d.features).archive === true,
       },
     },
@@ -448,6 +449,9 @@ export type WriteFailure = {
   updatedAt: string;
   /** The server's error code ("invalid", "blocked", "conflict", ...); "" when it sent none. */
   error: string;
+  /** A 400 that names a row of a list (the position in the sent list) and a field of that row. */
+  index?: number;
+  field?: string;
   /** Present on a 409 "blocked" answer to a delete. */
   blockers: DeleteBlocker[];
   deletableAfter: string;
@@ -455,7 +459,7 @@ export type WriteFailure = {
 export type WriteResult<T> = { ok: true; data: T } | WriteFailure;
 
 /** Sends a change through the same-origin /api rewrite. The two headers are what the server demands of every writing request. */
-async function sendJson(method: "PATCH" | "POST" | "DELETE", path: string, body: unknown = {}): Promise<WriteResult<Json>> {
+async function sendJson(method: "PATCH" | "POST" | "PUT" | "DELETE", path: string, body: unknown = {}): Promise<WriteResult<Json>> {
   try {
     const res = await fetch(`${BASE_PATH}/api${path}`, {
       method,
@@ -480,6 +484,8 @@ async function sendJson(method: "PATCH" | "POST" | "DELETE", path: string, body:
         fields,
         updatedAt: str(d.updatedAt),
         error: str(d.error),
+        ...(typeof d.index === "number" ? { index: d.index } : {}),
+        ...(typeof d.field === "string" ? { field: d.field } : {}),
         blockers: blockers(d.blockers),
         deletableAfter: str(d.deletableAfter),
       };
@@ -662,7 +668,7 @@ export async function addHospitalDoctors(id: number, doctors: DoctorPayload[], p
 
 // ───────── Hospital treatments ─────────
 
-/** One price option of an assigned treatment, read only here. Prices are whole won; 0 means "not entered". */
+/** One price option of an assigned treatment. Prices are whole won; 0 means "not entered". */
 export type TreatmentPriceOption = {
   optionName: string;
   bodyPart: string;
@@ -706,6 +712,10 @@ export type HospitalTreatmentSet = {
   canManage?: boolean;
   minAgeSupported?: boolean;
   removeEnabled?: boolean;
+  /** The price window is switched on. */
+  pricesEnabled?: boolean;
+  /** The units the price window offers (only sent to an admin who may edit prices). */
+  priceUnits?: string[];
 };
 
 function treatmentItem(raw: unknown): HospitalTreatment {
@@ -756,6 +766,8 @@ function treatmentSet(v: unknown): HospitalTreatmentSet {
     canManage: d.canManage === undefined ? undefined : bool(d.canManage),
     minAgeSupported: d.minAgeSupported === undefined ? undefined : bool(d.minAgeSupported),
     removeEnabled: d.removeEnabled === undefined ? undefined : bool(d.removeEnabled),
+    pricesEnabled: d.pricesEnabled === undefined ? undefined : bool(d.pricesEnabled),
+    priceUnits: d.priceUnits === undefined ? undefined : list(d.priceUnits).filter((u): u is string => typeof u === "string" && u.trim() !== ""),
   };
 }
 
@@ -783,6 +795,29 @@ export async function patchHospitalTreatment(
   if (!res.ok) return res;
   const item = treatmentItem(res.data.item);
   return { ok: true, data: { item: item.id > 0 ? item : null, promotedCount: numOrNull(res.data.promotedCount) } };
+}
+
+/** One price option as the server takes it. `bodyParts` are the parts as separate names. */
+export type TreatmentPriceInput = {
+  optionName: string;
+  bodyParts: string[];
+  dosageValue: number;
+  dosageUnit: string;
+  regularPrice: number;
+  price: number;
+  isRepresentative: boolean;
+};
+
+/** Replaces all price options of one assignment. The answer carries the assignment with its new options. */
+export async function saveTreatmentPrices(
+  id: number,
+  htId: number,
+  options: TreatmentPriceInput[],
+): Promise<WriteResult<{ item: HospitalTreatment | null; count: number | null; promotedCount: number | null }>> {
+  const res = await sendJson("PUT", `${treatmentsPath(id)}/${encodeURIComponent(String(htId))}/prices`, { options });
+  if (!res.ok) return res;
+  const item = treatmentItem(res.data.item);
+  return { ok: true, data: { item: item.id > 0 ? item : null, count: numOrNull(res.data.count), promotedCount: numOrNull(res.data.promotedCount) } };
 }
 
 /** Takes one treatment off the hospital; its price options and image rows go with it. */

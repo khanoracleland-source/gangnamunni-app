@@ -164,6 +164,18 @@ export class HospitalsTreatmentsRemoveEnabledGuard implements CanActivate {
   }
 }
 
+/** Editing the price options of an assignment. Only works while the treatments switch is on; the exact value "1". */
+export const hospitalsTreatmentsPricesEnabled = (): boolean => hospitalsTreatmentsEnabled() && process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES === '1';
+
+/** With the prices switch off the price route answers 404 as if it did not exist. */
+@Injectable()
+export class HospitalsTreatmentsPricesEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsTreatmentsPricesEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 

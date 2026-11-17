@@ -1,10 +1,10 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { hospitalsTreatmentsRemoveEnabled, HOSPITAL_ROLES } from '../admin-auth/admin.guard';
+import { hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsRemoveEnabled, HOSPITAL_ROLES } from '../admin-auth/admin.guard';
 import { DB, Db, DB_RW, RwDb, RwDbProvider } from '../db/db.module';
 import { canSee, num, Query, Scope, seesNothing, str } from './hospitals.logic';
 import { lockHospitalQuery } from './hospitals.images.logic';
 import {
-  activeMasterQuery, assignedQuery, availableQuery, buildAvailable, buildItems, canManageTreatments, DEFAULT_MGMT_MODE, deleteImagesQuery, deletePriceOptionsQuery,
+  activeMasterQuery, assignedQuery, availableQuery, buildAvailable, buildItems, buildUnits, canManageTreatments, clearPriceSummaryQuery, DEFAULT_PRICE_UNITS, insertPriceQuery, parsePricesBody, sortUnits, unitsQuery, DEFAULT_MGMT_MODE, deleteImagesQuery, deletePriceOptionsQuery,
   existingAssignmentsQuery, hospitalExistsQuery, imageCountsQuery, insertAssignmentQuery, isMinAgeProblem, isMissingObject, lockAssignmentQuery, mgmtModeQuery,
   parseAssignBody, parsePatchBody, priceOptionsQuery, questionCountsQuery, reactivateQuery, removeAssignmentQuery, setMinAgeQuery, setPromotedQuery, TreatmentItem, TreatmentsView,
 } from './hospitals.treatments.logic';
@@ -87,11 +87,23 @@ export class HospitalsTreatmentsService {
 
   private async view(hospitalId: number, canManage: boolean): Promise<TreatmentsView> {
     const { items, minAgeSupported } = await this.readItems(hospitalId);
+    const pricesEnabled = hospitalsTreatmentsPricesEnabled();
     const available = canManage ? buildAvailable(await this.roRun(availableQuery(hospitalId))) : [];
     return {
       items, count: items.length, promotedCount: items.filter((i) => i.isPromoted).length,
-      canManage, minAgeSupported, removeEnabled: hospitalsTreatmentsRemoveEnabled(), available,
+      canManage, minAgeSupported, removeEnabled: hospitalsTreatmentsRemoveEnabled(),
+      pricesEnabled, priceUnits: canManage && pricesEnabled ? await this.units() : [], available,
     };
+  }
+
+  /** Units of the price form; a missing table or any read problem gives the standard list (the form must stay usable). */
+  private async units(): Promise<string[]> {
+    try {
+      return buildUnits(await this.roRun(unitsQuery()));
+    } catch (e) {
+      this.log.warn(`units unavailable, using the standard list: ${(e as { code?: string; message?: string })?.code || (e as Error)?.message}`);
+      return sortUnits(DEFAULT_PRICE_UNITS);
+    }
   }
 
   private listAnswer(v: TreatmentsView): ListAnswer {
@@ -236,5 +248,33 @@ export class HospitalsTreatmentsService {
     });
     this.log.log(`hospital treatments: admin=${actor.id} hospital=${id} remove treatment=${htId} removed=${out.removed}`);
     return { ...out, ...this.listAnswer(await this.view(id, true)) };
+  }
+  /** Replaces every price option of one assignment (delete + insert in one transaction); the answer is re-read from the read-only pool. */
+  async savePrices(scope: Scope, actor: Actor, id: number, htId: number, body: unknown): Promise<{ item: TreatmentItem; count: number; promotedCount: number }> {
+    await this.allowWrite(scope, actor, id, false);
+    const parsed = parsePricesBody(body);
+    if (!parsed.ok) throw new BadRequestException(parsed.body);
+    const options = parsed.options;
+    const columnsMissing = (e: unknown): boolean => (e as { errno?: number })?.errno === 1054 || (e as { code?: string })?.code === 'ER_BAD_FIELD_ERROR';
+    try {
+      await this.tx(async (run, exec) => {
+        const rows = htId > 0 ? await run(lockAssignmentQuery(id, htId)) : [];
+        if (rows.length === 0 || num(rows[0].is_active) !== 1) throw new NotFoundException({ error: 'not_found' });
+        await exec(deletePriceOptionsQuery(htId));
+        for (let i = 0; i < options.length; i++) await exec(insertPriceQuery(htId, options[i], i));
+        await exec(clearPriceSummaryQuery(id, htId));
+      });
+    } catch (e) {
+      if (columnsMissing(e)) {
+        this.log.warn(`price option columns missing: ${(e as Error)?.message}`);
+        throw new ServiceUnavailableException({ error: 'price_columns_unavailable' });
+      }
+      throw e;
+    }
+    this.log.log(`hospital treatments: admin=${actor.id} hospital=${id} prices treatment=${htId} options=${options.length}`);
+    const { items } = await this.readItems(id);
+    const item = items.find((i) => i.id === htId);
+    if (!item) throw new NotFoundException({ error: 'not_found' });
+    return { item, count: items.length, promotedCount: items.filter((i) => i.isPromoted).length };
   }
 }

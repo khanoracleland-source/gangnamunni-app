@@ -173,7 +173,7 @@ describe('admin API: hospital doctors (list and add)', () => {
     });
 
     it('all on -> /v1/me reports hospitalsDoctors and keeps the other flags', async () => {
-      expect((await get('/v1/me', SUPER)).body.features).toEqual({ hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: true, hospitalsTreatments: false, hospitalsTreatmentsRemove: false });
+      expect((await get('/v1/me', SUPER)).body.features).toEqual({ hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: true, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false });
       expect((await get('/v1/me', HOSPITAL)).body.features.hospitalsDoctors).toBe(true);
     });
 

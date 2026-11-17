@@ -544,9 +544,9 @@ Turning it off: `ADMIN_HOSPITALS_DOCTORS=0` + restart (the POST answers 404; the
 ## 10. Treatments of a hospital (`ADMIN_HOSPITALS_TREATMENTS`, `ADMIN_HOSPITALS_TREATMENTS_REMOVE`, optional)
 Adds `GET /v1/hospitals/:id/treatments` (assigned treatments with price options, image and question counts, and the treatments still available),
 `POST /v1/hospitals/:id/treatments` (assign up to 300 master treatments), `PATCH /v1/hospitals/:id/treatments/:htId` (promotion star and the minimum age)
-and, behind a second switch, `DELETE /v1/hospitals/:id/treatments/:htId` (release an assignment). Price options, detail images and the "before treatment"
+and, behind a second switch, `DELETE /v1/hospitals/:id/treatments/:htId` (release an assignment). Price options are edited through `PUT .../prices` behind a third switch (10.4); detail images and the "before treatment"
 questions are shown (counts, badges) but edited only in the PHP admin. Needs sections 1 and 6 (hospital pages, write user). With a switch off its routes answer 404
-and nothing below is used; `/v1/me` reports `hospitalsTreatments` and `hospitalsTreatmentsRemove`.
+and nothing below is used; `/v1/me` reports `hospitalsTreatments`, `hospitalsTreatmentsRemove` and `hospitalsTreatmentsPrices`.
 
 Who may change things (same rule as the PHP page): a super admin always; a hospital account (own hospital only) only while the setting `treatment_mgmt_mode` in the
 PHP table `settings` is `hospital_only` or `both` (missing row = `both`). Otherwise `403 {"error":"forbidden_treatments"}` and the page hides the buttons. If the setting
@@ -640,6 +640,42 @@ A DELETE needs the same `Content-Type: application/json` and `X-Requested-With: 
 Answers: `400 {"error":"no_treatments"|"invalid_treatment"|"invalid_field","field":"isPromoted"|"minAge"}`, `403` (csrf, `forbidden`, `forbidden_treatments`), `404`,
 `503 {"error":"write_unavailable"|"min_age_unavailable"}`. Each write is logged: `journalctl -u seoulbeauty-admin-api | grep 'hospital treatments'`
 (`admin=<id> hospital=<id> assign|update|remove ...`; no names). Turning it off: `ADMIN_HOSPITALS_TREATMENTS=0` (all routes 404) or only `ADMIN_HOSPITALS_TREATMENTS_REMOVE=0`, then restart.
+
+### 10.4 Price options (`ADMIN_HOSPITALS_TREATMENTS_PRICES`, optional; run as the DB admin; `<DB_NAME>` = schema from step 1)
+Adds `PUT /v1/hospitals/:id/treatments/:htId/prices` (the "가격 수정" form). Body `{"options":[{"optionName","bodyParts":[...],"dosageValue","dosageUnit","regularPrice","price","isRepresentative"}]}`
+replaces ALL price options of that assignment in one transaction: `DELETE` of its rows in `gangnamunni_hospital_treatment_prices`, one `INSERT` per option (`sort_order` 0..), then
+`UPDATE gangnamunni_hospital_treatments SET price_min=0, price_max=0, dosage_value=NULL, dosage_unit=NULL, updated_at=NOW()` for that assignment. Any error rolls everything back and the old options stay.
+Same people may use it as for the other writes (`canManage`; section 10). Rules (same as the PHP page): completely empty rows are skipped; a filled row needs a dosage > 0 (at most two decimals) and a unit (<= 20 characters);
+option name <= 100 characters; body parts joined with `||` (<= 500 characters, no `||` inside one part); prices are whole won 0..2000000000 and optional; the list price may not be below the sale price when both are above 0;
+one representative at most; no two options with the same name, body parts, dosage and unit (case-insensitive); 1..50 options. This API never runs `ALTER TABLE`: the columns `option_name`, `body_part`, `regular_price`,
+`is_representative` must already exist (the PHP admin adds them the first time its page saves a price). Without them the answer is `503 {"error":"price_columns_unavailable"}`.
+`GET /v1/hospitals/:id/treatments` then also answers `pricesEnabled` and `priceUnits` (the unit list for the form: table `gangnamunni_treatment_units`, `is_active=1`, Latin first, then Korean; table missing or unreadable = the standard list `Box, cc, IU, kj, ml, 기타, 라인, 병, 샷, 시린지, 회`).
+
+Already granted by 10.1: the read-only user's `SELECT` on the price columns, the write user's `UPDATE (price_min, price_max, dosage_value, dosage_unit, updated_at)` on `gangnamunni_hospital_treatments`.
+Already granted by 10.2: the write user's `SELECT (id, hospital_treatment_id)` and `DELETE` on `gangnamunni_hospital_treatment_prices` (10.2 is now needed for this switch as well; its `images` lines are not).
+Still missing - run these (a `GRANT` naming a missing column fails as a whole; check the columns with `SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices` first):
+```sql
+GRANT INSERT (hospital_treatment_id, option_name, body_part, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (hospital_treatment_id, option_name, body_part, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_rw'@'localhost';
+GRANT SELECT (id, name, is_active) ON <DB_NAME>.gangnamunni_treatment_units TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, name, is_active) ON <DB_NAME>.gangnamunni_treatment_units TO 'sb_admin_ro'@'localhost';
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: ..._treatment_prices has SELECT (id, hospital_treatment_id), INSERT (9 columns above) and DELETE
+```
+The dump from section 10 already covers `gangnamunni_hospital_treatment_prices`. Without the INSERT / DELETE rights the answer is `503 {"error":"write_unavailable"}` and nothing changes.
+Env (needs 10.1 and 10.2 first; leave `0` until then), then `sudo systemctl restart seoulbeauty-admin-api`:
+```
+ADMIN_HOSPITALS_TREATMENTS=1
+ADMIN_HOSPITALS_TREATMENTS_PRICES=1
+```
+`/v1/me` then reports `"hospitalsTreatmentsPrices":true`. Check with a TEST hospital (headers as in 10.3; `<ht>` = an `items[].id` of the list):
+```bash
+curl -s -X PUT $H -d '{"options":[{"optionName":"","bodyParts":["이마","미간"],"dosageValue":50,"dosageUnit":"샷","regularPrice":300000,"price":250000,"isRepresentative":true}]}' http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/prices
+# 200 {"item":{... "priceOptions":[...]},"count":N,"promotedCount":M}
+```
+Answers: `400 {"error":"no_options"|"too_many"|"invalid_field"|"price_order"|"multiple_representative"|"duplicate_option","index":<row>,"field":"optionName"|"bodyParts"|"dosageValue"|"dosageUnit"|"regularPrice"|"price"}`
+(`index` / `field` only where they apply), `403` (csrf, `forbidden`, `forbidden_treatments`), `404` (switch off, hospital out of scope, assignment not of this hospital or released),
+`503 {"error":"price_columns_unavailable"|"write_unavailable"}`. Logged as `hospital treatments: admin=<id> hospital=<id> prices treatment=<ht> options=<n>` (no names, no amounts).
+Turning it off: `ADMIN_HOSPITALS_TREATMENTS_PRICES=0`, restart (the price route answers 404; the list keeps showing the options read-only).
 
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app

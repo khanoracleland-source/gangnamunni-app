@@ -139,15 +139,15 @@ describe('admin API: hospital writes (edit, activate, review)', () => {
       process.env.ADMIN_HOSPITALS_ENABLED = '0';
       expect((await patch(12, { expectedUpdatedAt: T0, fields: { name: 'x' } })).status).toBe(404);
       const me = await request(app.getHttpServer()).get('/v1/me').set('Cookie', SUPER);
-      expect(me.body.features).toEqual({ hospitals: false, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false });
+      expect(me.body.features).toEqual({ hospitals: false, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false });
     });
 
     it('/v1/me reports hospitalsWrite', async () => {
       const on = await request(app.getHttpServer()).get('/v1/me').set('Cookie', SUPER);
-      expect(on.body.features).toEqual({ hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false });
+      expect(on.body.features).toEqual({ hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false });
       process.env.ADMIN_HOSPITALS_WRITE = '0';
       const off = await request(app.getHttpServer()).get('/v1/me').set('Cookie', SUPER);
-      expect(off.body.features).toEqual({ hospitals: true, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false });
+      expect(off.body.features).toEqual({ hospitals: true, hospitalsWrite: false, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false });
     });
   });
 

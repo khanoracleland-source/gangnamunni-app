@@ -6,14 +6,14 @@ import { HospitalsDoctorsReadController, HospitalsDoctorsWriteController } from 
 import { HospitalsDoctorsService } from './hospitals.doctors.service';
 import { HospitalsImagesReadController, HospitalsImagesWriteController } from './hospitals.images.controller';
 import { HospitalsImagesService } from './hospitals.images.service';
-import { HospitalsTreatmentsReadController, HospitalsTreatmentsRemoveController, HospitalsTreatmentsWriteController } from './hospitals.treatments.controller';
+import { HospitalsTreatmentsPricesController, HospitalsTreatmentsReadController, HospitalsTreatmentsRemoveController, HospitalsTreatmentsWriteController } from './hospitals.treatments.controller';
 import { HospitalsTreatmentsService } from './hospitals.treatments.service';
 import { HospitalsService } from './hospitals.service';
 import { HospitalsWriteController } from './hospitals.write.controller';
 import { HospitalsWriteService } from './hospitals.write.service';
 
 @Module({
-  controllers: [HospitalsController, HospitalsStatsController, HospitalsDeleteCheckController, HospitalsDeleteController, HospitalsWriteController, HospitalsImagesReadController, HospitalsImagesWriteController, HospitalsDoctorsReadController, HospitalsDoctorsWriteController, HospitalsTreatmentsReadController, HospitalsTreatmentsWriteController, HospitalsTreatmentsRemoveController],
+  controllers: [HospitalsController, HospitalsStatsController, HospitalsDeleteCheckController, HospitalsDeleteController, HospitalsWriteController, HospitalsImagesReadController, HospitalsImagesWriteController, HospitalsDoctorsReadController, HospitalsDoctorsWriteController, HospitalsTreatmentsReadController, HospitalsTreatmentsWriteController, HospitalsTreatmentsRemoveController, HospitalsTreatmentsPricesController],
   providers: [HospitalsService, HospitalsWriteService, HospitalsDeleteService, HospitalsImagesService, HospitalsDoctorsService, HospitalsTreatmentsService],
 })
 export class HospitalsModule {}

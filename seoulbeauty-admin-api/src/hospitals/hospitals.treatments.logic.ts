@@ -263,5 +263,147 @@ export interface TreatmentsView {
   canManage: boolean;
   minAgeSupported: boolean;
   removeEnabled: boolean;
+  /** state of the prices switch */
+  pricesEnabled: boolean;
+  /** units for the price form; only filled when the actor may manage and the prices switch is on */
+  priceUnits: string[];
   available: AvailableItem[];
 }
+
+// ---- price options (replace all options of one assignment) ----
+
+export const MAX_PRICE_OPTIONS = 50;
+export const MAX_OPTION_NAME = 100;
+export const MAX_BODY_PART = 100;
+export const MAX_BODY_PARTS_JOINED = 500;
+export const MAX_UNIT = 20;
+export const MAX_DOSAGE = 1_000_000;
+export const MAX_PRICE = 2_000_000_000;
+/** Body parts are stored in one column, joined with this separator. */
+export const BODY_PART_SEPARATOR = '||';
+export const DEFAULT_PRICE_UNITS = ['Box', 'cc', 'IU', 'kj', 'ml', '기타', '라인', '병', '샷', '시린지', '회'];
+
+export type PriceField = 'optionName' | 'bodyParts' | 'dosageValue' | 'dosageUnit' | 'regularPrice' | 'price';
+export type PriceErrorCode = 'no_options' | 'too_many' | 'invalid_field' | 'price_order' | 'multiple_representative' | 'duplicate_option';
+export interface PriceError {
+  error: PriceErrorCode;
+  index?: number;
+  field?: PriceField;
+}
+export interface PriceOptionInput {
+  optionName: string;
+  /** body parts joined with "||" */
+  bodyPart: string;
+  dosageValue: number;
+  dosageUnit: string;
+  regularPrice: number;
+  price: number;
+  isRepresentative: boolean;
+}
+export type PricesParsed = { ok: true; options: PriceOptionInput[] } | { ok: false; body: PriceError };
+
+const isHangul = (ch: string): boolean => {
+  const c = ch.codePointAt(0) ?? 0;
+  return (c >= 0x1100 && c <= 0x11ff) || (c >= 0x3130 && c <= 0x318f) || (c >= 0xac00 && c <= 0xd7a3);
+};
+
+/** Unit order of the PHP page: names starting with a Latin letter or digit first, Korean after; case-insensitive byte order inside a group, exact bytes break ties. */
+export function sortUnits(units: string[]): string[] {
+  const group = (u: string): number => (u === '' ? 0 : isHangul(Array.from(u)[0]) ? 1 : 0);
+  const bytes = (u: string): Buffer => Buffer.from(u, 'utf8');
+  return [...units].sort((a, b) => group(a) - group(b) || Buffer.compare(bytes(a.toLowerCase()), bytes(b.toLowerCase())) || Buffer.compare(bytes(a), bytes(b)));
+}
+
+/** Names from the units table (rows already in table order) -> the sorted list; no usable row -> the standard list. */
+export function buildUnits(rows: Row[]): string[] {
+  const names: string[] = [];
+  for (const r of rows) {
+    const n = str(r.name).trim();
+    if (n !== '' && !names.includes(n)) names.push(n);
+  }
+  return sortUnits(names.length > 0 ? names : DEFAULT_PRICE_UNITS);
+}
+
+const fail = (error: PriceErrorCode, index?: number, field?: PriceField): PricesParsed => ({
+  ok: false,
+  body: { error, ...(index !== undefined ? { index } : {}), ...(field ? { field } : {}) },
+});
+
+const blankNumber = (v: unknown): boolean => v === undefined || v === null || v === '' || v === 0;
+const blankText = (v: unknown): boolean => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
+
+/** A row with nothing filled in is skipped (the form keeps an empty row). */
+function isBlankRow(o: Record<string, unknown>): boolean {
+  const parts = o.bodyParts;
+  const noParts = parts === undefined || parts === null || (Array.isArray(parts) && parts.every((p) => blankText(p)));
+  return blankText(o.optionName) && noParts && blankNumber(o.dosageValue) && blankText(o.dosageUnit) && blankNumber(o.regularPrice) && blankNumber(o.price);
+}
+
+const wholePrice = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= MAX_PRICE ? v : null);
+
+/**
+ * { options: [...] } -> the rows to store. Rules of the PHP page: blank rows are skipped; a filled row needs a dosage > 0 and a unit; at least one option;
+ * prices are whole won (both optional); list price may not be below the sale price; one representative at most; no two options with the same name, body parts, dosage and unit.
+ * Errors carry the position in the sent list (`index`) and the field, so the form can mark the row.
+ */
+export function parsePricesBody(body: unknown): PricesParsed {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) return fail('no_options');
+  const list = (body as Record<string, unknown>).options;
+  if (!Array.isArray(list) || list.length === 0) return fail('no_options');
+  if (list.length > MAX_PRICE_OPTIONS) return fail('too_many');
+  const out: PriceOptionInput[] = [];
+  const seen = new Set<string>();
+  let representatives = 0;
+  for (let i = 0; i < list.length; i++) {
+    const o = list[i];
+    if (o === null || typeof o !== 'object' || Array.isArray(o)) return fail('invalid_field', i);
+    const r = o as Record<string, unknown>;
+    if (isBlankRow(r)) continue;
+    if (r.optionName !== undefined && r.optionName !== null && typeof r.optionName !== 'string') return fail('invalid_field', i, 'optionName');
+    const optionName = ((r.optionName as string | null | undefined) ?? '').trim();
+    if (Array.from(optionName).length > MAX_OPTION_NAME) return fail('invalid_field', i, 'optionName');
+    let parts: string[] = [];
+    if (r.bodyParts !== undefined && r.bodyParts !== null) {
+      if (!Array.isArray(r.bodyParts)) return fail('invalid_field', i, 'bodyParts');
+      for (const p of r.bodyParts) {
+        const t = typeof p === 'string' ? p.trim() : '';
+        if (t === '' || Array.from(t).length > MAX_BODY_PART || t.includes(BODY_PART_SEPARATOR)) return fail('invalid_field', i, 'bodyParts');
+        parts.push(t);
+      }
+    }
+    const bodyPart = parts.join(BODY_PART_SEPARATOR);
+    if (Array.from(bodyPart).length > MAX_BODY_PARTS_JOINED) return fail('invalid_field', i, 'bodyParts');
+    const dv = r.dosageValue;
+    if (typeof dv !== 'number' || !Number.isFinite(dv) || dv <= 0 || dv > MAX_DOSAGE || Math.abs(dv * 100 - Math.round(dv * 100)) > 1e-6) return fail('invalid_field', i, 'dosageValue');
+    const dosageValue = Math.round(dv * 100) / 100;
+    if (dosageValue <= 0) return fail('invalid_field', i, 'dosageValue');
+    const dosageUnit = typeof r.dosageUnit === 'string' ? r.dosageUnit.trim() : '';
+    if (dosageUnit === '' || Array.from(dosageUnit).length > MAX_UNIT) return fail('invalid_field', i, 'dosageUnit');
+    const regularPrice = blankNumber(r.regularPrice) ? 0 : wholePrice(r.regularPrice);
+    if (regularPrice === null) return fail('invalid_field', i, 'regularPrice');
+    const price = blankNumber(r.price) ? 0 : wholePrice(r.price);
+    if (price === null) return fail('invalid_field', i, 'price');
+    if (r.isRepresentative !== undefined && r.isRepresentative !== null && typeof r.isRepresentative !== 'boolean') return fail('invalid_field', i);
+    if (regularPrice > 0 && price > 0 && regularPrice < price) return fail('price_order', i);
+    out.push({ optionName, bodyPart, dosageValue, dosageUnit, regularPrice, price, isRepresentative: r.isRepresentative === true });
+    if (r.isRepresentative === true) representatives += 1;
+    const key = [optionName.toLowerCase(), bodyPart.toLowerCase(), dosageValue, dosageUnit.toLowerCase()].join('|');
+    if (seen.has(key)) return fail('duplicate_option', i);
+    seen.add(key);
+  }
+  if (out.length === 0) return fail('no_options');
+  if (representatives > 1) return fail('multiple_representative');
+  return { ok: true, options: out };
+}
+
+export const unitsQuery = (): Query => ({ sql: 'SELECT name FROM gangnamunni_treatment_units WHERE is_active = 1 ORDER BY id ASC', values: [] });
+export const insertPriceQuery = (htId: number, o: PriceOptionInput, sortOrder: number): Query => ({
+  sql: `INSERT INTO gangnamunni_hospital_treatment_prices (hospital_treatment_id, option_name, body_part, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  values: [htId, o.optionName, o.bodyPart, o.dosageValue, o.dosageUnit, o.regularPrice, o.price, o.isRepresentative ? 1 : 0, sortOrder],
+});
+/** The assignment's own summary columns are cleared once it has detailed price options (the PHP page does the same). */
+export const clearPriceSummaryQuery = (hospitalId: number, htId: number): Query => ({
+  sql: `UPDATE gangnamunni_hospital_treatments SET price_min = 0, price_max = 0, dosage_value = NULL, dosage_unit = NULL, updated_at = NOW() WHERE id = ? AND hospital_id = ?`,
+  values: [htId, hospitalId],
+});

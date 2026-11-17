@@ -40,6 +40,10 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
   let insertCount: number;
   let nextId: number;
   let hasRw = true;
+  let unitsRows: string[] | 'ERROR';
+  let priceColumns: boolean;
+  let failPriceInsertAt: number | null;
+  let priceInsertCount: number;
   let snapshot: { hts: Ht[]; prices: Price[]; images: Img[] } | null = null;
 
   const copy = <T>(a: T[]): T[] => a.map((x) => ({ ...x }));
@@ -142,6 +146,19 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       if (row) row.min_age = age;
       return [{ affectedRows: row ? 1 : 0 }];
     }
+    if (sql.startsWith('SELECT name FROM gangnamunni_treatment_units')) {
+      if (unitsRows === 'ERROR') throw dbError('ER_NO_SUCH_TABLE', 1146);
+      return [unitsRows.map((name) => ({ name }))];
+    }
+    if (sql.startsWith('INSERT INTO gangnamunni_hospital_treatment_prices')) {
+      if (!priceColumns) throw dbError('ER_BAD_FIELD_ERROR', 1054, "Unknown column 'regular_price' in 'field list'");
+      priceInsertCount += 1;
+      if (failPriceInsertAt === priceInsertCount) throw dbError('ER_LOCK_DEADLOCK', 1213);
+      const [htId, name, part, dv, unit, reg, price, rep] = values as [number, string, string, number, string, number, number, number];
+      prices.push({ hospital_treatment_id: htId, option_name: name, body_part: part, dosage_value: dv, dosage_unit: unit, regular_price: reg, price, is_representative: rep });
+      return [{ insertId: 1, affectedRows: 1 }];
+    }
+    if (sql.startsWith('UPDATE gangnamunni_hospital_treatments SET price_min = 0, price_max = 0, dosage_value = NULL')) return [{ affectedRows: 1 }];
     throw new Error(`unexpected sql: ${sql}`);
   };
   const roStub = { query: jest.fn(async (sql: string, values: unknown[] = []) => { roCalls.push({ sql, values }); return handler(sql, values); }) };
@@ -184,6 +201,8 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
     process.env.ADMIN_HOSPITALS_WRITE = '1';
     process.env.ADMIN_HOSPITALS_TREATMENTS = '1';
     process.env.ADMIN_HOSPITALS_TREATMENTS_REMOVE = '1';
+    delete process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES;
+    unitsRows = ['회', 'ml', 'IU', 'Box']; priceColumns = true; failPriceInsertAt = null; priceInsertCount = 0;
     phpCalls.length = 0; roCalls.length = 0; rwCalls.length = 0; txEvents.length = 0;
     hospitals = { 12: { status: 'approved' }, 13: { status: 'approved' }, 14: { status: 'pending' } };
     categories = [{ id: 1, name: '주사', sort_order: 1 }, { id: 2, name: '레이저', sort_order: 2 }];
@@ -216,7 +235,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
   });
   afterAll(() => {
     global.fetch = realFetch;
-    for (const k of ['ADMIN_PANEL_ENABLED', 'ADMIN_HOSPITALS_ENABLED', 'ADMIN_HOSPITALS_WRITE', 'ADMIN_HOSPITALS_TREATMENTS', 'ADMIN_HOSPITALS_TREATMENTS_REMOVE']) delete process.env[k];
+    for (const k of ['ADMIN_PANEL_ENABLED', 'ADMIN_HOSPITALS_ENABLED', 'ADMIN_HOSPITALS_WRITE', 'ADMIN_HOSPITALS_TREATMENTS', 'ADMIN_HOSPITALS_TREATMENTS_REMOVE', 'ADMIN_HOSPITALS_TREATMENTS_PRICES']) delete process.env[k];
   });
 
   const get = (p: string, cookie?: string) => { let r = request(app.getHttpServer()).get(p); if (cookie) r = r.set('Cookie', cookie); return r; };
@@ -268,16 +287,16 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       expect(writes()).toHaveLength(0);
       expect((await get('/v1/hospitals/12/treatments', SUPER)).body.removeEnabled).toBe(false);
       expect((await patch(12, 101, { isPromoted: true })).status).toBe(200);
-      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatments: true, hospitalsTreatmentsRemove: false });
+      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatments: true, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false });
       process.env.ADMIN_HOSPITALS_TREATMENTS_REMOVE = '1';
       process.env.ADMIN_HOSPITALS_TREATMENTS = '0';
-      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatments: false, hospitalsTreatmentsRemove: false });
+      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false });
       expect((await del(12, 101)).status).toBe(404);
     });
 
     it('all on -> /v1/me reports both flags and keeps the others', async () => {
       expect((await get('/v1/me', SUPER)).body.features).toEqual({
-        hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: true, hospitalsTreatmentsRemove: true,
+        hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: true, hospitalsTreatmentsRemove: true, hospitalsTreatmentsPrices: false,
       });
     });
 
@@ -319,7 +338,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       expect(r.body).toMatchObject({ count: 2, promotedCount: 1, canManage: true, minAgeSupported: true, removeEnabled: true });
       // 11 was removed (is_active=0) so it is available again; 30 is inactive in the master
       expect(r.body.available).toEqual([{ id: 11, name: '필러', hashtag: '#필러', categoryId: 1, categoryName: '주사' }]);
-      expect(Object.keys(r.body).sort()).toEqual(['available', 'canManage', 'count', 'items', 'minAgeSupported', 'promotedCount', 'removeEnabled']);
+      expect(Object.keys(r.body).sort()).toEqual(['available', 'canManage', 'count', 'items', 'minAgeSupported', 'priceUnits', 'pricesEnabled', 'promotedCount', 'removeEnabled']);
     });
 
     it('writes nothing and uses only SELECT with parameters', async () => {
@@ -635,6 +654,154 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       mode = 'hospital_only';
       expect((await del(13, 200, HOSPITAL)).status).toBe(404);
       expect((await del(12, 101, HOSPITAL)).status).toBe(200);
+    });
+  });
+
+  describe('price options: PUT /v1/hospitals/:id/treatments/:htId/prices', () => {
+    const put = (id: number | string, ht: number | string, body: unknown, cookie: string | undefined = SUPER, headers: Record<string, string> = JSON_HDR) => {
+      let r = request(app.getHttpServer()).put(`/v1/hospitals/${id}/treatments/${ht}/prices`);
+      if (cookie) r = r.set('Cookie', cookie);
+      for (const [k, v] of Object.entries(headers)) r = r.set(k, v);
+      return r.send(JSON.stringify(body));
+    };
+    const opt = (o: Record<string, unknown> = {}) => ({ optionName: '', bodyParts: [], dosageValue: 1, dosageUnit: '회', regularPrice: 0, price: 0, isRepresentative: false, ...o });
+    beforeEach(() => { process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES = '1'; });
+
+    it.each([undefined, '0', 'true', ''])('ADMIN_HOSPITALS_TREATMENTS_PRICES=%p -> 404, nothing asked, flag false', async (v) => {
+      if (v === undefined) delete process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES; else process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES = v;
+      const r = await put(12, 101, { options: [opt()] });
+      expect(r.status).toBe(404);
+      expect(r.body).toEqual({ error: 'not_found' });
+      expect(rwCalls).toHaveLength(0);
+      expect(roCalls).toHaveLength(0);
+      expect((await get('/v1/me', SUPER)).body.features.hospitalsTreatmentsPrices).toBe(false);
+      const list = await get('/v1/hospitals/12/treatments', SUPER);
+      expect(list.body).toMatchObject({ pricesEnabled: false, priceUnits: [] });
+      expect(roCalls.some((c) => c.sql.includes('gangnamunni_treatment_units'))).toBe(false);
+    });
+
+    it('PRICES without TREATMENTS stays off', async () => {
+      process.env.ADMIN_HOSPITALS_TREATMENTS = '0';
+      expect((await put(12, 101, { options: [opt()] })).status).toBe(404);
+      expect((await get('/v1/me', SUPER)).body.features.hospitalsTreatmentsPrices).toBe(false);
+    });
+
+    it('/v1/me reports the flag; GET adds pricesEnabled and the units in PHP order (Latin first, then Korean)', async () => {
+      expect((await get('/v1/me', SUPER)).body.features.hospitalsTreatmentsPrices).toBe(true);
+      const r = await get('/v1/hospitals/12/treatments', SUPER);
+      expect(r.body.pricesEnabled).toBe(true);
+      expect(r.body.priceUnits).toEqual(['Box', 'IU', 'ml', '회']);
+      expect(r.body.items[0].priceOptions[0]).toEqual({ optionName: '', bodyPart: '이마', dosageValue: '50', dosageUnit: '유닛', regularPrice: 100000, price: 80000, isRepresentative: true });
+    });
+
+    it('units table missing or empty -> the standard list, no 500', async () => {
+      unitsRows = 'ERROR';
+      expect((await get('/v1/hospitals/12/treatments', SUPER)).body.priceUnits).toEqual(['Box', 'cc', 'IU', 'kj', 'ml', '기타', '라인', '병', '샷', '시린지', '회']);
+      unitsRows = [];
+      expect((await get('/v1/hospitals/12/treatments', SUPER)).body.priceUnits).toHaveLength(11);
+    });
+
+    it('a hospital account that may not manage gets no units; PUT -> 403 forbidden_treatments, nothing written', async () => {
+      mode = 'admin_only';
+      const l = await get('/v1/hospitals/12/treatments', HOSPITAL);
+      expect(l.body).toMatchObject({ canManage: false, pricesEnabled: true, priceUnits: [] });
+      const r = await put(12, 100, { options: [opt()] }, HOSPITAL);
+      expect(r.status).toBe(403);
+      expect(r.body).toEqual({ error: 'forbidden_treatments' });
+      expect(writes()).toHaveLength(0);
+    });
+
+    it('guards: csrf 403, not signed in 401, other hospital 404, foreign / unknown / inactive / malformed treatment 404', async () => {
+      expect((await put(12, 101, { options: [opt()] }, SUPER, {})).body).toEqual({ error: 'csrf' });
+      expect((await put(12, 101, { options: [opt()] }, 'PHPSESSID=nobody')).status).toBe(401);
+      expect((await put(13, 200, { options: [opt()] }, HOSPITAL)).status).toBe(404);
+      expect((await put(12, 200, { options: [opt()] })).status).toBe(404);
+      expect((await put(12, 999, { options: [opt()] })).status).toBe(404);
+      expect((await put(12, 102, { options: [opt()] })).status).toBe(404);
+      expect((await put(12, 'abc', { options: [opt()] })).status).toBe(404);
+      expect(writes()).toHaveLength(0);
+      expect(prices).toHaveLength(2);
+    });
+
+    it('replaces all options: delete, inserts with sort_order 0.., summary columns cleared, one transaction, answer re-read', async () => {
+      const r = await put(12, 101, { options: [
+        opt({ optionName: ' 주름 100샷 ', bodyParts: ['이마', '미간'], dosageValue: 100, dosageUnit: '샷', regularPrice: 300000, price: 250000, isRepresentative: true }),
+        opt({ dosageValue: 1.5, dosageUnit: 'cc' }),
+        {},
+      ] });
+      expect(r.status).toBe(200);
+      expect(Object.keys(r.body).sort()).toEqual(['count', 'item', 'promotedCount']);
+      expect(r.body.item.priceOptions).toEqual([
+        { optionName: '주름 100샷', bodyPart: '이마||미간', dosageValue: '100', dosageUnit: '샷', regularPrice: 300000, price: 250000, isRepresentative: true },
+        { optionName: '', bodyPart: '', dosageValue: '1.5', dosageUnit: 'cc', regularPrice: 0, price: 0, isRepresentative: false },
+      ]);
+      expect(r.body.count).toBe(2);
+      expect(r.body.promotedCount).toBe(1);
+      expect(txEvents).toEqual(['BEGIN', 'COMMIT', 'RELEASE']);
+      const heads = rwCalls.map((c) => c.sql.split(' ').slice(0, 3).join(' '));
+      expect(heads.indexOf('DELETE FROM gangnamunni_hospital_treatment_prices')).toBeLessThan(heads.indexOf('INSERT INTO gangnamunni_hospital_treatment_prices'));
+      const ins = rwCalls.filter((c) => c.sql.startsWith('INSERT INTO gangnamunni_hospital_treatment_prices'));
+      expect(ins.map((c) => c.values)).toEqual([[101, '주름 100샷', '이마||미간', 100, '샷', 300000, 250000, 1, 0], [101, '', '', 1.5, 'cc', 0, 0, 0, 1]]);
+      const last = rwCalls[rwCalls.length - 1];
+      expect(last.sql).toMatch(/^UPDATE gangnamunni_hospital_treatments SET price_min = 0, price_max = 0, dosage_value = NULL, dosage_unit = NULL/);
+      expect(last.values).toEqual([101, 12]);
+      for (const c of rwCalls) expect(c.sql).not.toMatch(/ALTER|CREATE/i);
+      expect(prices.filter((p) => p.hospital_treatment_id === 100)).toHaveLength(1);
+    });
+
+    it('a hospital account may edit its own prices when the setting allows it', async () => {
+      mode = 'hospital_only';
+      expect((await put(12, 100, { options: [opt({ dosageUnit: '병' })] }, HOSPITAL)).status).toBe(200);
+      expect(prices.filter((p) => p.hospital_treatment_id === 100).map((p) => p.dosage_unit)).toEqual(['병']);
+    });
+
+    it.each([
+      ['an empty body', {}, { error: 'no_options' }],
+      ['an empty list', { options: [] }, { error: 'no_options' }],
+      ['only blank rows', { options: [{}, { optionName: ' ' }] }, { error: 'no_options' }],
+      ['a missing dosage', { options: [opt({ optionName: 'x', dosageValue: 0 })] }, { error: 'invalid_field', index: 0, field: 'dosageValue' }],
+      ['a missing unit', { options: [opt({ dosageUnit: ' ' })] }, { error: 'invalid_field', index: 0, field: 'dosageUnit' }],
+      ['a wrong price order', { options: [opt(), opt({ dosageValue: 2, regularPrice: 1000, price: 2000 })] }, { error: 'price_order', index: 1 }],
+      ['two representatives', { options: [opt({ isRepresentative: true }), opt({ dosageValue: 2, isRepresentative: true })] }, { error: 'multiple_representative' }],
+      ['a duplicate (case-insensitive)', { options: [opt({ optionName: 'A', dosageUnit: 'CC' }), opt({ dosageValue: 1.0, optionName: 'a', dosageUnit: 'cc' })] }, { error: 'duplicate_option', index: 1 }],
+      ['too many options', { options: Array.from({ length: 51 }, (_, i) => opt({ dosageValue: i + 1 })) }, { error: 'too_many' }],
+    ])('400 for %s, nothing written', async (_n, body, expected) => {
+      const r = await put(12, 101, body);
+      expect(r.status).toBe(400);
+      expect(r.body).toEqual(expected);
+      expect(writes()).toHaveLength(0);
+      expect(prices).toHaveLength(2);
+    });
+
+    it('a deadlock halfway rolls everything back and keeps the old options', async () => {
+      failPriceInsertAt = 2;
+      const r = await put(12, 101, { options: [opt(), opt({ dosageValue: 2 })] });
+      expect(r.status).toBe(500);
+      expect(txEvents).toEqual(['BEGIN', 'ROLLBACK', 'RELEASE']);
+      expect(prices.filter((p) => p.hospital_treatment_id === 101).map((p) => p.body_part)).toEqual(['이마']);
+    });
+
+    it('missing price columns -> 503 price_columns_unavailable (rolled back); missing right / no write pool -> 503 write_unavailable', async () => {
+      priceColumns = false;
+      const a = await put(12, 101, { options: [opt()] });
+      expect(a.status).toBe(503);
+      expect(a.body).toEqual({ error: 'price_columns_unavailable' });
+      expect(txEvents).toEqual(['BEGIN', 'ROLLBACK', 'RELEASE']);
+      expect(prices.filter((p) => p.hospital_treatment_id === 101)).toHaveLength(1);
+      priceColumns = true;
+      const restore = failRw('INSERT INTO gangnamunni_hospital_treatment_prices', dbError('ER_TABLEACCESS_DENIED_ERROR', 1142));
+      const b = await put(12, 101, { options: [opt()] });
+      expect(b.status).toBe(503);
+      expect(b.body).toEqual({ error: 'write_unavailable' });
+      restore();
+      hasRw = false;
+      expect((await put(12, 101, { options: [opt()] })).body).toEqual({ error: 'write_unavailable' });
+    });
+
+    it('GET writes nothing with the prices switch on', async () => {
+      await get('/v1/hospitals/12/treatments', SUPER);
+      expect(rwCalls).toHaveLength(0);
+      for (const c of roCalls) expect(c.sql).toMatch(/^SELECT/);
     });
   });
 });
