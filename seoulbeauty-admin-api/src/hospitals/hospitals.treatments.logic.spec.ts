@@ -1,6 +1,6 @@
 import {
   availableQuery, buildItems, buildUnits, canManageTreatments, clearPriceSummaryQuery, DEFAULT_PRICE_UNITS, formatDosage, imageCountsQuery, insertPriceQuery, parseAssignBody,
-  parsePatchBody, parsePricesBody, priceOptionsQuery, sortUnits, TREATMENT_ASSIGN_LIMIT, unitsQuery,
+  parsePatchBody, parsePricesBody, parseQuestionsBody, normalizeQuestion, attachQuestions, deleteQuestionsQuery, insertQuestionQuery, questionTextsQuery, MAX_QUESTIONS, MAX_QUESTION_LENGTH, priceOptionsQuery, sortUnits, TREATMENT_ASSIGN_LIMIT, unitsQuery,
 } from './hospitals.treatments.logic';
 
 describe('hospital treatments: pure rules', () => {
@@ -200,6 +200,45 @@ describe('hospital treatments: pure rules', () => {
       expect(q.sql.match(/\?/g)).toHaveLength(9);
       expect(q.values).toEqual([7, evil, '이마', 2.5, '샷', 10, 5, 1, 3]);
       expect(clearPriceSummaryQuery(12, 7)).toEqual({ sql: expect.stringContaining('WHERE id = ? AND hospital_id = ?'), values: [7, 12] });
+    });
+  });
+  describe('questions: normalization and limits', () => {
+    it('normalizeQuestion trims and collapses all white space', () => {
+      expect(normalizeQuestion('  a \t\n b\u00a0\u3000c  ')).toBe('a b c');
+      expect(normalizeQuestion(' \n ')).toBe('');
+    });
+    it('empty and blank ones are skipped, exact repeats dropped, order kept', () => {
+      expect(parseQuestionsBody({ questions: [' b ', '', 'a', 'b', 'a  ', 'A'] })).toEqual({ ok: true, questions: ['b', 'a', 'A'] });
+      expect(parseQuestionsBody({ questions: [] })).toEqual({ ok: true, questions: [] });
+    });
+    it('the 200 limit counts code points after normalization', () => {
+      expect(MAX_QUESTION_LENGTH).toBe(200);
+      expect(parseQuestionsBody({ questions: ['😀'.repeat(200)] }).ok).toBe(true);
+      expect(parseQuestionsBody({ questions: ['😀'.repeat(201)] })).toEqual({ ok: false, body: { error: 'too_long', index: 0 } });
+      // 100 + 3 spaces collapsed to 1 + 100 = 201 would fail; with the spaces collapsed it is 200 and passes
+      expect(parseQuestionsBody({ questions: ['a'.repeat(100) + '   ' + 'b'.repeat(99)] }).ok).toBe(true);
+      expect(parseQuestionsBody({ questions: ['a'.repeat(100) + '   ' + 'b'.repeat(100)] })).toEqual({ ok: false, body: { error: 'too_long', index: 0 } });
+    });
+    it('the 10 limit counts distinct non-empty questions', () => {
+      expect(MAX_QUESTIONS).toBe(10);
+      const ten = Array.from({ length: 10 }, (_, i) => `q${i}`);
+      expect(parseQuestionsBody({ questions: [...ten, '', 'q3'] }).ok).toBe(true);
+      expect(parseQuestionsBody({ questions: [...ten, 'q10'] })).toEqual({ ok: false, body: { error: 'too_many' } });
+    });
+    it('shape errors', () => {
+      for (const b of [null, undefined, [], 'x', {}, { questions: {} }, { questions: 'a' }]) expect(parseQuestionsBody(b)).toEqual({ ok: false, body: { error: 'invalid_body' } });
+      expect(parseQuestionsBody({ questions: ['a', 1] })).toEqual({ ok: false, body: { error: 'invalid_field', index: 1 } });
+    });
+    it('statements use parameters only; attachQuestions keeps row order and gives [] to items without rows', () => {
+      const evil = "x'; DROP TABLE a;--";
+      expect(insertQuestionQuery(7, evil, 2)).toEqual({ sql: 'INSERT INTO gangnamunni_treatment_questions (hospital_treatment_id, question, sort_order) VALUES (?, ?, ?)', values: [7, evil, 2] });
+      expect(deleteQuestionsQuery(7)).toEqual({ sql: 'DELETE FROM gangnamunni_treatment_questions WHERE hospital_treatment_id = ?', values: [7] });
+      const q = questionTextsQuery([1, 2]);
+      expect(q.sql).toContain('ORDER BY sort_order ASC, id ASC');
+      expect(q.sql.match(/\?/g)).toHaveLength(2);
+      const items = buildItems({ rows: [{ id: 1 }, { id: 2 }], prices: [], images: [], questions: [] });
+      const out = attachQuestions(items, [{ hospital_treatment_id: 1, question: 'x' }, { hospital_treatment_id: 1, question: 'y' }]);
+      expect(out.map((i) => i.questions)).toEqual([['x', 'y'], []]);
     });
   });
 });

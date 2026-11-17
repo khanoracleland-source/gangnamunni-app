@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import Icon from "../Icon";
 import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
 import HospitalTreatmentPrices from "./HospitalTreatmentPrices";
+import HospitalTreatmentQuestions from "./HospitalTreatmentQuestions";
 import { Pill } from "./parts";
 import {
   assignHospitalTreatments,
@@ -29,6 +30,7 @@ import {
   type TreatmentAction,
 } from "@/lib/hospitalTreatments";
 import { canEditPrices } from "@/lib/hospitalTreatmentPrices";
+import { canEditQuestions } from "@/lib/hospitalTreatmentQuestions";
 import { formatNumber } from "@/lib/format";
 import { legacyTreatmentsUrl } from "@/lib/hospitals";
 import type { MessageKey } from "@/lib/i18n";
@@ -57,6 +59,7 @@ function merged(prev: HospitalTreatmentSet, next: HospitalTreatmentSet): Hospita
     removeEnabled: next.removeEnabled ?? prev.removeEnabled,
     pricesEnabled: next.pricesEnabled ?? prev.pricesEnabled,
     priceUnits: next.priceUnits ?? prev.priceUnits,
+    questionsEnabled: next.questionsEnabled ?? prev.questionsEnabled,
   };
 }
 
@@ -70,7 +73,7 @@ const withItems = (set: HospitalTreatmentSet, items: HospitalTreatment[]): Hospi
 /**
  * The body of the "add / manage treatments" card: the assigned treatments (promotion star, minimum age, unassign),
  * and a panel to assign more. Every action is its own request; the hospital form's own changes are never touched.
- * Prices have their own window (when switched on); images and pre-visit questions stay in the old panel and are only counted here.
+ * Prices and pre-treatment questions have their own windows (when switched on); images stay in the old panel and are only counted here.
  */
 export default function HospitalTreatments({ hospitalId, opened, onChange, onUnauthorized }: Props) {
   const t = useT();
@@ -94,6 +97,8 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
 
   // The treatment whose prices are being edited.
   const [priceFor, setPriceFor] = useState<HospitalTreatment | null>(null);
+  // The treatment whose pre-treatment questions are being edited.
+  const [questionFor, setQuestionFor] = useState<HospitalTreatment | null>(null);
 
   const [confirmFor, setConfirmFor] = useState<HospitalTreatment | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -254,6 +259,16 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
     const id = priceFor?.id;
     setStatus({ tone: "ok", text: t("h.e.tp.saved") });
     if (saved && id === saved.id) {
+      // An answer without the question texts must not wipe the ones the row already has.
+      setLoad((prev) => (prev && "set" in prev ? { set: withItems(prev.set, prev.set.items.map((item) => (item.id === saved.id ? { ...saved, questions: saved.questions ?? item.questions } : item))) } : prev));
+    } else void refresh();
+  };
+
+  const questionsSaved = (saved: HospitalTreatment | null, saveCount: number) => {
+    // The window closes itself (it calls onClose when its closing animation ends).
+    const id = questionFor?.id;
+    setStatus({ tone: "ok", text: saveCount > 0 ? t("h.e.tq.saved", { n: saveCount }) : t("h.e.tq.cleared") });
+    if (saved && id === saved.id) {
       setLoad((prev) => (prev && "set" in prev ? { set: withItems(prev.set, prev.set.items.map((item) => (item.id === saved.id ? saved : item))) } : prev));
     } else void refresh();
   };
@@ -302,6 +317,7 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
   const canManage = set.canManage === true;
   const canRemove = canManage && set.removeEnabled === true;
   const priceEdit = canEditPrices(set);
+  const questionEdit = canEditQuestions(set);
   const ageShown = set.minAgeSupported === true;
   const pills = categoryPills(set.available);
   const won = (n: number): string => (n > 0 ? t("h.e.tr.won", { n: formatNumber(n) }) : t("h.e.tr.price.missing"));
@@ -404,11 +420,30 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
         {t("h.e.tr.img.count", { n: item.imageCount })}
         {item.pendingImageCount > 0 ? <span className="htr__review">{t("h.e.tr.img.pending", { n: item.pendingImageCount })}</span> : null}
       </span>
-      <span className="htr__chip" title={t("h.e.tr.col.q")}>
-        <Icon name="help" size={14} />
-        <span className="sr-only">{t("h.e.tr.col.q")}: </span>
-        {t("h.e.tr.q.count", { n: item.questionCount })}
-      </span>
+      {questionEdit && item.questions !== undefined ? (
+        <button
+          type="button"
+          className={item.questionCount > 0 ? "htr__chip htr__chip--btn htr__chip--qon" : "htr__chip htr__chip--btn htr__chip--qadd"}
+          disabled={pending[item.id] === true}
+          aria-label={t("h.e.tq.chip.aria", { name: item.name, n: item.questionCount })}
+          onClick={() => setQuestionFor(item)}
+        >
+          {item.questionCount > 0 ? (
+            <Icon name="help" size={14} />
+          ) : (
+            <svg className="icon" width={12} height={12} viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          )}
+          {item.questionCount > 0 ? t("h.e.tq.chip.n", { n: item.questionCount }) : t("h.e.tq.chip.add")}
+        </button>
+      ) : (
+        <span className="htr__chip" title={t("h.e.tr.col.q")}>
+          <Icon name="help" size={14} />
+          <span className="sr-only">{t("h.e.tr.col.q")}: </span>
+          {t("h.e.tr.q.count", { n: item.questionCount })}
+        </span>
+      )}
     </div>
   );
 
@@ -662,6 +697,18 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, onUna
           units={set.priceUnits ?? []}
           onSaved={pricesSaved}
           onClose={() => setPriceFor(null)}
+          onStale={() => void refresh()}
+          onUnauthorized={() => onUnauthorizedRef.current()}
+        />
+      ) : null}
+
+      {questionEdit && questionFor ? (
+        <HospitalTreatmentQuestions
+          key={questionFor.id}
+          hospitalId={hospitalId}
+          item={questionFor}
+          onSaved={questionsSaved}
+          onClose={() => setQuestionFor(null)}
           onStale={() => void refresh()}
           onUnauthorized={() => onUnauthorizedRef.current()}
         />

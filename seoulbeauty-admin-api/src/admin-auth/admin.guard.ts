@@ -176,6 +176,18 @@ export class HospitalsTreatmentsPricesEnabledGuard implements CanActivate {
   }
 }
 
+/** Editing the "before treatment" questions of an assignment. Only works while the treatments switch is on; the exact value "1". */
+export const hospitalsTreatmentsQuestionsEnabled = (): boolean => hospitalsTreatmentsEnabled() && process.env.ADMIN_HOSPITALS_TREATMENTS_QUESTIONS === '1';
+
+/** With the questions switch off the questions route answers 404 as if it did not exist. */
+@Injectable()
+export class HospitalsTreatmentsQuestionsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsTreatmentsQuestionsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 

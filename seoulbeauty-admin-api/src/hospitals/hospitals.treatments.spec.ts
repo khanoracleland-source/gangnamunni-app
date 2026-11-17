@@ -30,7 +30,11 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
   let hts: Ht[];
   let prices: Price[];
   let images: Img[];
-  let questions: { hospital_treatment_id: number }[];
+  let questions: { hospital_treatment_id: number; question: string }[];
+  let questionTextsReadable: boolean;
+  let failQuestionInsertAt: number | null;
+  let questionInsertCount: number;
+  let questionsWriteTable: boolean;
   let mode: string | null | 'ERROR';
   let minAgeColumn: boolean;
   let pricesTable: boolean;
@@ -44,7 +48,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
   let priceColumns: boolean;
   let failPriceInsertAt: number | null;
   let priceInsertCount: number;
-  let snapshot: { hts: Ht[]; prices: Price[]; images: Img[] } | null = null;
+  let snapshot: { hts: Ht[]; prices: Price[]; images: Img[]; questions: { hospital_treatment_id: number; question: string }[] } | null = null;
 
   const copy = <T>(a: T[]): T[] => a.map((x) => ({ ...x }));
   const cat = (id: number | null) => categories.find((c) => c.id === id);
@@ -83,7 +87,25 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       });
       return [out];
     }
-    if (sql.includes('FROM gangnamunni_treatment_questions WHERE hospital_treatment_id IN')) {
+    if (sql.startsWith('SELECT hospital_treatment_id, question FROM gangnamunni_treatment_questions')) {
+      if (!questionTextsReadable) throw dbError('ER_COLUMNACCESS_DENIED_ERROR', 1143);
+      return [questions.filter((q) => inValues(values).includes(q.hospital_treatment_id))];
+    }
+    if (sql.startsWith('DELETE FROM gangnamunni_treatment_questions')) {
+      if (!questionsWriteTable) throw dbError('ER_NO_SUCH_TABLE', 1146);
+      const n = questions.filter((q) => q.hospital_treatment_id === values[0]).length;
+      questions = questions.filter((q) => q.hospital_treatment_id !== values[0]);
+      return [{ affectedRows: n }];
+    }
+    if (sql.startsWith('INSERT INTO gangnamunni_treatment_questions')) {
+      if (!questionsWriteTable) throw dbError('ER_NO_SUCH_TABLE', 1146);
+      questionInsertCount += 1;
+      if (failQuestionInsertAt === questionInsertCount) throw dbError('ER_LOCK_DEADLOCK', 1213);
+      const [htId, question] = values as [number, string];
+      questions.push({ hospital_treatment_id: htId, question });
+      return [{ insertId: 1, affectedRows: 1 }];
+    }
+    if (sql.startsWith('SELECT hospital_treatment_id, COUNT(*) AS cnt FROM gangnamunni_treatment_questions')) {
       if (!questionsTable) throw dbError('ER_NO_SUCH_TABLE', 1146);
       return [inValues(values).filter((id) => questions.some((q) => q.hospital_treatment_id === id)).map((id) => ({ hospital_treatment_id: id, cnt: questions.filter((q) => q.hospital_treatment_id === id).length }))];
     }
@@ -167,9 +189,9 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       query: jest.fn(),
       getConnection: async () => ({
         query: async (sql: string, values: unknown[] = []) => { rwCalls.push({ sql, values }); return handler(sql, values); },
-        beginTransaction: async () => { txEvents.push('BEGIN'); snapshot = { hts: copy(hts), prices: copy(prices), images: copy(images) }; },
+        beginTransaction: async () => { txEvents.push('BEGIN'); snapshot = { hts: copy(hts), prices: copy(prices), images: copy(images), questions: copy(questions) }; },
         commit: async () => { txEvents.push('COMMIT'); snapshot = null; },
-        rollback: async () => { txEvents.push('ROLLBACK'); if (snapshot) ({ hts, prices, images } = snapshot); snapshot = null; },
+        rollback: async () => { txEvents.push('ROLLBACK'); if (snapshot) ({ hts, prices, images, questions } = snapshot); snapshot = null; },
         release: () => { txEvents.push('RELEASE'); },
       }),
     }),
@@ -202,6 +224,8 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
     process.env.ADMIN_HOSPITALS_TREATMENTS = '1';
     process.env.ADMIN_HOSPITALS_TREATMENTS_REMOVE = '1';
     delete process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES;
+    delete process.env.ADMIN_HOSPITALS_TREATMENTS_QUESTIONS;
+    questionTextsReadable = true; failQuestionInsertAt = null; questionInsertCount = 0; questionsWriteTable = true;
     unitsRows = ['회', 'ml', 'IU', 'Box']; priceColumns = true; failPriceInsertAt = null; priceInsertCount = 0;
     phpCalls.length = 0; roCalls.length = 0; rwCalls.length = 0; txEvents.length = 0;
     hospitals = { 12: { status: 'approved' }, 13: { status: 'approved' }, 14: { status: 'pending' } };
@@ -223,7 +247,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       { hospital_treatment_id: 100, option_name: '', body_part: '', dosage_value: 1, dosage_unit: '회', regular_price: 50000, price: 50000, is_representative: 0 },
     ];
     images = [{ hospital_treatment_id: 101, approval_status: 'approved' }, { hospital_treatment_id: 101, approval_status: 'pending' }];
-    questions = [{ hospital_treatment_id: 100 }, { hospital_treatment_id: 100 }];
+    questions = [{ hospital_treatment_id: 100, question: '임신 중이세요?' }, { hospital_treatment_id: 100, question: '알레르기가 있나요?' }];
     mode = null;
     minAgeColumn = true; pricesTable = true; imagesTable = true; questionsTable = true;
     failInsertAt = null; insertCount = 0; nextId = 900; hasRw = true; snapshot = null;
@@ -235,7 +259,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
   });
   afterAll(() => {
     global.fetch = realFetch;
-    for (const k of ['ADMIN_PANEL_ENABLED', 'ADMIN_HOSPITALS_ENABLED', 'ADMIN_HOSPITALS_WRITE', 'ADMIN_HOSPITALS_TREATMENTS', 'ADMIN_HOSPITALS_TREATMENTS_REMOVE', 'ADMIN_HOSPITALS_TREATMENTS_PRICES']) delete process.env[k];
+    for (const k of ['ADMIN_PANEL_ENABLED', 'ADMIN_HOSPITALS_ENABLED', 'ADMIN_HOSPITALS_WRITE', 'ADMIN_HOSPITALS_TREATMENTS', 'ADMIN_HOSPITALS_TREATMENTS_REMOVE', 'ADMIN_HOSPITALS_TREATMENTS_PRICES', 'ADMIN_HOSPITALS_TREATMENTS_QUESTIONS']) delete process.env[k];
   });
 
   const get = (p: string, cookie?: string) => { let r = request(app.getHttpServer()).get(p); if (cookie) r = r.set('Cookie', cookie); return r; };
@@ -287,16 +311,16 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       expect(writes()).toHaveLength(0);
       expect((await get('/v1/hospitals/12/treatments', SUPER)).body.removeEnabled).toBe(false);
       expect((await patch(12, 101, { isPromoted: true })).status).toBe(200);
-      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatments: true, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false });
+      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatments: true, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false });
       process.env.ADMIN_HOSPITALS_TREATMENTS_REMOVE = '1';
       process.env.ADMIN_HOSPITALS_TREATMENTS = '0';
-      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false });
+      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatments: false, hospitalsTreatmentsRemove: false, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false });
       expect((await del(12, 101)).status).toBe(404);
     });
 
     it('all on -> /v1/me reports both flags and keeps the others', async () => {
       expect((await get('/v1/me', SUPER)).body.features).toEqual({
-        hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: true, hospitalsTreatmentsRemove: true, hospitalsTreatmentsPrices: false,
+        hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDoctors: false, hospitalsTreatments: true, hospitalsTreatmentsRemove: true, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false,
       });
     });
 
@@ -338,7 +362,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       expect(r.body).toMatchObject({ count: 2, promotedCount: 1, canManage: true, minAgeSupported: true, removeEnabled: true });
       // 11 was removed (is_active=0) so it is available again; 30 is inactive in the master
       expect(r.body.available).toEqual([{ id: 11, name: '필러', hashtag: '#필러', categoryId: 1, categoryName: '주사' }]);
-      expect(Object.keys(r.body).sort()).toEqual(['available', 'canManage', 'count', 'items', 'minAgeSupported', 'priceUnits', 'pricesEnabled', 'promotedCount', 'removeEnabled']);
+      expect(Object.keys(r.body).sort()).toEqual(['available', 'canManage', 'count', 'items', 'minAgeSupported', 'priceUnits', 'pricesEnabled', 'promotedCount', 'questionsEnabled', 'removeEnabled']);
     });
 
     it('writes nothing and uses only SELECT with parameters', async () => {
@@ -802,6 +826,204 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       await get('/v1/hospitals/12/treatments', SUPER);
       expect(rwCalls).toHaveLength(0);
       for (const c of roCalls) expect(c.sql).toMatch(/^SELECT/);
+    });
+  });
+  describe('"before treatment" questions: PUT /v1/hospitals/:id/treatments/:htId/questions', () => {
+    const put = (id: number | string, ht: number | string, body: unknown, cookie: string | undefined = SUPER, headers: Record<string, string> = JSON_HDR) => {
+      let r = request(app.getHttpServer()).put(`/v1/hospitals/${id}/treatments/${ht}/questions`);
+      if (cookie) r = r.set('Cookie', cookie);
+      for (const [k, v] of Object.entries(headers)) r = r.set(k, v);
+      return r.send(JSON.stringify(body));
+    };
+    const texts = (ht: number) => questions.filter((q) => q.hospital_treatment_id === ht).map((q) => q.question);
+    beforeEach(() => { process.env.ADMIN_HOSPITALS_TREATMENTS_QUESTIONS = '1'; });
+
+    it.each([undefined, '0', 'true', ''])('ADMIN_HOSPITALS_TREATMENTS_QUESTIONS=%p -> 404, nothing asked, flag false, list without questions', async (v) => {
+      if (v === undefined) delete process.env.ADMIN_HOSPITALS_TREATMENTS_QUESTIONS; else process.env.ADMIN_HOSPITALS_TREATMENTS_QUESTIONS = v;
+      const r = await put(12, 100, { questions: ['a'] });
+      expect(r.status).toBe(404);
+      expect(r.body).toEqual({ error: 'not_found' });
+      expect(rwCalls).toHaveLength(0);
+      expect(roCalls).toHaveLength(0);
+      expect((await get('/v1/me', SUPER)).body.features.hospitalsTreatmentsQuestions).toBe(false);
+      const list = (await get('/v1/hospitals/12/treatments', SUPER)).body;
+      expect(list.questionsEnabled).toBe(false);
+      for (const i of list.items) expect(i).not.toHaveProperty('questions');
+      expect(roCalls.some((c) => c.sql.includes('question FROM'))).toBe(false);
+    });
+
+    it('QUESTIONS without TREATMENTS stays off', async () => {
+      process.env.ADMIN_HOSPITALS_TREATMENTS = '0';
+      expect((await put(12, 100, { questions: [] })).status).toBe(404);
+      expect((await get('/v1/me', SUPER)).body.features.hospitalsTreatmentsQuestions).toBe(false);
+    });
+
+    it('/v1/me reports the flag; GET adds questionsEnabled and the texts in order, questionCount unchanged', async () => {
+      expect((await get('/v1/me', SUPER)).body.features.hospitalsTreatmentsQuestions).toBe(true);
+      const r = await get('/v1/hospitals/12/treatments', SUPER);
+      expect(r.body.questionsEnabled).toBe(true);
+      const byId = Object.fromEntries(r.body.items.map((i: any) => [i.id, i]));
+      expect(byId[100].questions).toEqual(['임신 중이세요?', '알레르기가 있나요?']);
+      expect(byId[100].questionCount).toBe(2);
+      expect(byId[101].questions).toEqual([]);
+      expect(byId[101].questionCount).toBe(0);
+    });
+
+    it('a hospital account that may not manage gets questionsEnabled but no texts; PUT -> 403', async () => {
+      mode = 'admin_only';
+      const l = (await get('/v1/hospitals/12/treatments', HOSPITAL)).body;
+      expect(l).toMatchObject({ canManage: false, questionsEnabled: true });
+      for (const i of l.items) expect(i).not.toHaveProperty('questions');
+      expect(l.items.find((i: any) => i.id === 100).questionCount).toBe(2);
+      expect(roCalls.some((c) => c.sql.includes('question FROM'))).toBe(false);
+      const r = await put(12, 100, { questions: ['x'] }, HOSPITAL);
+      expect(r.status).toBe(403);
+      expect(r.body).toEqual({ error: 'forbidden_treatments' });
+      expect(writes()).toHaveLength(0);
+    });
+
+    it('question texts that cannot be read -> no texts and questionsEnabled false (a save could wipe them), page still works', async () => {
+      questionTextsReadable = false;
+      const l = await get('/v1/hospitals/12/treatments', SUPER);
+      expect(l.status).toBe(200);
+      expect(l.body.questionsEnabled).toBe(false);
+      for (const i of l.body.items) expect(i).not.toHaveProperty('questions');
+      expect(l.body.items.find((i: any) => i.id === 100).questionCount).toBe(2);
+    });
+
+    it('guards: guard order, csrf 403, not signed in 401, other hospital 404, foreign / unknown / malformed treatment 404', async () => {
+      expect((await put(12, 100, { questions: [] }, SUPER, {})).body).toEqual({ error: 'csrf' });
+      expect((await put(12, 100, { questions: [] }, 'PHPSESSID=nobody')).status).toBe(401);
+      expect((await put(13, 200, { questions: [] }, HOSPITAL)).status).toBe(404);
+      expect((await put(12, 200, { questions: [] })).status).toBe(404);
+      expect((await put(12, 999, { questions: [] })).status).toBe(404);
+      expect((await put(12, 'abc', { questions: [] })).status).toBe(404);
+      // scope and rule come before the body: a bad body of a foreign hospital is 404, of a forbidden account 403
+      expect((await put(13, 200, { questions: 5 }, HOSPITAL)).status).toBe(404);
+      mode = 'admin_only';
+      expect((await put(12, 100, { questions: 5 }, HOSPITAL)).status).toBe(403);
+      expect(writes()).toHaveLength(0);
+      expect(texts(100)).toHaveLength(2);
+    });
+
+    it('replaces all questions: normalized, deduplicated, sort_order 0.., one transaction, answer re-read; no ALTER / CREATE', async () => {
+      const r = await put(12, 100, { questions: ['  임신   중이세요?\n', '', '   ', '임신 중이세요?', '카페인\t섭취', 'b'] });
+      expect(r.status).toBe(200);
+      expect(Object.keys(r.body).sort()).toEqual(['count', 'item']);
+      expect(r.body.item.id).toBe(100);
+      expect(r.body.item.questions).toEqual(['임신 중이세요?', '카페인 섭취', 'b']);
+      expect(r.body.item.questionCount).toBe(3);
+      expect(r.body.count).toBe(3);
+      expect(txEvents).toEqual(['BEGIN', 'COMMIT', 'RELEASE']);
+      const heads = rwCalls.map((c) => c.sql.split(' ').slice(0, 3).join(' '));
+      expect(heads.indexOf('SELECT id, is_active')).toBeLessThan(heads.indexOf('DELETE FROM gangnamunni_treatment_questions'));
+      expect(rwCalls.find((c) => c.sql.startsWith('SELECT id, is_active'))!.sql).toContain('FOR UPDATE');
+      expect(heads.indexOf('DELETE FROM gangnamunni_treatment_questions')).toBeLessThan(heads.indexOf('INSERT INTO gangnamunni_treatment_questions'));
+      expect(rwCalls.filter((c) => c.sql.startsWith('INSERT INTO gangnamunni_treatment_questions')).map((c) => c.values)).toEqual([[100, '임신 중이세요?', 0], [100, '카페인 섭취', 1], [100, 'b', 2]]);
+      for (const c of rwCalls) expect(c.sql).not.toMatch(/ALTER|CREATE/i);
+      expect(writes().every((c) => c.sql.includes('gangnamunni_treatment_questions'))).toBe(true);
+      expect(texts(100)).toEqual(['임신 중이세요?', '카페인 섭취', 'b']);
+    });
+
+    it('an empty list (or only blanks) removes every question', async () => {
+      for (const list of [[], ['', '  ']]) {
+        questions = [{ hospital_treatment_id: 100, question: 'x' }];
+        const r = await put(12, 100, { questions: list });
+        expect(r.status).toBe(200);
+        expect(r.body.count).toBe(0);
+        expect(r.body.item.questions).toEqual([]);
+        expect(r.body.item.questionCount).toBe(0);
+        expect(texts(100)).toEqual([]);
+      }
+      expect(rwCalls.filter((c) => c.sql.startsWith('INSERT INTO gangnamunni_treatment_questions'))).toHaveLength(0);
+    });
+
+    it('only the given assignment changes', async () => {
+      questions.push({ hospital_treatment_id: 101, question: 'other' });
+      expect((await put(12, 100, { questions: ['new'] })).status).toBe(200);
+      expect(texts(101)).toEqual(['other']);
+    });
+
+    it('a hospital account may save its own questions when the setting allows it', async () => {
+      mode = 'hospital_only';
+      expect((await put(12, 100, { questions: ['q'] }, HOSPITAL)).status).toBe(200);
+      expect(texts(100)).toEqual(['q']);
+    });
+
+    it('limits: 200 code points pass (emoji count once), 201 -> too_long with the sent index; 10 pass, 11 distinct -> too_many; repeats do not count', async () => {
+      const ok = '가'.repeat(199) + '😀';
+      expect(Array.from(ok)).toHaveLength(200);
+      expect((await put(12, 100, { questions: [ok] })).status).toBe(200);
+      expect(texts(100)).toEqual([ok]);
+      const r = await put(12, 100, { questions: ['a', '', '가'.repeat(201)] });
+      expect(r.status).toBe(400);
+      expect(r.body).toEqual({ error: 'too_long', index: 2 });
+      expect(texts(100)).toEqual([ok]);
+      const ten = Array.from({ length: 10 }, (_, i) => `q${i}`);
+      expect((await put(12, 100, { questions: [...ten, 'q0', 'q1', ' '] })).status).toBe(200);
+      expect(texts(100)).toEqual(ten);
+      const r2 = await put(12, 100, { questions: [...ten, 'q10'] });
+      expect(r2.status).toBe(400);
+      expect(r2.body).toEqual({ error: 'too_many' });
+      expect(texts(100)).toEqual(ten);
+    });
+
+    it.each([
+      ['no body fields', {}, { error: 'invalid_body' }],
+      ['questions not an array', { questions: 'a' }, { error: 'invalid_body' }],
+      ['a body that is a list', [], { error: 'invalid_body' }],
+      ['a non-string element', { questions: ['a', 5] }, { error: 'invalid_field', index: 1 }],
+      ['a null element', { questions: [null] }, { error: 'invalid_field', index: 0 }],
+    ])('400 for %s, nothing written', async (_n, body, expected) => {
+      const r = await put(12, 100, body);
+      expect(r.status).toBe(400);
+      expect(r.body).toEqual(expected);
+      expect(writes()).toHaveLength(0);
+      expect(texts(100)).toHaveLength(2);
+    });
+
+    it('a deadlock halfway rolls everything back and keeps the old questions', async () => {
+      failQuestionInsertAt = 2;
+      const r = await put(12, 100, { questions: ['a', 'b', 'c'] });
+      expect(r.status).toBe(500);
+      expect(txEvents).toEqual(['BEGIN', 'ROLLBACK', 'RELEASE']);
+      expect(texts(100)).toEqual(['임신 중이세요?', '알레르기가 있나요?']);
+    });
+
+    it('missing table -> 503 questions_table_unavailable (rolled back); missing right / no write pool -> 503 write_unavailable', async () => {
+      questionsWriteTable = false;
+      const a = await put(12, 100, { questions: ['a'] });
+      expect(a.status).toBe(503);
+      expect(a.body).toEqual({ error: 'questions_table_unavailable' });
+      expect(txEvents).toEqual(['BEGIN', 'ROLLBACK', 'RELEASE']);
+      questionsWriteTable = true;
+      const restore = failRw('INSERT INTO gangnamunni_treatment_questions', dbError('ER_TABLEACCESS_DENIED_ERROR', 1142));
+      const b = await put(12, 100, { questions: ['a'] });
+      expect(b.status).toBe(503);
+      expect(b.body).toEqual({ error: 'write_unavailable' });
+      expect(texts(100)).toEqual(['임신 중이세요?', '알레르기가 있나요?']);
+      restore();
+      hasRw = false;
+      expect((await put(12, 100, { questions: ['a'] })).body).toEqual({ error: 'write_unavailable' });
+    });
+
+    it('the log line carries ids and the count, never the text', async () => {
+      const spy = jest.spyOn(Logger.prototype, 'log');
+      await put(12, 100, { questions: ['비밀 질문'] });
+      const lines = spy.mock.calls.map((c) => String(c[0]));
+      expect(lines).toContain('hospital treatments: admin=7 hospital=12 questions treatment=100 count=1');
+      expect(lines.join('\n')).not.toContain('비밀');
+    });
+
+    it('GET writes nothing with the questions switch on', async () => {
+      await get('/v1/hospitals/12/treatments', SUPER);
+      expect(rwCalls).toHaveLength(0);
+      for (const c of roCalls) expect(c.sql).toMatch(/^SELECT/);
+    });
+
+    it('/v1/me with every treatments switch on', async () => {
+      process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES = '1';
+      expect((await get('/v1/me', SUPER)).body.features).toMatchObject({ hospitalsTreatmentsPrices: true, hospitalsTreatmentsQuestions: true });
     });
   });
 });

@@ -544,9 +544,9 @@ Turning it off: `ADMIN_HOSPITALS_DOCTORS=0` + restart (the POST answers 404; the
 ## 10. Treatments of a hospital (`ADMIN_HOSPITALS_TREATMENTS`, `ADMIN_HOSPITALS_TREATMENTS_REMOVE`, optional)
 Adds `GET /v1/hospitals/:id/treatments` (assigned treatments with price options, image and question counts, and the treatments still available),
 `POST /v1/hospitals/:id/treatments` (assign up to 300 master treatments), `PATCH /v1/hospitals/:id/treatments/:htId` (promotion star and the minimum age)
-and, behind a second switch, `DELETE /v1/hospitals/:id/treatments/:htId` (release an assignment). Price options are edited through `PUT .../prices` behind a third switch (10.4); detail images and the "before treatment"
-questions are shown (counts, badges) but edited only in the PHP admin. Needs sections 1 and 6 (hospital pages, write user). With a switch off its routes answer 404
-and nothing below is used; `/v1/me` reports `hospitalsTreatments`, `hospitalsTreatmentsRemove` and `hospitalsTreatmentsPrices`.
+and, behind a second switch, `DELETE /v1/hospitals/:id/treatments/:htId` (release an assignment). Price options are edited through `PUT .../prices` behind a third switch (10.4); the "before treatment"
+questions are edited through `PUT .../questions` behind a fourth switch (10.5); detail images are shown (count, badge) but edited only in the PHP admin. Needs sections 1 and 6 (hospital pages, write user). With a switch off its routes answer 404
+and nothing below is used; `/v1/me` reports `hospitalsTreatments`, `hospitalsTreatmentsRemove`, `hospitalsTreatmentsPrices` and `hospitalsTreatmentsQuestions`.
 
 Who may change things (same rule as the PHP page): a super admin always; a hospital account (own hospital only) only while the setting `treatment_mgmt_mode` in the
 PHP table `settings` is `hospital_only` or `both` (missing row = `both`). Otherwise `403 {"error":"forbidden_treatments"}` and the page hides the buttons. If the setting
@@ -676,6 +676,51 @@ Answers: `400 {"error":"no_options"|"too_many"|"invalid_field"|"price_order"|"mu
 (`index` / `field` only where they apply), `403` (csrf, `forbidden`, `forbidden_treatments`), `404` (switch off, hospital out of scope, assignment not of this hospital or released),
 `503 {"error":"price_columns_unavailable"|"write_unavailable"}`. Logged as `hospital treatments: admin=<id> hospital=<id> prices treatment=<ht> options=<n>` (no names, no amounts).
 Turning it off: `ADMIN_HOSPITALS_TREATMENTS_PRICES=0`, restart (the price route answers 404; the list keeps showing the options read-only).
+
+### 10.5 "Before treatment" questions (`ADMIN_HOSPITALS_TREATMENTS_QUESTIONS`, optional; run as the DB admin; `<DB_NAME>` = schema from step 1)
+Adds `PUT /v1/hospitals/:id/treatments/:htId/questions` (the "시술 전 확인 질문" form: yes / no questions shown to the customer before booking, all optional). Body `{"questions":["...", "..."]}`
+replaces ALL questions of that assignment in one transaction: the assignment row is locked (`SELECT ... FOR UPDATE`, not changed), `DELETE` of its rows in `gangnamunni_treatment_questions`,
+then one `INSERT` per question (`hospital_treatment_id, question, sort_order` 0..). Any error rolls everything back and the old questions stay. This API never runs `ALTER TABLE` / `CREATE TABLE`:
+the table comes from the PHP migration `hairwang_full/gangnamunni/sql/treatment_questions_20261023.sql` (not run by this API); without it the answer is `503 {"error":"questions_table_unavailable"}`.
+Same people may use it as for the other writes (`canManage`; section 10). Rules: each question is trimmed and runs of white space become one space; empty ones are skipped and exact repeats dropped;
+a question over 200 characters (counted as code points) is rejected with `too_long`, and more than 10 distinct questions with `too_many`. The PHP page cuts both silently; this API rejects them so nothing is
+lost without notice (the form enforces both limits itself). An empty list is allowed and removes every question. The assignment only has to belong to that hospital (a released assignment is not checked, like the PHP page), but the answer is the listed item, so a released assignment answers `404` after saving.
+`GET /v1/hospitals/:id/treatments` then also answers `questionsEnabled` and, when the actor may manage, `questions` (the texts in order) on every item; `questionCount` stays as before.
+If the question texts cannot be read (missing grant on `question` / `sort_order`) the list answers `questionsEnabled:false` and no texts (the form is hidden instead of showing an empty list that a save would wipe).
+
+Already granted by 10.1: the read-only user's `SELECT (id, hospital_treatment_id)` on `gangnamunni_treatment_questions` (question counts); the write user's access to `gangnamunni_hospital_treatments` (`SELECT (id, ...)`, `hospital_id`).
+Already granted by section 10.2: nothing here (its tables are the price and image tables). Still missing - run these (check the columns with `SHOW COLUMNS FROM gangnamunni_treatment_questions` first; a `GRANT` naming a missing column fails as a whole):
+```sql
+GRANT SELECT (question, sort_order) ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (question, sort_order) ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (hospital_treatment_id) ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (hospital_treatment_id) ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_rw'@'localhost';
+GRANT INSERT (hospital_treatment_id, question, sort_order) ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (hospital_treatment_id, question, sort_order) ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_rw'@'localhost';
+GRANT DELETE ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_rw'@'127.0.0.1';
+GRANT DELETE ON <DB_NAME>.gangnamunni_treatment_questions TO 'sb_admin_rw'@'localhost';
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: ..._treatment_questions has SELECT (hospital_treatment_id), INSERT (3 columns above) and DELETE
+SHOW GRANTS FOR 'sb_admin_ro'@'127.0.0.1';   -- check: ..._treatment_questions has SELECT (id, hospital_treatment_id, question, sort_order)
+```
+Before the first save take a dump of the table (outside the web root): `mysqldump --single-transaction <DB_NAME> gangnamunni_treatment_questions > ~/backup-treatment-questions-$(date +%F).sql`.
+Without the INSERT / DELETE rights the answer is `503 {"error":"write_unavailable"}` and nothing changes.
+Env (needs sections 6 and 10, and 10.5 grants first; leave `0` until then), then `sudo systemctl restart seoulbeauty-admin-api`:
+```
+ADMIN_HOSPITALS_TREATMENTS=1
+ADMIN_HOSPITALS_TREATMENTS_QUESTIONS=1
+```
+`/v1/me` then reports `"hospitalsTreatmentsQuestions":true`. Check with a TEST hospital (headers as in 10.3; `<ht>` = an `items[].id` of the list):
+```bash
+curl -s $C http://127.0.0.1:3300/v1/hospitals/<id>/treatments            # "questionsEnabled":true and "questions":[...] on every item
+curl -s -X PUT $H -d '{"questions":["임신 중이거나 수유 중이에요?","알레르기가 있어요?"]}' http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/questions
+# 200 {"item":{... "questionCount":2,"questions":["...","..."]},"count":2}
+curl -s -X PUT $H -d '{"questions":[]}' http://127.0.0.1:3300/v1/hospitals/<id>/treatments/<ht>/questions        # removes all: "count":0
+```
+Answers: `400 {"error":"invalid_body"}` (no `questions` list), `400 {"error":"invalid_field","index":<n>}` (not a string), `400 {"error":"too_long","index":<n>}`, `400 {"error":"too_many"}`,
+`403` (csrf, `forbidden`, `forbidden_treatments`), `404` (switch off, hospital out of scope, assignment not of this hospital), `503 {"error":"questions_table_unavailable"|"write_unavailable"}`.
+Logged as `hospital treatments: admin=<id> hospital=<id> questions treatment=<ht> count=<n>` (no question text).
+Turning it off: `ADMIN_HOSPITALS_TREATMENTS_QUESTIONS=0`, restart (the route answers 404; the list keeps showing counts only). Removing the rights if needed:
+`REVOKE INSERT, DELETE ON <DB_NAME>.gangnamunni_treatment_questions FROM 'sb_admin_rw'@'127.0.0.1';` (and `'localhost'`).
 
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app

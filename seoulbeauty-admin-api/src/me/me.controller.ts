@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AdminGuard, hospitalsDeleteEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsTreatmentsEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
+import { AdminGuard, hospitalsDeleteEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsTreatmentsEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
 @UseGuards(AdminGuard)
@@ -12,6 +12,7 @@ export class MeController {
       // the routes behind both are super-admin only (403 for other roles); the flags only report the switches
       hospitalsDelete: hospitalsDeleteEnabled(), archive: hospitalsDeleteEnabled(),
       hospitalsImages: hospitalsImagesEnabled(), hospitalsDoctors: hospitalsDoctorsEnabled(),
-      hospitalsTreatments: hospitalsTreatmentsEnabled(), hospitalsTreatmentsRemove: hospitalsTreatmentsRemoveEnabled(), hospitalsTreatmentsPrices: hospitalsTreatmentsPricesEnabled() } };
+      hospitalsTreatments: hospitalsTreatmentsEnabled(), hospitalsTreatmentsRemove: hospitalsTreatmentsRemoveEnabled(), hospitalsTreatmentsPrices: hospitalsTreatmentsPricesEnabled(),
+      hospitalsTreatmentsQuestions: hospitalsTreatmentsQuestionsEnabled() } };
   }
 }

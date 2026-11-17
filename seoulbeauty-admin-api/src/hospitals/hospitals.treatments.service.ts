@@ -1,10 +1,10 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
-import { hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsRemoveEnabled, HOSPITAL_ROLES } from '../admin-auth/admin.guard';
+import { hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, HOSPITAL_ROLES } from '../admin-auth/admin.guard';
 import { DB, Db, DB_RW, RwDb, RwDbProvider } from '../db/db.module';
 import { canSee, num, Query, Scope, seesNothing, str } from './hospitals.logic';
 import { lockHospitalQuery } from './hospitals.images.logic';
 import {
-  activeMasterQuery, assignedQuery, availableQuery, buildAvailable, buildItems, buildUnits, canManageTreatments, clearPriceSummaryQuery, DEFAULT_PRICE_UNITS, insertPriceQuery, parsePricesBody, sortUnits, unitsQuery, DEFAULT_MGMT_MODE, deleteImagesQuery, deletePriceOptionsQuery,
+  activeMasterQuery, assignedQuery, attachQuestions, deleteQuestionsQuery, insertQuestionQuery, parseQuestionsBody, questionTextsQuery, availableQuery, buildAvailable, buildItems, buildUnits, canManageTreatments, clearPriceSummaryQuery, DEFAULT_PRICE_UNITS, insertPriceQuery, parsePricesBody, sortUnits, unitsQuery, DEFAULT_MGMT_MODE, deleteImagesQuery, deletePriceOptionsQuery,
   existingAssignmentsQuery, hospitalExistsQuery, imageCountsQuery, insertAssignmentQuery, isMinAgeProblem, isMissingObject, lockAssignmentQuery, mgmtModeQuery,
   parseAssignBody, parsePatchBody, priceOptionsQuery, questionCountsQuery, reactivateQuery, removeAssignmentQuery, setMinAgeQuery, setPromotedQuery, TreatmentItem, TreatmentsView,
 } from './hospitals.treatments.logic';
@@ -19,6 +19,7 @@ export interface Actor {
   role: string;
 }
 type ListAnswer = Pick<TreatmentsView, 'items' | 'count' | 'promotedCount' | 'available'>;
+const isNoSuchTable = (e: unknown): boolean => (e as { errno?: number })?.errno === 1146 || (e as { code?: string })?.code === 'ER_NO_SUCH_TABLE';
 
 /** Treatments assigned to one hospital: list, assign, promotion, minimum age and (behind its own switch) removal. Reads use the read-only pool, writes one transaction of the write pool. */
 @Injectable()
@@ -64,7 +65,7 @@ export class HospitalsTreatmentsService {
   }
 
   /** Items of a hospital with their optional parts; `minAgeSupported` is false when the min_age column is missing or not readable. */
-  private async readItems(hospitalId: number): Promise<{ items: TreatmentItem[]; minAgeSupported: boolean }> {
+  private async readItems(hospitalId: number, withQuestions = false): Promise<{ items: TreatmentItem[]; minAgeSupported: boolean; questionsReadable: boolean }> {
     let rows: Row[];
     let minAgeSupported = true;
     try {
@@ -76,23 +77,33 @@ export class HospitalsTreatmentsService {
       rows = await this.roRun(assignedQuery(hospitalId, false));
     }
     const ids = rows.map((r) => num(r.id)).filter((n) => n > 0);
-    if (ids.length === 0) return { items: [], minAgeSupported };
+    if (ids.length === 0) return { items: [], minAgeSupported, questionsReadable: true };
     const [prices, images, questions] = await Promise.all([
       this.optional(priceOptionsQuery(ids), 'price options'),
       this.optional(imageCountsQuery(ids), 'treatment images'),
       this.optional(questionCountsQuery(ids), 'treatment questions'),
     ]);
-    return { items: buildItems({ rows, prices, images, questions }), minAgeSupported };
+    const items = buildItems({ rows, prices, images, questions });
+    if (!withQuestions) return { items, minAgeSupported, questionsReadable: true };
+    // the texts are only attached when they could really be read: showing an empty list for questions that exist would let a save wipe them
+    try {
+      return { items: attachQuestions(items, await this.roRun(questionTextsQuery(ids))), minAgeSupported, questionsReadable: true };
+    } catch (e) {
+      if (!isMissingObject(e)) throw e;
+      this.log.warn(`treatment question texts unavailable: ${(e as { code?: string; message?: string })?.code || (e as Error)?.message}`);
+      return { items, minAgeSupported, questionsReadable: false };
+    }
   }
 
   private async view(hospitalId: number, canManage: boolean): Promise<TreatmentsView> {
-    const { items, minAgeSupported } = await this.readItems(hospitalId);
+    const questionsOn = canManage && hospitalsTreatmentsQuestionsEnabled();
+    const { items, minAgeSupported, questionsReadable } = await this.readItems(hospitalId, questionsOn);
     const pricesEnabled = hospitalsTreatmentsPricesEnabled();
     const available = canManage ? buildAvailable(await this.roRun(availableQuery(hospitalId))) : [];
     return {
       items, count: items.length, promotedCount: items.filter((i) => i.isPromoted).length,
       canManage, minAgeSupported, removeEnabled: hospitalsTreatmentsRemoveEnabled(),
-      pricesEnabled, priceUnits: canManage && pricesEnabled ? await this.units() : [], available,
+      pricesEnabled, questionsEnabled: hospitalsTreatmentsQuestionsEnabled() && (!canManage || questionsReadable), priceUnits: canManage && pricesEnabled ? await this.units() : [], available,
     };
   }
 
@@ -220,7 +231,7 @@ export class HospitalsTreatmentsService {
       }
     });
     this.log.log(`hospital treatments: admin=${actor.id} hospital=${id} update treatment=${htId}`);
-    const { items } = await this.readItems(id);
+    const { items } = await this.readItems(id, hospitalsTreatmentsQuestionsEnabled());
     const item = items.find((i) => i.id === htId);
     if (!item) throw new NotFoundException({ error: 'not_found' });
     return { item, promotedCount: items.filter((i) => i.isPromoted).length };
@@ -272,9 +283,42 @@ export class HospitalsTreatmentsService {
       throw e;
     }
     this.log.log(`hospital treatments: admin=${actor.id} hospital=${id} prices treatment=${htId} options=${options.length}`);
-    const { items } = await this.readItems(id);
+    const { items } = await this.readItems(id, hospitalsTreatmentsQuestionsEnabled());
     const item = items.find((i) => i.id === htId);
     if (!item) throw new NotFoundException({ error: 'not_found' });
     return { item, count: items.length, promotedCount: items.filter((i) => i.isPromoted).length };
+  }
+  /**
+   * Replaces every "before treatment" question of one assignment (delete + insert in one transaction; the assignment row is locked, not changed).
+   * Only the assignment's ownership is checked, not is_active (like the PHP page). The answer is re-read from the read-only pool.
+   */
+  async saveQuestions(scope: Scope, actor: Actor, id: number, htId: number, body: unknown): Promise<{ item: TreatmentItem; count: number }> {
+    await this.allowWrite(scope, actor, id, false);
+    const parsed = parseQuestionsBody(body);
+    if (!parsed.ok) throw new BadRequestException(parsed.body);
+    const questions = parsed.questions;
+    // a table that does not exist is its own answer; a missing right stays write_unavailable (handled by the transaction)
+    const table = async <T>(fn: () => Promise<T>): Promise<T> => {
+      try {
+        return await fn();
+      } catch (e) {
+        if (isNoSuchTable(e)) {
+          this.log.warn(`treatment questions table missing: ${(e as Error)?.message}`);
+          throw new ServiceUnavailableException({ error: 'questions_table_unavailable' });
+        }
+        throw e;
+      }
+    };
+    await this.tx(async (run, exec) => {
+      const rows = htId > 0 ? await run(lockAssignmentQuery(id, htId)) : [];
+      if (rows.length === 0) throw new NotFoundException({ error: 'not_found' });
+      await table(() => exec(deleteQuestionsQuery(htId)));
+      for (let i = 0; i < questions.length; i++) await table(() => exec(insertQuestionQuery(htId, questions[i], i)));
+    });
+    this.log.log(`hospital treatments: admin=${actor.id} hospital=${id} questions treatment=${htId} count=${questions.length}`);
+    const { items } = await this.readItems(id, true);
+    const item = items.find((i) => i.id === htId);
+    if (!item) throw new NotFoundException({ error: 'not_found' });
+    return { item, count: questions.length };
   }
 }

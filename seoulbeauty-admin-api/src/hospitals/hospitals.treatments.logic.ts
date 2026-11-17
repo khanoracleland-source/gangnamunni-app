@@ -191,6 +191,8 @@ export interface TreatmentItem {
   imageCount: number;
   pendingImageCount: number;
   questionCount: number;
+  /** question texts in order; present only when the actor may manage and the questions switch is on */
+  questions?: string[];
 }
 export interface AvailableItem {
   id: number;
@@ -265,6 +267,8 @@ export interface TreatmentsView {
   removeEnabled: boolean;
   /** state of the prices switch */
   pricesEnabled: boolean;
+  /** state of the questions switch (false also when the question texts could not be read) */
+  questionsEnabled: boolean;
   /** units for the price form; only filled when the actor may manage and the prices switch is on */
   priceUnits: string[];
   available: AvailableItem[];
@@ -407,3 +411,61 @@ export const clearPriceSummaryQuery = (hospitalId: number, htId: number): Query 
   sql: `UPDATE gangnamunni_hospital_treatments SET price_min = 0, price_max = 0, dosage_value = NULL, dosage_unit = NULL, updated_at = NOW() WHERE id = ? AND hospital_id = ?`,
   values: [htId, hospitalId],
 });
+
+// ---- "before treatment" questions (replace all questions of one assignment) ----
+
+export const MAX_QUESTIONS = 10;
+export const MAX_QUESTION_LENGTH = 200;
+
+export type QuestionErrorCode = 'invalid_body' | 'invalid_field' | 'too_long' | 'too_many';
+export interface QuestionError {
+  error: QuestionErrorCode;
+  index?: number;
+}
+export type QuestionsParsed = { ok: true; questions: string[] } | { ok: false; body: QuestionError };
+
+/** Trim and collapse every run of white space into one space. */
+export const normalizeQuestion = (q: string): string => q.replace(/\s+/gu, ' ').trim();
+
+/**
+ * { questions: string[] } -> the questions to store. Each one is trimmed with inner white space collapsed; empty ones are skipped and exact repeats dropped.
+ * A question longer than 200 characters (code points) or more than 10 distinct questions is rejected, not cut. `index` is the position in the sent list.
+ * An empty list is allowed (it removes every question).
+ */
+export function parseQuestionsBody(body: unknown): QuestionsParsed {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) return { ok: false, body: { error: 'invalid_body' } };
+  const list = (body as Record<string, unknown>).questions;
+  if (!Array.isArray(list)) return { ok: false, body: { error: 'invalid_body' } };
+  const out: string[] = [];
+  for (let i = 0; i < list.length; i++) {
+    if (typeof list[i] !== 'string') return { ok: false, body: { error: 'invalid_field', index: i } };
+    const q = normalizeQuestion(list[i] as string);
+    if (q === '') continue;
+    if (Array.from(q).length > MAX_QUESTION_LENGTH) return { ok: false, body: { error: 'too_long', index: i } };
+    if (!out.includes(q)) out.push(q);
+  }
+  if (out.length > MAX_QUESTIONS) return { ok: false, body: { error: 'too_many' } };
+  return { ok: true, questions: out };
+}
+
+export const questionTextsQuery = (htIds: number[]): Query => ({
+  sql: `SELECT hospital_treatment_id, question FROM gangnamunni_treatment_questions WHERE hospital_treatment_id IN (${placeholders(htIds.length)}) ORDER BY sort_order ASC, id ASC`,
+  values: htIds,
+});
+export const deleteQuestionsQuery = (htId: number): Query => ({ sql: `DELETE FROM gangnamunni_treatment_questions WHERE hospital_treatment_id = ?`, values: [htId] });
+export const insertQuestionQuery = (htId: number, question: string, sortOrder: number): Query => ({
+  sql: `INSERT INTO gangnamunni_treatment_questions (hospital_treatment_id, question, sort_order) VALUES (?, ?, ?)`,
+  values: [htId, question, sortOrder],
+});
+
+/** Adds `questions` (rows already in order) to the items; an item without rows gets []. */
+export function attachQuestions(items: TreatmentItem[], rows: Row[]): TreatmentItem[] {
+  const byHt = new Map<number, string[]>();
+  for (const r of rows) {
+    const k = num(r.hospital_treatment_id);
+    const list = byHt.get(k) ?? [];
+    list.push(str(r.question));
+    byHt.set(k, list);
+  }
+  return items.map((i) => ({ ...i, questions: byHt.get(i.id) ?? [] }));
+}

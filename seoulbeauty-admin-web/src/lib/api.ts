@@ -17,7 +17,7 @@ export type Admin = {
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsImages: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; archive: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -122,6 +122,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsTreatments: obj(d.features).hospitalsTreatments === true,
         hospitalsTreatmentsRemove: obj(d.features).hospitalsTreatmentsRemove === true,
         hospitalsTreatmentsPrices: obj(d.features).hospitalsTreatmentsPrices === true,
+        hospitalsTreatmentsQuestions: obj(d.features).hospitalsTreatmentsQuestions === true,
         archive: obj(d.features).archive === true,
       },
     },
@@ -695,6 +696,8 @@ export type HospitalTreatment = {
   imageCount: number;
   pendingImageCount: number;
   questionCount: number;
+  /** The question texts in their order. Only sent to an admin who may edit them while the question window is on; otherwise undefined. */
+  questions?: string[];
 };
 
 /** A catalogue treatment that can still be assigned. */
@@ -716,6 +719,8 @@ export type HospitalTreatmentSet = {
   pricesEnabled?: boolean;
   /** The units the price window offers (only sent to an admin who may edit prices). */
   priceUnits?: string[];
+  /** The question window is switched on (and the question texts were read). */
+  questionsEnabled?: boolean;
 };
 
 function treatmentItem(raw: unknown): HospitalTreatment {
@@ -746,6 +751,7 @@ function treatmentItem(raw: unknown): HospitalTreatment {
     imageCount: num(d.imageCount),
     pendingImageCount: num(d.pendingImageCount),
     questionCount: num(d.questionCount),
+    questions: Array.isArray(d.questions) ? d.questions.filter((q): q is string => typeof q === "string") : undefined,
   };
 }
 
@@ -768,6 +774,7 @@ function treatmentSet(v: unknown): HospitalTreatmentSet {
     removeEnabled: d.removeEnabled === undefined ? undefined : bool(d.removeEnabled),
     pricesEnabled: d.pricesEnabled === undefined ? undefined : bool(d.pricesEnabled),
     priceUnits: d.priceUnits === undefined ? undefined : list(d.priceUnits).filter((u): u is string => typeof u === "string" && u.trim() !== ""),
+    questionsEnabled: d.questionsEnabled === undefined ? undefined : bool(d.questionsEnabled),
   };
 }
 
@@ -818,6 +825,18 @@ export async function saveTreatmentPrices(
   if (!res.ok) return res;
   const item = treatmentItem(res.data.item);
   return { ok: true, data: { item: item.id > 0 ? item : null, count: numOrNull(res.data.count), promotedCount: numOrNull(res.data.promotedCount) } };
+}
+
+/** Replaces all pre-treatment questions of one assignment (an empty list deletes them). The answer carries the assignment with its new questions. */
+export async function saveTreatmentQuestions(
+  id: number,
+  htId: number,
+  questions: string[],
+): Promise<WriteResult<{ item: HospitalTreatment | null; count: number | null }>> {
+  const res = await sendJson("PUT", `${treatmentsPath(id)}/${encodeURIComponent(String(htId))}/questions`, { questions });
+  if (!res.ok) return res;
+  const item = treatmentItem(res.data.item);
+  return { ok: true, data: { item: item.id > 0 ? item : null, count: numOrNull(res.data.count) } };
 }
 
 /** Takes one treatment off the hospital; its price options and image rows go with it. */
