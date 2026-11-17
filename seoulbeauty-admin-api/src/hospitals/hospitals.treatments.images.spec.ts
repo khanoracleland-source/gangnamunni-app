@@ -57,6 +57,7 @@ describe('admin API: detail images of a hospital treatment (list, add, delete, r
   const handler = async (sql: string, values: unknown[] = []): Promise<unknown> => {
     if (sql.startsWith('SELECT `value` FROM settings')) return [mode === null ? [] : [{ value: mode }]];
     if (sql === 'SELECT id FROM gangnamunni_hospitals WHERE id = ? LIMIT 1') return [hospitals[values[0] as number] ? [{ id: values[0] }] : []];
+    if (sql === `SELECT id FROM gangnamunni_hospitals WHERE id = ? AND status = 'approved' LIMIT 1`) return [hospitals[values[0] as number]?.status === 'approved' ? [{ id: values[0] }] : []];
     if (sql.startsWith('SELECT id, treatment_id FROM gangnamunni_hospital_treatments WHERE id = ? AND hospital_id = ? LIMIT 1 FOR UPDATE')) {
       const ht = hts.find((h) => h.id === values[0] && h.hospital_id === values[1]);
       return [ht ? [{ id: ht.id, treatment_id: ht.treatment_id }] : []];
@@ -269,6 +270,24 @@ describe('admin API: detail images of a hospital treatment (list, add, delete, r
         await move(1, { direction: 'up' }, 12, 100, 'PHPSESSID=nobody'), await review(2, { decision: 'approve' }, 12, 100, 'PHPSESSID=nobody')];
       for (const r of calls) expect(r.status).toBe(401);
       expect(rwCalls).toHaveLength(0);
+    });
+
+    it.each(['pending', 'rejected'])('a %s application: add, remove, move and review are 404 and write nothing; the list stays readable', async (status) => {
+      hospitals[14] = { status };
+      hts.push({ id: 300, hospital_id: 14, treatment_id: 10, is_active: 1 });
+      images.push(img(50, 300, 0, { approval_status: 'pending', uploaded_by: 'hospital' }), img(51, 300, 1));
+      for (const r of [
+        await add({ imageUrl: 'https://a.com/a.jpg' }, undefined, SUPER, 14, 300),
+        await remove(51, 14, 300),
+        await move(51, { direction: 'up' }, 14, 300),
+        await review(50, { decision: 'approve' }, 14, 300),
+      ]) {
+        expect(r.status).toBe(404);
+        expect(r.body).toEqual({ error: 'not_found' });
+      }
+      expect(writes()).toHaveLength(0);
+      expect(images.find((i) => i.id === 50)!.approval_status).toBe('pending');
+      expect((await get(base(14, 300), SUPER)).status).toBe(200);
     });
 
     it('unknown / foreign / malformed ids -> 404 everywhere; a hospital role only reaches its own hospital', async () => {

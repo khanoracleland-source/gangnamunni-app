@@ -26,8 +26,8 @@ export interface ListQuery {
   search: string;
   treatmentId: number;
   active: 'all' | '1' | '0';
-  /** Only hospitals whose owner edits are still waiting for review. */
-  unreviewed: boolean;
+  /** Only applications waiting for approval (status 'pending'); meaningful for the super admin scope only. */
+  pending: boolean;
   page: number;
   perPage: number;
 }
@@ -50,9 +50,9 @@ export function normalizeListQuery(q: Record<string, unknown> | undefined | null
   return {
     search,
     treatmentId: positiveInt(src.treatmentId),
-    // The unreviewed filter wins over the active filter: the two are never combined.
-    active: one(src.unreviewed) === '1' ? 'all' : active === '1' || active === '0' ? active : 'all',
-    unreviewed: one(src.unreviewed) === '1',
+    // The pending filter wins over the active filter: the two are never combined.
+    active: one(src.pending) === '1' ? 'all' : active === '1' || active === '0' ? active : 'all',
+    pending: one(src.pending) === '1',
     page: Math.min(MAX_PAGE, Math.max(1, positiveInt(src.page))),
     perPage: PER_PAGE_CHOICES.includes(perPage) ? perPage : DEFAULT_PER_PAGE,
   };
@@ -77,10 +77,15 @@ export const likeContains = (text: string): string => `%${text.replace(/[\\%_]/g
 
 /** This page only deals with approved hospitals; pending / rejected applications are reviewed elsewhere. */
 const APPROVED = `h.status = 'approved'`;
+/** Applications that have not been decided yet; only the super admin scope may look at them. */
+const PENDING = `h.status = 'pending'`;
+/** What the detail page opens: approved hospitals for everybody, and pending applications (read only) for the super admin scope. */
+const detailStatusSql = (s: Scope): string => (s.scope === 'all' ? `h.status IN ('approved', 'pending')` : APPROVED);
 
 function listWhere(s: Scope, q: ListQuery): Query {
   const scope = scopeSql(s, 'h.id');
-  let sql = `${APPROVED}${scope.sql}`;
+  // A limited scope never sees applications: the condition can not match (the service does not even ask the database).
+  let sql = q.pending ? (s.scope === 'all' ? `${PENDING}${scope.sql}` : '1 = 0') : `${APPROVED}${scope.sql}`;
   const values = [...scope.values];
   if (q.search) {
     sql += ' AND (h.name LIKE ? OR h.address LIKE ? OR h.phone LIKE ? OR h.email LIKE ? OR h.categories LIKE ?)';
@@ -95,18 +100,18 @@ function listWhere(s: Scope, q: ListQuery): Query {
   }
   if (q.active === '1') sql += ' AND h.is_active = 1';
   if (q.active === '0') sql += ' AND COALESCE(h.is_active, 0) = 0';
-  if (q.unreviewed) sql += ' AND h.has_unreviewed_changes = 1';
   return { sql, values };
 }
 
-/** Counters above the list: approved hospitals inside the scope, ignoring the list filters. */
+/** Counters above the list: approved hospitals inside the scope, ignoring the list filters; `pending` counts waiting applications (super admin scope only, else 0). */
 export function statsQuery(s: Scope): Query {
   const scope = scopeSql(s, 'h.id');
   return {
     sql: `SELECT COUNT(*) AS total,
        COALESCE(SUM(h.is_active = 1), 0) AS active,
        COALESCE(SUM(COALESCE(h.is_active, 0) = 0), 0) AS inactive,
-       COALESCE(SUM(h.has_unreviewed_changes = 1), 0) AS unreviewed
+       COALESCE(SUM(h.has_unreviewed_changes = 1), 0) AS unreviewed,
+       ${s.scope === 'all' ? `(SELECT COUNT(*) FROM gangnamunni_hospitals hp WHERE hp.status = 'pending')` : '0'} AS pending
      FROM gangnamunni_hospitals h
      WHERE ${APPROVED}${scope.sql}`,
     values: scope.values,
@@ -147,7 +152,7 @@ export function treatmentOptionsQuery(s: Scope): Query {
 }
 
 /**
- * One approved hospital inside the scope. The two certificate columns are only tested for presence in SQL: the stored
+ * One approved hospital inside the scope (the super admin scope also gets pending applications, to read). The two certificate columns are only tested for presence in SQL: the stored
  * file paths never leave the database. Columns holding keys or other secrets are not selected at all.
  */
 export function detailQuery(s: Scope, id: number): Query {
@@ -161,7 +166,7 @@ export function detailQuery(s: Scope, id: number): Query {
        (h.cert_business IS NOT NULL AND h.cert_business <> '') AS has_cert_business,
        (h.cert_medical IS NOT NULL AND h.cert_medical <> '') AS has_cert_medical
      FROM gangnamunni_hospitals h
-     WHERE h.id = ? AND ${APPROVED}${scope.sql}
+     WHERE h.id = ? AND ${detailStatusSql(s)}${scope.sql}
      LIMIT 1`,
     values: [id, ...scope.values],
   };
@@ -250,12 +255,14 @@ export interface HospitalStats {
   active: number;
   inactive: number;
   unreviewed: number;
+  pending: number;
 }
 export const buildStats = (r: Row | null | undefined): HospitalStats => ({
   total: num(r?.total),
   active: num(r?.active),
   inactive: num(r?.inactive),
   unreviewed: num(r?.unreviewed),
+  pending: num(r?.pending),
 });
 
 export function toListItem(r: Row) {
@@ -354,7 +361,8 @@ export function buildDetail(d: DetailRows) {
     },
     // Presence only: the files are opened through the PHP admin, which checks the right to see them.
     documents: { business: flag(h.has_cert_business), medical: flag(h.has_cert_medical) },
-    documentsEditable: d.documentsEditable === true,
+    // An application that is not approved yet is read only, whatever the switches say.
+    documentsEditable: d.documentsEditable === true && str(h.status) === 'approved',
     images: d.images.map((r) => ({
       id: num(r.id), url: str(r.image_url), type: str(r.image_type), sortOrder: num(r.sort_order), isActive: flagDefaultOn(r.is_active),
     })),

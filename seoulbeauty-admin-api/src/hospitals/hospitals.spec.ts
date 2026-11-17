@@ -14,7 +14,7 @@ const UNBOUND = 'PHPSESSID=unbound';
 const PLAIN = 'PHPSESSID=plain';
 const admin = (role: string, hospitalId: number | null = null) => ({ id: 7, username: 'boss', name: '김관리', role, hospitalId });
 
-/** Two approved hospitals (12, 13); 14 exists but is still pending. */
+/** Two approved hospitals (12, 13); 14 is a pending application, 15 a rejected one. */
 const HOSPITALS: Record<number, Record<string, unknown>> = {
   12: {
     id: 12, name: '서울의원', owner_name: '김원장', business_number: '123-45-67890', introduction: '소개', address: '서울 강남구', phone: '02-000-0000',
@@ -29,6 +29,14 @@ const HOSPITALS: Record<number, Record<string, unknown>> = {
     id: 13, name: '다른의원', status: 'approved', is_active: 0, ad_grade: 'none', rating: null, review_count: 0, show_rating: 0, has_unreviewed_changes: 0,
     categories: null, created_at: '2026-09-01 10:00:00', has_cert_business: 0, has_cert_medical: 0,
   },
+  14: {
+    id: 14, name: '신청의원', owner_name: '박원장', status: 'pending', is_active: 0, ad_grade: 'none', rating: null, review_count: 0, show_rating: 0, has_unreviewed_changes: 1,
+    categories: '["피부"]', created_at: '2026-11-15 10:00:00', applied_by: 'member9', applied_at: '2026-11-15 09:00:00', has_cert_business: 1, has_cert_medical: 1,
+  },
+  15: {
+    id: 15, name: '반려의원', status: 'rejected', is_active: 0, ad_grade: 'none', rating: null, review_count: 0, show_rating: 0, has_unreviewed_changes: 0,
+    categories: null, created_at: '2026-11-01 10:00:00', has_cert_business: 0, has_cert_medical: 0,
+  },
 };
 
 describe('admin API: hospitals (list, treatment options, detail)', () => {
@@ -40,10 +48,11 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
   let revisionsTable: 'ok' | 'missing' = 'ok';
   let failHospitals = false;
 
-  /** Ids the statement may return: the bound IN (?) list when there is one, otherwise everything approved. */
+  /** Ids the statement may return: the bound IN (?) list when there is one, and only the statuses the statement asks for (approved by default). */
   const visible = (sql: string, values: unknown[]): number[] => {
     const bound = values.find((v) => Array.isArray(v)) as number[] | undefined;
-    const ids = Object.keys(HOSPITALS).map(Number);
+    const wanted = sql.includes("h.status = 'pending'") ? ['pending'] : sql.includes("h.status IN ('approved', 'pending')") ? ['approved', 'pending'] : ['approved'];
+    const ids = Object.keys(HOSPITALS).map(Number).filter((id) => wanted.includes(HOSPITALS[id].status as string));
     return sql.includes(' IN (?)') ? ids.filter((id) => (bound || []).includes(id)) : ids;
   };
 
@@ -75,7 +84,8 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
         if (sql.includes('AS unreviewed')) {
           const rows = ids.map((id) => HOSPITALS[id]);
           return [[{ total: String(rows.length), active: String(rows.filter((r) => r.is_active === 1).length),
-            inactive: String(rows.filter((r) => r.is_active !== 1).length), unreviewed: String(rows.filter((r) => r.has_unreviewed_changes === 1).length) }]];
+            inactive: String(rows.filter((r) => r.is_active !== 1).length), unreviewed: String(rows.filter((r) => r.has_unreviewed_changes === 1).length),
+            pending: sql.includes("hp.status = 'pending'") ? String(Object.values(HOSPITALS).filter((r) => r.status === 'pending').length) : '0' }]];
         }
         if (sql.includes('COUNT(*) AS cnt')) return [[{ cnt: ids.length }]];
         if (sql.includes('WHERE h.id = ?')) return [ids.filter((id) => id === values[0]).map((id) => HOSPITALS[id])];
@@ -193,7 +203,7 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
       expect(r.headers['cache-control']).toContain('no-store');
       expect(r.body).toEqual({
         scope: 'all',
-        stats: { total: 2, active: 1, inactive: 1, unreviewed: 1 },
+        stats: { total: 2, active: 1, inactive: 1, unreviewed: 1, pending: 1 },
         total: 2, page: 1, perPage: 20,
         items: [
           { id: 13, name: '다른의원', address: '', phone: '', categories: [], adGrade: 'none', isActive: false, rating: 0, reviewCount: 0, showRating: false,
@@ -208,7 +218,8 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
     it.each([HOSPITAL, HOSPITAL_ADMIN])('hospital role (%s): only its own hospital, in the list and in the counters', async (cookie) => {
       const r = await get('/v1/hospitals', cookie).expect(200);
       expect(r.body.scope).toBe('own');
-      expect(r.body.stats).toEqual({ total: 1, active: 1, inactive: 0, unreviewed: 1 });
+      expect(r.body.stats).toEqual({ total: 1, active: 1, inactive: 0, unreviewed: 1, pending: 0 });
+      for (const c of calls) expect(c.sql).not.toContain("hp.status");
       expect(r.body.total).toBe(1);
       expect(r.body.items.map((i: any) => i.id)).toEqual([12]);
       expect(calls).toHaveLength(3);
@@ -225,7 +236,7 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
     });
     it('hospital role without a bound hospital: empty answer, the database is not asked', async () => {
       const r = await get('/v1/hospitals?perPage=50&page=3', UNBOUND).expect(200);
-      expect(r.body).toEqual({ scope: 'own', stats: { total: 0, active: 0, inactive: 0, unreviewed: 0 }, total: 0, page: 3, perPage: 50, items: [] });
+      expect(r.body).toEqual({ scope: 'own', stats: { total: 0, active: 0, inactive: 0, unreviewed: 0, pending: 0 }, total: 0, page: 3, perPage: 50, items: [] });
       expect(dbStub.query).not.toHaveBeenCalled();
     });
     it('query values are normalised and bound', async () => {
@@ -244,6 +255,39 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
       expect(list2.sql).toContain('COALESCE(h.is_active, 0) = 0');
       // the counters never take the list filters
       expect(calls.find((c) => c.sql.includes('AS unreviewed'))!.values).toEqual([]);
+    });
+    it('pending=1: super admin gets only pending applications; counters stay approved-only plus the pending count', async () => {
+      const r = await get('/v1/hospitals?pending=1&active=1&unreviewed=1', SUPER).expect(200);
+      expect(r.body.items.map((i: any) => i.id)).toEqual([14]);
+      expect(r.body.total).toBe(1);
+      expect(r.body.stats).toEqual({ total: 2, active: 1, inactive: 1, unreviewed: 1, pending: 1 });
+      const list = calls.find((c) => c.sql.includes('LIMIT ?, ?'))!;
+      expect(list.sql).toContain("h.status = 'pending'");
+      expect(list.sql).not.toContain("h.status = 'approved'");
+      expect(list.sql).not.toContain('is_active = ');
+      expect(list.sql).not.toContain('has_unreviewed_changes = 1');
+      expect(list.values).toEqual([0, 20]);
+    });
+    it('pending=1 keeps the search filter and binds it', async () => {
+      await get('/v1/hospitals?pending=1&search=%EC%8B%A0%EC%B2%AD', SUPER).expect(200);
+      const list = calls.find((c) => c.sql.includes('LIMIT ?, ?'))!;
+      expect(list.sql).toContain('h.name LIKE ?');
+      expect(list.values).toEqual([...Array(5).fill('%신청%'), 0, 20]);
+    });
+    it.each(['0', 'true', '', '2'])('pending=%j is not the pending filter: approved list, 14 never shown', async (v) => {
+      const r = await get(`/v1/hospitals?pending=${v}`, SUPER).expect(200);
+      expect(r.body.items.map((i: any) => i.id)).toEqual([13, 12]);
+      expect(calls.find((c) => c.sql.includes('LIMIT ?, ?'))!.sql).toContain("h.status = 'approved'");
+    });
+    it('the unreviewed filter is gone: the query parameter changes nothing', async () => {
+      const r = await get('/v1/hospitals?unreviewed=1', SUPER).expect(200);
+      expect(r.body.items.map((i: any) => i.id)).toEqual([13, 12]);
+      expect(calls.find((c) => c.sql.includes('LIMIT ?, ?'))!.sql).not.toContain('AND h.has_unreviewed_changes');
+    });
+    it.each([HOSPITAL, HOSPITAL_ADMIN, UNBOUND])('pending=1 for a hospital role (%s): empty answer, the database is not asked', async (cookie) => {
+      const r = await get('/v1/hospitals?pending=1', cookie).expect(200);
+      expect(r.body).toMatchObject({ scope: 'own', total: 0, items: [], stats: { pending: 0 } });
+      expect(dbStub.query).not.toHaveBeenCalled();
     });
     it('a database error on a required query is 500 without details', async () => {
       failHospitals = true;
@@ -305,12 +349,36 @@ describe('admin API: hospitals (list, treatment options, detail)', () => {
       await get('/v1/hospitals/12', UNBOUND).expect(404).expect({ error: 'not_found' });
       expect(dbStub.query).not.toHaveBeenCalled();
     });
-    it('unknown or not approved -> 404, same body as out of scope', async () => {
-      await get('/v1/hospitals/14', SUPER).expect(404).expect({ error: 'not_found' });
+    it('unknown or rejected -> 404, same body as out of scope', async () => {
+      await get('/v1/hospitals/15', SUPER).expect(404).expect({ error: 'not_found' });
       await get('/v1/hospitals/999', SUPER).expect(404).expect({ error: 'not_found' });
-      // only the main statement ran, and it asks for approved hospitals
+      // only the main statement ran, and it asks for approved or pending hospitals
       expect(calls).toHaveLength(2);
-      for (const c of calls) expect(c.sql).toContain("h.status = 'approved'");
+      for (const c of calls) expect(c.sql).toContain("h.status IN ('approved', 'pending')");
+    });
+    it('a pending application opens for the super admin, read only: status pending, documents not editable', async () => {
+      process.env.ADMIN_HOSPITALS_DOCUMENTS = '1';
+      try {
+        const r = await get('/v1/hospitals/14', SUPER).expect(200);
+        expect(r.body.hospital).toMatchObject({ id: 14, name: '신청의원', status: 'pending', appliedBy: 'member9' });
+        expect(r.body.documentsEditable).toBe(false);
+        expect(r.body.documents).toEqual({ business: true, medical: true });
+        // the owner edits of an application are not listed
+        expect(r.body.revisions).toEqual([]);
+        expect(calls.some((c) => c.sql.includes('gangnamunni_hospital_revisions'))).toBe(false);
+      } finally {
+        delete process.env.ADMIN_HOSPITALS_DOCUMENTS;
+      }
+    });
+    it.each([HOSPITAL, HOSPITAL_ADMIN, UNBOUND])('a pending application is 404 for a hospital role (%s), the database is not asked', async (cookie) => {
+      await get('/v1/hospitals/14', cookie).expect(404).expect({ error: 'not_found' });
+      expect(dbStub.query).not.toHaveBeenCalled();
+    });
+    it('a hospital role asking for its own hospital only ever asks for approved ones', async () => {
+      await get('/v1/hospitals/12', HOSPITAL).expect(200);
+      const main = calls.find((c) => c.sql.includes('WHERE h.id = ?'))!;
+      expect(main.sql).toContain("h.status = 'approved'");
+      expect(main.sql).not.toContain('pending');
     });
     it.each(['abc', '0', '-1', '1.5', '12abc', '01', '99999999999', '12%20OR%201=1'])('id %s is not an id -> 404, the database is not asked', async (id) => {
       await get(`/v1/hospitals/${id}`, SUPER).expect(404).expect({ error: 'not_found' });

@@ -191,7 +191,7 @@ export const SNAPSHOT_HOSPITAL_COLUMNS = [
 ];
 
 export const hospitalRowQuery = (id: number, lock: boolean): Query => ({
-  sql: `SELECT ${SNAPSHOT_HOSPITAL_COLUMNS.join(', ')} FROM gangnamunni_hospitals WHERE id = ? LIMIT 1${lock ? ' FOR UPDATE' : ''}`,
+  sql: `SELECT ${SNAPSHOT_HOSPITAL_COLUMNS.join(', ')} FROM gangnamunni_hospitals WHERE id = ? AND status = 'approved' LIMIT 1${lock ? ' FOR UPDATE' : ''}`,
   values: [id],
 });
 export const snapshotDoctorsQuery = (id: number): Query => ({ sql: `SELECT id, name, specialty FROM gangnamunni_doctors WHERE hospital_id = ? ORDER BY id ASC`, values: [id] });

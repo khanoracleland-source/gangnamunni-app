@@ -56,11 +56,13 @@ describe('admin API: hospital stats, delete-check, delete and archive', () => {
       return [archiveRows];
     }
     if (sql.startsWith('UPDATE gangnamunni_hospital_deletions')) return [{ affectedRows: 1 }];
-    if (sql.includes("AND status = 'approved' LIMIT 1")) return [hospitals[id] && hospitals[id].status === 'approved' ? [{ id }] : []];
+    const approved = !!hospitals[id] && hospitals[id].status === 'approved';
     if (sql.startsWith('SELECT id, name, updated_at FROM gangnamunni_hospitals') || sql.startsWith('SELECT id, name FROM gangnamunni_hospitals')) {
-      return [hospitals[id] ? [{ id, name: hospitals[id].name, updated_at: hospitals[id].updated_at }] : []];
+      expect(sql).toContain("AND status = 'approved'");
+      return [approved ? [{ id, name: hospitals[id].name, updated_at: hospitals[id].updated_at }] : []];
     }
-    if (sql.includes('FROM gangnamunni_hospitals WHERE id = ? LIMIT 1 FOR UPDATE')) return [hospitals[id] ? [hospitalRow(id)] : []];
+    if (sql.includes("AND status = 'approved' LIMIT 1 FOR UPDATE")) return [approved ? [hospitalRow(id)] : []];
+    if (sql.includes("AND status = 'approved' LIMIT 1")) return [approved ? [{ id }] : []];
     if (sql.includes('FROM gangnamunni_bookings')) {
       if (sql.includes('MAX(TIMESTAMP')) return [[openBookings]];
       if (sql.includes('from_date')) return [[{ from_date: '2026-11-16', to_date: '2026-11-18', created: 5, cancelled: 2 }]];
@@ -349,8 +351,8 @@ describe('admin API: hospital stats, delete-check, delete and archive', () => {
       expect(rwWrites()).toHaveLength(0);
     });
 
-    it('works for a pending hospital (no status filter); unknown id 404', async () => {
-      expect((await get('/v1/hospitals/13/delete-check', SUPER)).status).toBe(200);
+    it('a pending hospital and an unknown id -> 404', async () => {
+      expect((await get('/v1/hospitals/13/delete-check', SUPER)).status).toBe(404);
       expect((await get('/v1/hospitals/99/delete-check', SUPER)).status).toBe(404);
       expect((await get('/v1/hospitals/0/delete-check', SUPER)).status).toBe(404);
     });
@@ -521,8 +523,13 @@ describe('admin API: hospital stats, delete-check, delete and archive', () => {
       expect((await post('/v1/hospitals/abc/delete', goodBody, SUPER)).status).toBe(404);
     });
 
-    it('a pending hospital can be deleted (no status filter)', async () => {
-      expect((await del(13, { confirmName: '대기병원', expectedUpdatedAt: null })).status).toBe(200);
+    it.each(['pending', 'rejected'])('a %s application can not be deleted or checked here -> 404, nothing written', async (status) => {
+      hospitals[13].status = status;
+      const r = await del(13, { confirmName: '대기병원', expectedUpdatedAt: null });
+      expect(r.status).toBe(404);
+      expect(r.body).toEqual({ error: 'not_found' });
+      expect((await get('/v1/hospitals/13/delete-check', SUPER)).status).toBe(404);
+      expect(rwWrites()).toHaveLength(0);
     });
   });
 

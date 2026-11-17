@@ -54,10 +54,10 @@ export class HospitalsTreatmentImagesService {
     return Array.isArray(rows) ? rows : [];
   };
 
-  /** The hospital is inside the scope and exists (404), and the assignment belongs to it (404). */
-  private async assertVisible(scope: Scope, id: number, htId: number): Promise<void> {
+  /** The hospital is inside the scope and exists (404; with `approvedOnly` it must be approved too), and the assignment belongs to it (404). */
+  private async assertVisible(scope: Scope, id: number, htId: number, approvedOnly = true): Promise<void> {
     if (id <= 0 || htId <= 0 || seesNothing(scope) || !canSee(scope, id)) throw new NotFoundException({ error: 'not_found' });
-    if ((await this.roRun(hospitalExistsQuery(id, false))).length === 0) throw new NotFoundException({ error: 'not_found' });
+    if ((await this.roRun(hospitalExistsQuery(id, approvedOnly))).length === 0) throw new NotFoundException({ error: 'not_found' });
     if ((await this.roRun(assignmentExistsQuery(htId, id))).length === 0) throw new NotFoundException({ error: 'not_found' });
   }
 
@@ -73,7 +73,7 @@ export class HospitalsTreatmentImagesService {
   }
 
   async list(scope: Scope, actor: ImageActor, id: number, htId: number): Promise<ImagesAnswer> {
-    await this.assertVisible(scope, id, htId);
+    await this.assertVisible(scope, id, htId, false);
     return { items: await this.read(htId), canReview: canReviewImages(actor.role), defaultImageUrl: await this.defaultImage(htId, id) };
   }
 

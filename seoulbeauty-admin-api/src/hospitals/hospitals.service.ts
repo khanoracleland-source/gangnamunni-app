@@ -4,7 +4,7 @@ import { DB, Db } from '../db/db.module';
 import { canWriteDocuments } from './hospitals.documents.logic';
 import {
   buildDetail, buildStats, canSee, countQuery, detailOptionalQuery, detailQuery, doctorsQuery, emptyList, groupTreatments, HospitalDetail, HospitalList,
-  imagesQuery, listQuery, ListQuery, num, Query, revisionsQuery, Scope, seesNothing, statsQuery, toListItem, TreatmentGroup, treatmentOptionsQuery,
+  imagesQuery, listQuery, ListQuery, num, Query, str, revisionsQuery, Scope, seesNothing, statsQuery, toListItem, TreatmentGroup, treatmentOptionsQuery,
 } from './hospitals.logic';
 
 type Row = Record<string, unknown>;
@@ -38,7 +38,7 @@ export class HospitalsService {
   }
 
   async list(scope: Scope, q: ListQuery): Promise<HospitalList> {
-    if (seesNothing(scope)) return emptyList(scope, q);
+    if (seesNothing(scope) || (q.pending && scope.scope !== 'all')) return emptyList(scope, q);
     const [stats, count, items] = await Promise.all([this.rows(statsQuery(scope)), this.rows(countQuery(scope, q)), this.rows(listQuery(scope, q))]);
     return { scope: scope.scope, stats: buildStats(stats[0]), total: num(count[0]?.cnt), page: q.page, perPage: q.perPage, items: items.map(toListItem) };
   }
@@ -48,7 +48,7 @@ export class HospitalsService {
     return { groups: groupTreatments(await this.rows(treatmentOptionsQuery(scope), true)) };
   }
 
-  /** null = not found, not approved, or outside the caller's scope (the three are indistinguishable on purpose). */
+  /** null = not found, not approved (a pending application is opened by the super admin scope only), or outside the caller's scope (the three are indistinguishable on purpose). */
   async detail(scope: Scope, id: number, role = ''): Promise<HospitalDetail | null> {
     if (id <= 0 || seesNothing(scope) || !canSee(scope, id)) return null;
     const hospital = (await this.rows(detailQuery(scope, id)))[0];
@@ -57,8 +57,8 @@ export class HospitalsService {
       this.rows(detailOptionalQuery(id), true),
       this.rows(imagesQuery(id), true),
       this.rows(doctorsQuery(id), true),
-      num(hospital.has_unreviewed_changes) === 1 ? this.rows(revisionsQuery(id), true) : Promise.resolve([]),
+      num(hospital.has_unreviewed_changes) === 1 && str(hospital.status) === 'approved' ? this.rows(revisionsQuery(id), true) : Promise.resolve([]),
     ]);
-    return buildDetail({ hospital, optional: optional[0], images, doctors, revisions, documentsEditable: hospitalsDocumentsEnabled() && canWriteDocuments(role, scope, id) });
+    return buildDetail({ hospital, optional: optional[0], images, doctors, revisions, documentsEditable: hospitalsDocumentsEnabled() && str(hospital.status) === 'approved' && canWriteDocuments(role, scope, id) });
   }
 }

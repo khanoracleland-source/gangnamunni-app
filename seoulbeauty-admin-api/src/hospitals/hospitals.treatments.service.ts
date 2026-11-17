@@ -164,7 +164,7 @@ export class HospitalsTreatmentsService {
     }
   }
 
-  /** Guard of every write: the hospital is visible (404), the actor may manage treatments (403). */
+  /** Guard of every write: the hospital is visible and approved (404; a pending / rejected application is never edited here), the actor may manage treatments (403). */
   private async allowWrite(scope: Scope, actor: Actor, id: number, approvedOnly: boolean): Promise<void> {
     if (!(await this.visible(scope, id, approvedOnly))) throw new NotFoundException({ error: 'not_found' });
     if (!(await this.canManage(actor.role))) throw new ForbiddenException({ error: 'forbidden_treatments' });
@@ -210,7 +210,7 @@ export class HospitalsTreatmentsService {
   }
 
   async patch(scope: Scope, actor: Actor, id: number, htId: number, body: unknown): Promise<{ item: TreatmentItem; promotedCount: number }> {
-    await this.allowWrite(scope, actor, id, false);
+    await this.allowWrite(scope, actor, id, true);
     const parsed = parsePatchBody(body);
     if (!parsed.ok) throw new BadRequestException(parsed.body);
     const patch = parsed.patch;
@@ -238,7 +238,7 @@ export class HospitalsTreatmentsService {
   }
 
   async remove(scope: Scope, actor: Actor, id: number, htId: number): Promise<ListAnswer & { removed: boolean; deleted: { priceOptions: number; images: number } }> {
-    await this.allowWrite(scope, actor, id, false);
+    await this.allowWrite(scope, actor, id, true);
     const out = await this.tx(async (run, exec) => {
       const rows = htId > 0 ? await run(lockAssignmentQuery(id, htId)) : [];
       if (rows.length === 0) throw new NotFoundException({ error: 'not_found' });
@@ -262,7 +262,7 @@ export class HospitalsTreatmentsService {
   }
   /** Replaces every price option of one assignment (delete + insert in one transaction); the answer is re-read from the read-only pool. */
   async savePrices(scope: Scope, actor: Actor, id: number, htId: number, body: unknown): Promise<{ item: TreatmentItem; count: number; promotedCount: number }> {
-    await this.allowWrite(scope, actor, id, false);
+    await this.allowWrite(scope, actor, id, true);
     const parsed = parsePricesBody(body);
     if (!parsed.ok) throw new BadRequestException(parsed.body);
     const options = parsed.options;
@@ -293,7 +293,7 @@ export class HospitalsTreatmentsService {
    * Only the assignment's ownership is checked, not is_active (like the PHP page). The answer is re-read from the read-only pool.
    */
   async saveQuestions(scope: Scope, actor: Actor, id: number, htId: number, body: unknown): Promise<{ item: TreatmentItem; count: number }> {
-    await this.allowWrite(scope, actor, id, false);
+    await this.allowWrite(scope, actor, id, true);
     const parsed = parseQuestionsBody(body);
     if (!parsed.ok) throw new BadRequestException(parsed.body);
     const questions = parsed.questions;

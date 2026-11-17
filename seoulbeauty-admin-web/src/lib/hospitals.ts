@@ -12,15 +12,15 @@ const positiveInt = (value: string | null): number => {
 
 /** Reads the list state from the address. Anything missing or invalid becomes the default, never an error. */
 export function parseListQuery(params: { get(name: string): string | null }): HospitalListQuery {
-  const unreviewed = params.get("unreviewed") === "1";
+  const pending = params.get("pending") === "1";
   const active = params.get("active");
   const perPage = positiveInt(params.get("perPage"));
   return {
     search: (params.get("search") ?? "").trim().slice(0, SEARCH_MAX_LENGTH),
     treatmentId: positiveInt(params.get("treatmentId")),
-    // The unreviewed filter wins over the active filter: the two are never combined.
-    active: !unreviewed && (active === "1" || active === "0") ? (active as ActiveFilter) : "all",
-    unreviewed,
+    // The pending filter wins over the active filter: the two are never combined.
+    active: !pending && (active === "1" || active === "0") ? (active as ActiveFilter) : "all",
+    pending,
     page: Math.max(1, positiveInt(params.get("page"))),
     perPage: (PER_PAGE_OPTIONS as readonly number[]).includes(perPage) ? perPage : DEFAULT_PER_PAGE,
   };
@@ -31,7 +31,7 @@ export function listHref(query: HospitalListQuery): string {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
   if (query.treatmentId > 0) params.set("treatmentId", String(query.treatmentId));
-  if (query.unreviewed) params.set("unreviewed", "1");
+  if (query.pending) params.set("pending", "1");
   else if (query.active !== "all") params.set("active", query.active);
   if (query.perPage !== DEFAULT_PER_PAGE) params.set("perPage", String(query.perPage));
   if (query.page > 1) params.set("page", String(query.page));
@@ -39,7 +39,7 @@ export function listHref(query: HospitalListQuery): string {
   return qs ? `/hospitals?${qs}` : "/hospitals";
 }
 
-export const hasFilters = (query: HospitalListQuery): boolean => query.search !== "" || query.treatmentId > 0 || query.active !== "all" || query.unreviewed;
+export const hasFilters = (query: HospitalListQuery): boolean => query.search !== "" || query.treatmentId > 0 || query.active !== "all" || query.pending;
 
 /** Page numbers to offer: up to `size` of them, around the current page. */
 export function pageWindow(page: number, pages: number, size = 5): number[] {
@@ -78,6 +78,9 @@ export function externalHref(stored: string): string {
 
 /** The hospital's page in the old panel, opened for editing. */
 export const legacyEditUrl = (id: number): string => `${PHP_BASE_URL}admin_hospitals.php?view=${id}&edit=1`;
+
+/** The hospital's page in the old panel, opened for viewing only. */
+export const legacyViewUrl = (id: number): string => `${PHP_BASE_URL}admin_hospitals.php?view=${id}`;
 
 /** The old panel's image manager of one hospital (edit order, hide, delete): not done in the new panel. */
 export const legacyImagesUrl = (id: number): string => `${PHP_BASE_URL}admin_hospital_images.php?hospital_id=${id}`;

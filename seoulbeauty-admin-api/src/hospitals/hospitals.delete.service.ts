@@ -67,10 +67,10 @@ export class HospitalsDeleteService {
     return buildBlockers({ bookings: bookings[0], consultations: consultations[0], settlements: settlements[0], last: last[0], payments: payments[0], refunds: refunds[0] });
   }
 
-  /** null = no such hospital (any status). */
+  /** null = no such approved hospital (a pending / rejected application is not deleted from here). */
   async check(id: number): Promise<DeleteCheck | null> {
     if (id <= 0) return null;
-    const hospital = (await this.roRun({ sql: 'SELECT id, name FROM gangnamunni_hospitals WHERE id = ? LIMIT 1', values: [id] }))[0];
+    const hospital = (await this.roRun({ sql: `SELECT id, name FROM gangnamunni_hospitals WHERE id = ? AND status = 'approved' LIMIT 1`, values: [id] }))[0];
     if (!hospital) return null;
     const [blockers, tb, ts, images, doctors, treatments] = await Promise.all([
       this.blockersOf(this.roRun, id), this.roRun(totalBookingsQuery(id)), this.roRun(totalSalesQuery(id)),
@@ -97,7 +97,7 @@ export class HospitalsDeleteService {
 
   async delete(actor: DeleteActor, id: number, body: unknown): Promise<{ archiveId: number }> {
     if (id <= 0) throw new NotFoundException({ error: 'not_found' });
-    const hospital = (await this.roRun({ sql: 'SELECT id, name, updated_at FROM gangnamunni_hospitals WHERE id = ? LIMIT 1', values: [id] }))[0];
+    const hospital = (await this.roRun({ sql: `SELECT id, name, updated_at FROM gangnamunni_hospitals WHERE id = ? AND status = 'approved' LIMIT 1`, values: [id] }))[0];
     if (!hospital) throw new NotFoundException({ error: 'not_found' });
     const parsed = parseDeleteBody(body);
     if (!parsed.ok) throw new BadRequestException({ error: 'invalid', fields: parsed.fields });

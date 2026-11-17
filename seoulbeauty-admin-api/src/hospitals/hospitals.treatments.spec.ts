@@ -319,6 +319,28 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       expect((await del(12, 101)).status).toBe(404);
     });
 
+    it.each(['pending', 'rejected'])('a %s application: every treatment write is 404 and nothing is written (the list stays readable)', async (status) => {
+      hospitals[14] = { status };
+      hts.push({ id: 300, hospital_id: 14, treatment_id: 10, is_promoted: 0, note: '', registered_by: 'admin', status: 'active', is_active: 1, min_age: null });
+      process.env.ADMIN_HOSPITALS_TREATMENTS_PRICES = '1';
+      process.env.ADMIN_HOSPITALS_TREATMENTS_QUESTIONS = '1';
+      const put = (path: string, body: unknown) => request(app.getHttpServer()).put(`/v1/hospitals/14/treatments/300/${path}`).set('Cookie', SUPER).set(JSON_HDR).send(JSON.stringify(body));
+      const answers = [
+        await assign(14, [11]),
+        await patch(14, 300, { isPromoted: true }),
+        await del(14, 300),
+        await put('prices', { options: [] }),
+        await put('questions', { questions: [] }),
+      ];
+      for (const r of answers) {
+        expect(r.status).toBe(404);
+        expect(r.body).toEqual({ error: 'not_found' });
+      }
+      expect(writes()).toHaveLength(0);
+      expect(rwCalls.filter((c) => c.sql.includes('gangnamunni_hospital_treatments'))).toHaveLength(0);
+      expect((await get('/v1/hospitals/14/treatments', SUPER)).status).toBe(200);
+    });
+
     it('all on -> /v1/me reports both flags and keeps the others', async () => {
       expect((await get('/v1/me', SUPER)).body.features).toEqual({
         hospitals: true, hospitalsWrite: true, hospitalsDelete: false, archive: false, hospitalsImages: false, hospitalsDocuments: false, hospitalsDoctors: false, hospitalsTreatments: true, hospitalsTreatmentsRemove: true, hospitalsTreatmentsPrices: false, hospitalsTreatmentsQuestions: false, hospitalsTreatmentsImages: false,

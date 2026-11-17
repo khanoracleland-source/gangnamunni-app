@@ -334,6 +334,23 @@ describe('admin API: hospital writes (edit, activate, review)', () => {
     });
   });
 
+  describe('a pending application is never written', () => {
+    it('edit, active switch and revision review on a pending hospital -> 404 asking for approved only; nothing written', async () => {
+      const answers = [
+        await patch(14, { expectedUpdatedAt: T0, fields: { name: 'x' } }),
+        await send('post', '/v1/hospitals/14/active', { active: true }, SUPER),
+        await send('post', '/v1/hospitals/14/revisions/review', {}, SUPER),
+      ];
+      for (const r of answers) {
+        expect(r.status).toBe(404);
+        expect(r.body).toEqual({ error: 'not_found' });
+      }
+      expect(roCalls).toHaveLength(3);
+      for (const c of roCalls) expect(c.sql).toContain(`AND status = 'approved'`);
+      noWrites();
+    });
+  });
+
   describe('POST /v1/hospitals/:id/active', () => {
     it('super admin sets the exact value', async () => {
       const off = await send('post', '/v1/hospitals/12/active', { active: false }, SUPER);

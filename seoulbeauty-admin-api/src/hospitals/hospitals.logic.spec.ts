@@ -9,8 +9,8 @@ const NONE: Scope = { scope: 'own', hospitalIds: [] };
 
 describe('normalizeListQuery', () => {
   it('defaults', () => {
-    expect(normalizeListQuery({})).toEqual({ search: '', treatmentId: 0, active: 'all', unreviewed: false, page: 1, perPage: 20 });
-    expect(normalizeListQuery(undefined)).toEqual({ search: '', treatmentId: 0, active: 'all', unreviewed: false, page: 1, perPage: 20 });
+    expect(normalizeListQuery({})).toEqual({ search: '', treatmentId: 0, active: 'all', pending: false, page: 1, perPage: 20 });
+    expect(normalizeListQuery(undefined)).toEqual({ search: '', treatmentId: 0, active: 'all', pending: false, page: 1, perPage: 20 });
   });
   it.each([['10', 10], ['20', 20], ['50', 50], ['15', 20], ['0', 20], ['100', 20], ['-10', 20], ['abc', 20], ['10.5', 20], ['1e1', 20], [undefined, 20], [['10', '50'], 20]])(
     'perPage %j -> %d', (raw, want) => {
@@ -35,20 +35,55 @@ describe('normalizeListQuery', () => {
   });
 });
 
-describe('unreviewed filter', () => {
-  it.each([['1', true], ['0', false], ['true', false], ['', false], [undefined, false], [['1'], false]])('unreviewed %j -> %s', (raw, want) => {
-    expect(normalizeListQuery({ unreviewed: raw }).unreviewed).toBe(want);
+describe('pending filter', () => {
+  it.each([['1', true], ['0', false], ['true', false], ['', false], [undefined, false], [['1'], false]])('pending %j -> %s', (raw, want) => {
+    expect(normalizeListQuery({ pending: raw }).pending).toBe(want);
   });
-  it('wins over active and adds a parameter-free condition', () => {
-    const q = normalizeListQuery({ unreviewed: '1', active: '0' });
+  it('the old unreviewed parameter is ignored', () => {
+    expect(normalizeListQuery({ unreviewed: '1' })).toEqual(normalizeListQuery({}));
+  });
+  it('wins over active, asks for pending only and adds no parameter', () => {
+    const q = normalizeListQuery({ pending: '1', active: '0' });
     expect(q.active).toBe('all');
     const built = countQuery(ALL, q);
-    expect(built.sql).toContain('h.has_unreviewed_changes = 1');
+    expect(built.sql).toContain("h.status = 'pending'");
+    expect(built.sql).not.toContain("h.status = 'approved'");
     expect(built.sql).not.toContain('is_active');
     expect(built.values).toEqual(countQuery(ALL, normalizeListQuery({})).values);
   });
+  it('can never match anything for a limited scope', () => {
+    const q = normalizeListQuery({ pending: '1' });
+    for (const s of [OWN, NONE].filter((x) => !seesNothing(x))) {
+      const built = listQuery(s, q);
+      expect(built.sql).toContain('1 = 0');
+      expect(built.sql).not.toContain("'pending'");
+    }
+  });
   it('is absent by default', () => {
-    expect(countQuery(ALL, normalizeListQuery({})).sql).not.toContain('has_unreviewed_changes');
+    expect(countQuery(ALL, normalizeListQuery({})).sql).not.toContain("'pending'");
+  });
+});
+
+describe('stats pending counter', () => {
+  it('super admin scope counts pending applications, a limited scope gets a constant 0', () => {
+    expect(statsQuery(ALL).sql).toContain("hp.status = 'pending'");
+    const own = statsQuery(OWN);
+    expect(own.sql).not.toContain("'pending'");
+    expect(own.sql).toContain('0 AS pending');
+    expect(own.values).toEqual([[12]]);
+  });
+});
+
+describe('detailQuery status', () => {
+  it('super admin scope also opens pending applications; a limited scope approved only', () => {
+    expect(detailQuery(ALL, 5).sql).toContain("h.status IN ('approved', 'pending')");
+    expect(detailQuery(OWN, 12).sql).toContain("h.status = 'approved'");
+    expect(detailQuery(OWN, 12).sql).not.toContain('pending');
+  });
+  it('buildDetail: documents of a pending application are never editable', () => {
+    const base = { images: [], doctors: [], revisions: [], documentsEditable: true };
+    expect(buildDetail({ ...base, hospital: { id: 1, status: 'pending' } }).documentsEditable).toBe(false);
+    expect(buildDetail({ ...base, hospital: { id: 1, status: 'approved' } }).documentsEditable).toBe(true);
   });
 });
 

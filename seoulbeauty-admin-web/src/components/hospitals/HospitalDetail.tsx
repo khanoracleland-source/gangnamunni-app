@@ -31,6 +31,7 @@ import {
   externalHref,
   hasBusinessHours,
   legacyEditUrl,
+  legacyViewUrl,
   lunchBreak,
   mediaUrl,
   specialClosedDates,
@@ -184,7 +185,9 @@ export default function HospitalDetail({ id }: { id: string }) {
 
   const h = detail?.hospital;
   // Changing data is offered only while the server has the write switch on; the server checks the account again on every request.
-  const canWrite = me?.features.hospitalsWrite === true;
+  const pending = h?.status === "pending";
+  // A pending application is only read here: nothing on the page changes it.
+  const canWrite = me?.features.hospitalsWrite === true && !pending;
   const isSuper = me?.admin.role === "super_admin" && me.admin.scope === "all";
   // Deleting is offered to a super admin only, and only while the server has that switch on.
   const canDelete = me?.features.hospitalsDelete === true && canWrite && isSuper;
@@ -226,7 +229,7 @@ export default function HospitalDetail({ id }: { id: string }) {
   const actions = h ? (
     <div className="page-actions">
       <Link className="btn btn--ghost" href="/hospitals">{t("h.d.back")}</Link>
-      {canWrite ? (
+      {pending ? null : canWrite ? (
         editing ? null : (
           <Link className="btn btn--primary" href={`${viewHref}?edit=1`} title={t("h.d.editBtnTitle")} onClick={() => setFlash(null)}>
             <Icon name="edit" size={18} />
@@ -249,7 +252,7 @@ export default function HospitalDetail({ id }: { id: string }) {
       admin={me?.admin ?? null}
       features={me?.features ?? null}
       title={h ? h.name || t("h.noName") : t("h.d.title")}
-      description={editing ? t("h.e.desc") : t("h.d.desc")}
+      description={editing ? t("h.e.desc") : pending ? t("h.pd.desc") : t("h.d.desc")}
       actions={actions}
       screen={screen}
     >
@@ -280,14 +283,28 @@ export default function HospitalDetail({ id }: { id: string }) {
           <div role="status">
             {flash ? <Notice icon="check">{t(FLASH_KEYS[flash])}</Notice> : null}
           </div>
+          {pending ? (
+            <div className="notice notice--warn notice--pending" role="alert">
+              <Icon name="clock" size={18} />
+              <p className="notice__text">
+                <b className="notice__title">{t("h.pd.title")}</b>
+                <span className="notice__body">{t("h.pd.body")}</span>
+              </p>
+              <a className="txtbtn" href={legacyViewUrl(h.id)} target="_blank" rel="noopener noreferrer">
+                <Icon name="external" size={16} />
+                <span>{t("h.pd.legacy")}</span>
+              </a>
+            </div>
+          ) : (
           <Notice>{canWrite ? (me?.admin.scope === "own" ? t("h.d.viewHintOwn") : t("h.d.viewHint")) : me?.admin.scope === "own" ? t("h.d.readOnlyOwn") : t("h.d.readOnly")}</Notice>
-          {h.hasUnreviewedChanges ? (
+          )}
+          {h.hasUnreviewedChanges && !pending ? (
             <Notice tone="warn" icon="alert" action={detail.revisions.length > 0 ? <a className="txtbtn" href="#sec-d-revisions">{t("h.rev.jump")}</a> : undefined}>
               {t("h.rev.notice")}
             </Notice>
           ) : null}
 
-          <SalesCard hospitalId={h.id} />
+          {pending ? null : <SalesCard hospitalId={h.id} />}
           <BasicInfo detail={detail} />
           <StatusInfo detail={detail} onToggle={canWrite && isSuper ? (active) => askConfirm(active ? "activate" : "deactivate") : null} />
           <Hours hours={h.businessHours} />
@@ -322,6 +339,7 @@ export default function HospitalDetail({ id }: { id: string }) {
             )}
           </Section>
 
+          {pending ? null : (
           <Section id="sec-d-revisions" title={t("h.rev.title")} desc={revisionsDesc}>
             {reviewable ? (
               <div className="section__tools">
@@ -364,6 +382,7 @@ export default function HospitalDetail({ id }: { id: string }) {
               <p className="panel panel--empty">{t("h.rev.empty")}</p>
             )}
           </Section>
+          )}
 
           {canDelete ? (
             <Section id="sec-d-danger" title={t("hd.zone.title")} desc={t("hd.zone.desc")}>
@@ -464,12 +483,13 @@ function StatusInfo({ detail, onToggle }: { detail: HospitalDetailData; onToggle
   const t = useT();
   const h = detail.hospital;
   const statusKey = STATUS_KEYS.get(h.status);
+  const isPending = h.status === "pending";
   const location = h.latitude !== null && h.longitude !== null && (h.latitude !== 0 || h.longitude !== 0) ? `${h.latitude}, ${h.longitude}` : "—";
   return (
     <Section id="sec-d-status" title={t("h.status.title")} desc={t("h.status.desc")}>
       <dl className="panel dl dl--3">
-        <Field label={t("h.status.review")}><Pill tone={h.status === "approved" ? "on" : "off"}>{statusKey ? t(statusKey) : h.status || "—"}</Pill></Field>
-        <Field label={t("h.col.active")}><ActivePill active={h.isActive} /></Field>
+        <Field label={t("h.status.review")}><Pill tone={h.status === "approved" ? "on" : isPending ? "warn" : "off"}>{statusKey ? t(statusKey) : h.status || "—"}</Pill></Field>
+        <Field label={t("h.col.active")}>{isPending ? <Pill tone="warn">{t("h.pendingPill")}</Pill> : <ActivePill active={h.isActive} />}</Field>
         <Field label={t("h.status.grade")}><GradePill grade={h.adGrade} long /></Field>
         <Field label={t("h.col.rating")}>{t("h.status.ratingValue", { rating: h.rating.toFixed(1) })}</Field>
         <Field label={t("h.status.reviews")}>{t("h.status.reviewsValue", { n: formatNumber(h.reviewCount) })}</Field>

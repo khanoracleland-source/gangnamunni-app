@@ -42,18 +42,18 @@ type State = {
 
 const INITIAL: State = { phase: "loading", errorKind: "load", me: null, list: null, stale: false, settled: "" };
 
-/** What the four count cards filter by. Exactly one is chosen; "all" is no filter. */
-type StatFilter = "all" | "active" | "inactive" | "unreviewed";
+/** What the count cards filter by. Exactly one is chosen; "all" is no filter. The pending card is for a super admin only. */
+type StatFilter = "all" | "active" | "inactive" | "pending";
 
 const STAT_FILTERS: readonly { key: StatFilter; label: MessageKey; note: MessageKey }[] = [
   { key: "all", label: "h.stats.total", note: "h.stats.totalNote" },
   { key: "active", label: "h.stats.active", note: "h.stats.activeNote" },
   { key: "inactive", label: "h.stats.inactive", note: "h.stats.inactiveNote" },
-  { key: "unreviewed", label: "h.stats.unreviewed", note: "h.stats.unreviewedNote" },
+  { key: "pending", label: "h.stats.pending", note: "h.stats.pendingNote" },
 ];
 
 const statFilterOf = (query: HospitalListQuery): StatFilter =>
-  query.unreviewed ? "unreviewed" : query.active === "1" ? "active" : query.active === "0" ? "inactive" : "all";
+  query.pending ? "pending" : query.active === "1" ? "active" : query.active === "0" ? "inactive" : "all";
 
 /** The hospital whose active state is being asked about, and the state it would get. */
 type ActiveAsk = { id: number; name: string; next: boolean };
@@ -142,7 +142,7 @@ export default function HospitalList() {
   const selectedStat = statFilterOf(query);
   const pickStat = (key: StatFilter) => {
     if (key === selectedStat) return;
-    go({ active: key === "active" ? "1" : key === "inactive" ? "0" : "all", unreviewed: key === "unreviewed" });
+    go({ active: key === "active" ? "1" : key === "inactive" ? "0" : "all", pending: key === "pending" });
   };
 
   // Active switch: ask first, then the row is updated from the answer (the list is not loaded again).
@@ -208,6 +208,8 @@ export default function HospitalList() {
   else if (phase === "error") screen = <ErrorScreen kind={state.errorKind} onRetry={retry} retrying={busy} />;
 
   const scope = list?.scope ?? me?.admin.scope ?? "all";
+  const isSuper = me?.admin.role === "super_admin";
+  const statCards = STAT_FILTERS.filter((f) => f.key !== "pending" || isSuper);
   const knownTreatment = groups.some((g) => g.items.some((item) => item.id === query.treatmentId));
 
   return (
@@ -218,9 +220,22 @@ export default function HospitalList() {
         <>
           <Section id="sec-h-stats" title={t("h.stats.title")} desc={scope === "own" ? t("h.stats.descOwn") : t("h.stats.desc")}>
             <ul className="stats" role="group" aria-label={t("h.stats.group")}>
-              {STAT_FILTERS.map((f) => (
-                <Stat key={f.key} label={t(f.label)} value={list.stats[f.key === "all" ? "total" : f.key]} note={t(f.note)} pressed={selectedStat === f.key} onSelect={() => pickStat(f.key)} />
-              ))}
+              {statCards.map((f) => {
+                const value = list.stats[f.key === "all" ? "total" : f.key];
+                const pendingCard = f.key === "pending";
+                return (
+                  <Stat
+                    key={f.key}
+                    label={t(f.label)}
+                    value={value}
+                    note={t(pendingCard && value === 0 ? "h.stats.pendingNoteZero" : f.note)}
+                    pressed={selectedStat === f.key}
+                    dot={pendingCard && value > 0 && selectedStat !== f.key}
+                    dim={pendingCard && value === 0}
+                    onSelect={() => pickStat(f.key)}
+                  />
+                );
+              })}
             </ul>
           </Section>
 
@@ -274,6 +289,8 @@ export default function HospitalList() {
               list={list}
               busy={busy}
               filtered={hasFilters(query)}
+              pendingOnly={query.pending && query.search === "" && query.treatmentId === 0}
+              pendingList={query.pending}
               canEdit={me?.features.hospitalsWrite === true}
               canToggle={canToggle}
               askingId={ask && working ? ask.id : null}
@@ -296,12 +313,33 @@ export default function HospitalList() {
   );
 }
 
-function Stat({ label, value, note, pressed, onSelect }: { label: string; value: number; note: string; pressed: boolean; onSelect: () => void }) {
+function Stat({
+  label,
+  value,
+  note,
+  pressed,
+  dot = false,
+  dim = false,
+  onSelect,
+}: {
+  label: string;
+  value: number;
+  note: string;
+  pressed: boolean;
+  /** A red dot after the label: something here waits for the admin. */
+  dot?: boolean;
+  /** Nothing to show: the number is drawn in the muted colour. */
+  dim?: boolean;
+  onSelect: () => void;
+}) {
   const t = useT();
   return (
     <li>
-      <button type="button" className="stat stat--btn" aria-pressed={pressed} onClick={onSelect}>
-        <span className="stat__label">{label}</span>
+      <button type="button" className={dim ? "stat stat--btn stat--dim" : "stat stat--btn"} aria-pressed={pressed} onClick={onSelect}>
+        <span className={dot ? "stat__label stat__label--dot" : "stat__label"}>
+          {label}
+          {dot ? <span className="stat__dot" aria-hidden="true" /> : null}
+        </span>
         <span className="stat__value">{t("h.count", { n: formatNumber(value) })}</span>
         <span className="stat__note">{note}</span>
       </button>
@@ -342,6 +380,8 @@ function ListTable({
   list,
   busy,
   filtered,
+  pendingOnly,
+  pendingList,
   canEdit,
   canToggle,
   askingId,
@@ -350,6 +390,10 @@ function ListTable({
   list: HospitalListData;
   busy: boolean;
   filtered: boolean;
+  /** The pending card is chosen and nothing else narrows the list. */
+  pendingOnly: boolean;
+  /** The rows are pending applications. */
+  pendingList: boolean;
   canEdit: boolean;
   canToggle: boolean;
   askingId: number | null;
@@ -357,7 +401,7 @@ function ListTable({
 }) {
   const t = useT();
   if (list.items.length === 0) {
-    const message = list.total > 0 ? t("h.list.emptyPage") : filtered ? t("h.list.emptyFiltered") : list.scope === "own" ? t("h.list.emptyOwn") : t("h.list.empty");
+    const message = list.total > 0 ? t("h.list.emptyPage") : pendingOnly ? t("h.list.emptyPending") : filtered ? t("h.list.emptyFiltered") : list.scope === "own" ? t("h.list.emptyOwn") : t("h.list.empty");
     return (
       <div className="empty" aria-busy={busy}>
         <Icon name="hospital" size={22} />
@@ -388,7 +432,7 @@ function ListTable({
       </thead>
       <tbody role="rowgroup">
         {list.items.map((h) => (
-          <Row key={h.id} hospital={h} canEdit={canEdit} canToggle={canToggle} switching={askingId === h.id} onToggle={onToggle} />
+          <Row key={h.id} hospital={h} pending={pendingList} canEdit={canEdit} canToggle={canToggle} switching={askingId === h.id} onToggle={onToggle} />
         ))}
       </tbody>
     </table>
@@ -397,12 +441,15 @@ function ListTable({
 
 function Row({
   hospital: h,
+  pending,
   canEdit,
   canToggle,
   switching,
   onToggle,
 }: {
   hospital: HospitalListItem;
+  /** The row belongs to the pending applications list: view only. */
+  pending: boolean;
   canEdit: boolean;
   canToggle: boolean;
   switching: boolean;
@@ -412,17 +459,19 @@ function Row({
   const name = h.name || t("h.noName");
   const href = `/hospitals/${h.id}`;
   return (
-    <tr role="row">
+    <tr role="row" className={pending ? "is-pending" : undefined}>
       <td role="cell" className="tbl__id" data-label="#">{h.id}</td>
       <td role="cell" className="tbl__name" data-label={t("h.col.name")}>
         <Link href={href} className="tbl__link">{name}</Link>
-        {h.hasUnreviewedChanges ? <Pill tone="info">{t("h.changed")}</Pill> : null}
+        {pending ? <span className="tbl__pill"><Pill tone="warn">{t("h.pendingPill")}</Pill></span> : null}
       </td>
       <td role="cell" className="tbl__addr" data-label={t("h.col.address")}>{h.address || "—"}</td>
       <td role="cell" className="tbl__phone" data-label={t("h.col.phone")}>{h.phone || "—"}</td>
       <td role="cell" className="tbl__cat" data-label={t("h.col.categories")}><Chips items={h.categories} max={3} /></td>
-      <td role="cell" className="tbl__ad" data-label={t("h.col.ad")}><GradePill grade={h.adGrade} /></td>
-      <td role="cell" className="tbl__active" data-label={t("h.col.active")}>{canToggle ? (
+      <td role="cell" className="tbl__ad" data-label={t("h.col.ad")}>{pending ? "—" : <GradePill grade={h.adGrade} />}</td>
+      <td role="cell" className="tbl__active" data-label={t("h.col.active")}>{pending ? (
+          <Pill tone="warn">{t("h.pendingPill")}</Pill>
+        ) : canToggle ? (
           <span className="act">
             <ActivePill active={h.isActive} />
             <button
@@ -445,7 +494,7 @@ function Row({
         )}
       </td>
       <td role="cell" className="tbl__rating" data-label={t("h.col.rating")}>
-        {h.rating > 0 ? t("h.ratingValue", { rating: h.rating.toFixed(1), count: formatNumber(h.reviewCount) }) : "—"}
+        {!pending && h.rating > 0 ? t("h.ratingValue", { rating: h.rating.toFixed(1), count: formatNumber(h.reviewCount) }) : "—"}
       </td>
       <td role="cell" className="tbl__date" data-label={t("h.col.created")}>{formatDay(h.createdAt)}</td>
       <td role="cell" className="tbl__go">
@@ -453,7 +502,7 @@ function Row({
           <Link href={href} className="ibtn tbl__open" aria-label={t("h.col.detailOf", { name })} title={t("h.col.detailOf", { name })}>
             <Icon name="eye" size={18} />
           </Link>
-          {canEdit ? (
+          {canEdit && !pending ? (
             <Link href={`${href}?edit=1`} className="ibtn tbl__open" aria-label={t("h.col.editOf", { name })} title={t("h.col.editOf", { name })}>
               <Icon name="edit" size={18} />
             </Link>

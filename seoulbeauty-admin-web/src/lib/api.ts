@@ -195,8 +195,8 @@ export type HospitalListQuery = {
   /** 0 = every treatment. */
   treatmentId: number;
   active: ActiveFilter;
-  /** Only hospitals with changes not reviewed yet. Never sent together with `active`. */
-  unreviewed: boolean;
+  /** Only applications waiting for approval (super admin). Never sent together with `active`. */
+  pending: boolean;
   page: number;
   perPage: number;
 };
@@ -220,7 +220,7 @@ export type HospitalListItem = {
 export type HospitalList = {
   scope: Scope;
   /** Inside the admin's scope, approved hospitals only, not affected by the filters. */
-  stats: { total: number; active: number; inactive: number; unreviewed: number };
+  stats: { total: number; active: number; inactive: number; pending: number };
   /** Number of hospitals that match the filters. */
   total: number;
   page: number;
@@ -232,7 +232,7 @@ export async function fetchHospitals(query: HospitalListQuery, signal?: AbortSig
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
   if (query.treatmentId > 0) params.set("treatmentId", String(query.treatmentId));
-  if (query.unreviewed) params.set("unreviewed", "1");
+  if (query.pending) params.set("pending", "1");
   else if (query.active !== "all") params.set("active", query.active);
   params.set("page", String(query.page));
   params.set("perPage", String(query.perPage));
@@ -244,7 +244,7 @@ export async function fetchHospitals(query: HospitalListQuery, signal?: AbortSig
     ok: true,
     data: {
       scope: d.scope === "all" ? "all" : "own",
-      stats: { total: num(stats.total), active: num(stats.active), inactive: num(stats.inactive), unreviewed: num(stats.unreviewed) },
+      stats: { total: num(stats.total), active: num(stats.active), inactive: num(stats.inactive), pending: num(stats.pending) },
       total: num(d.total),
       page: Math.max(1, num(d.page)),
       perPage: num(d.perPage) > 0 ? num(d.perPage) : query.perPage,
