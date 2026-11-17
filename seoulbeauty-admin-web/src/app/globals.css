@@ -884,6 +884,8 @@ select.input { padding-right: 8px; cursor: pointer; }
 .ecard__body { min-width: 0; padding: var(--s-5); border-top: 1px solid var(--line); }
 .ecard__desc { margin-bottom: var(--s-4); }
 .ecard__body .panel { padding: 0; background: none; border: 0; border-radius: 0; }
+.ecard__body .doc.panel { padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
+.ecard__body .doc .txtbtn { min-height: 44px; }
 .ecard__rating { margin-top: var(--s-4); padding-top: var(--s-4); border-top: 1px solid var(--line); }
 .ecard__legacy { display: grid; justify-items: start; gap: var(--s-3); }
 
@@ -894,6 +896,7 @@ select.input { padding-right: 8px; cursor: pointer; }
 @media (max-width: 576px) {
   .ecard__btn { padding: var(--s-2) var(--s-4); }
   .ecard__body { padding: var(--s-4); }
+  .ecard__body .doc .txtbtn { flex: 1 1 100%; }
 }
 
 .status-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }

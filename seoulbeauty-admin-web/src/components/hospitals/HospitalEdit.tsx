@@ -7,7 +7,7 @@ import HospitalDoctors from "./HospitalDoctors";
 import HospitalImages from "./HospitalImages";
 import HospitalTreatments from "./HospitalTreatments";
 import LocationPicker from "./LocationPicker";
-import { GradePill, Notice, Pill } from "./parts";
+import { DocumentList, GradePill, Notice, Pill } from "./parts";
 import { patchHospital, type HospitalDetail } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import {
@@ -75,7 +75,6 @@ const CARD_TITLE_KEYS: Record<CardId, MessageKey> = {
   ai: "h.e.c.ai",
 };
 const CARD_DESC_KEYS: Partial<Record<CardId, MessageKey>> = {
-  docs: "h.e.c.docs.desc",
   images: "h.e.c.images.desc",
   doctors: "h.e.c.doctors.desc",
   treatments: "h.e.c.treatments.desc",
@@ -95,6 +94,8 @@ const CARD_ICONS: Record<CardId, IconName> = {
 
 type Props = {
   hospital: HospitalDetail["hospital"];
+  /** Which documents the hospital handed in (null when the server did not send it). */
+  documents: HospitalDetail["documents"];
   /** The change was stored. */
   onSaved: () => void;
   /** The admin left the form without saving. */
@@ -118,7 +119,7 @@ type Props = {
  * The edit form of one hospital. It starts from the loaded values, sends only the fields that differ,
  * and reports a clash with a change made elsewhere instead of overwriting it.
  */
-export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false, treatmentsEnabled = false, treatmentImagesEnabled = false }: Props) {
+export default function HospitalEdit({ hospital, documents, onSaved, onCancel, onReload, imageCount, doctorCount, imagesEnabled = false, doctorsEnabled = false, treatmentsEnabled = false, treatmentImagesEnabled = false }: Props) {
   const t = useT();
   const original = useMemo(() => draftFromHospital(hospital), [hospital]);
   const [draft, setDraft] = useState<Draft>(original);
@@ -385,7 +386,10 @@ export default function HospitalEdit({ hospital, onSaved, onCancel, onReload, im
         </div>
       </FoldCard>
 
-      <FoldCard id="docs" open={open.docs} errors={0} onToggle={toggle} legacyHref={legacyEditUrl(hospital.id)} />
+      <FoldCard id="docs" open={open.docs} errors={0} onToggle={toggle}>
+        <p className="field__hint ecard__desc">{t("h.docs.desc")}</p>
+        <DocumentList hospitalId={hospital.id} documents={documents} />
+      </FoldCard>
       {imagesEnabled ? (
         <FoldCard id="images" open={open.images} errors={0} onToggle={toggle} count={imageTotal === undefined ? undefined : t("h.e.c.imgCount", { n: imageTotal })}>
           <HospitalImages

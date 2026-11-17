@@ -10,7 +10,7 @@ import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
 import DeleteHospitalDialog from "./DeleteHospitalDialog";
 import HospitalEdit from "./HospitalEdit";
 import ImageDialog, { type ZoomImage } from "./ImageDialog";
-import { ActivePill, Chips, GradePill, Notice, Pill, Section } from "./parts";
+import { ActivePill, Chips, DocumentList, GradePill, Notice, Pill, Section } from "./parts";
 import SalesCard from "./SalesCard";
 import {
   fetchHospital,
@@ -30,7 +30,6 @@ import {
   dayHours,
   externalHref,
   hasBusinessHours,
-  legacyDocumentUrl,
   legacyEditUrl,
   lunchBreak,
   mediaUrl,
@@ -258,6 +257,7 @@ export default function HospitalDetail({ id }: { id: string }) {
         <HospitalEdit
           key={`${h.id}-${state.settled}`}
           hospital={h}
+          documents={detail.documents}
           onSaved={() => {
             setFlash("saved");
             router.replace(viewHref);
@@ -302,10 +302,7 @@ export default function HospitalDetail({ id }: { id: string }) {
           {/* Documents belong to a registration request: a hospital that was not created through one has none to show. */}
           {h.appliedBy ? (
             <Section id="sec-d-docs" title={t("h.docs.title")} desc={t("h.docs.desc")}>
-              <ul className="docs">
-                <DocumentRow name={t("h.docs.business")} submitted={detail.documents.business} href={legacyDocumentUrl(h.id, "business")} />
-                <DocumentRow name={t("h.docs.medical")} submitted={detail.documents.medical} href={legacyDocumentUrl(h.id, "medical")} />
-              </ul>
+              <DocumentList hospitalId={h.id} documents={detail.documents} />
             </Section>
           ) : null}
 
@@ -528,25 +525,6 @@ function Hours({ hours }: { hours: Record<string, unknown> }) {
         </dl>
       </div>
     </Section>
-  );
-}
-
-function DocumentRow({ name, submitted, href }: { name: string; submitted: boolean; href: string }) {
-  const t = useT();
-  return (
-    <li className="panel doc">
-      <div className="doc__text">
-        <p className="doc__name">{name}</p>
-        <p className="doc__note">{t("h.docs.required")}</p>
-      </div>
-      <Pill tone={submitted ? "on" : "warn"}>{submitted ? t("h.docs.submitted") : t("h.docs.missing")}</Pill>
-      {submitted ? (
-        <a className="txtbtn" href={href} target="_blank" rel="noopener noreferrer" aria-label={t("h.docs.openOf", { name })}>
-          <Icon name="external" size={16} />
-          <span>{t("h.docs.open")}</span>
-        </a>
-      ) : null}
-    </li>
   );
 }
 

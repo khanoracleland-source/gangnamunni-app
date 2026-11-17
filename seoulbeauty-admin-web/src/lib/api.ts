@@ -59,6 +59,7 @@ export type ApiResult<T> =
 type Json = Record<string, unknown>;
 
 const obj = (v: unknown): Json => (v !== null && typeof v === "object" ? (v as Json) : {});
+const isObj = (v: unknown): boolean => v !== null && typeof v === "object" && !Array.isArray(v);
 const num = (v: unknown): number => {
   const n = typeof v === "string" ? Number(v) : v;
   return typeof n === "number" && Number.isFinite(n) ? n : 0;
@@ -335,8 +336,8 @@ export type HospitalDetail = {
     createdAt: string;
     updatedAt: string;
   };
-  /** Only whether each document was handed in; the files themselves stay in the old panel. */
-  documents: { business: boolean; medical: boolean };
+  /** Only whether each document was handed in (null when the server did not send it); the files open in the old panel. */
+  documents: { business: boolean; medical: boolean } | null;
   images: HospitalImage[];
   doctors: HospitalDoctor[];
   /** Changes made by the applicant that nobody has reviewed yet. */
@@ -387,7 +388,7 @@ export async function fetchHospital(id: number, signal?: AbortSignal): Promise<A
         createdAt: str(h.createdAt),
         updatedAt: str(h.updatedAt),
       },
-      documents: { business: bool(documents.business), medical: bool(documents.medical) },
+      documents: isObj(d.documents) ? { business: bool(documents.business), medical: bool(documents.medical) } : null,
       images: list(d.images)
         .map((raw) => {
           const i = obj(raw);

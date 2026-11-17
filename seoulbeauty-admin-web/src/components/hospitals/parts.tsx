@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Icon, { type IconName } from "../Icon";
 import type { AdGrade } from "@/lib/api";
+import { legacyDocumentUrl } from "@/lib/hospitals";
 import { useT } from "@/lib/locale";
 
 /** A titled block of the page: heading, one plain sentence saying what it holds, then the content. */
@@ -59,5 +60,36 @@ export function Chips({ items, max }: { items: string[]; max?: number }) {
       ))}
       {hidden > 0 ? <li className="chip chip--more" title={items.slice(shown.length).join(", ")}>{t("h.more", { n: hidden })}</li> : null}
     </ul>
+  );
+}
+
+/** The two submitted documents of a hospital (view only). A missing answer is shown as a warning, never as "not submitted". */
+export function DocumentList({ hospitalId, documents }: { hospitalId: number; documents: { business: boolean; medical: boolean } | null }) {
+  const t = useT();
+  if (!documents) return <Notice tone="warn">{t("h.docs.unavailable")}</Notice>;
+  return (
+    <ul className="docs">
+      <DocumentRow name={t("h.docs.business")} submitted={documents.business} href={legacyDocumentUrl(hospitalId, "business")} />
+      <DocumentRow name={t("h.docs.medical")} submitted={documents.medical} href={legacyDocumentUrl(hospitalId, "medical")} />
+    </ul>
+  );
+}
+
+function DocumentRow({ name, submitted, href }: { name: string; submitted: boolean; href: string }) {
+  const t = useT();
+  return (
+    <li className="panel doc">
+      <div className="doc__text">
+        <p className="doc__name">{name}</p>
+        <p className="doc__note">{t("h.docs.required")}</p>
+      </div>
+      <Pill tone={submitted ? "on" : "warn"}>{submitted ? t("h.docs.submitted") : t("h.docs.missing")}</Pill>
+      {submitted ? (
+        <a className="txtbtn" href={href} target="_blank" rel="noopener noreferrer" aria-label={t("h.docs.openOf", { name })}>
+          <Icon name="external" size={16} />
+          <span>{t("h.docs.open")}</span>
+        </a>
+      ) : null}
+    </li>
   );
 }
