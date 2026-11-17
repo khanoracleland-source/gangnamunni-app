@@ -49,11 +49,13 @@ type Props = {
   hero?: boolean;
   /** Hero only: the two parts of the overall number, already formatted. */
   split?: { general: string; admins: string };
+  /** This period against the one before it, drawn as two bars to scale (raw numbers; the labels are the formatted ones). */
+  compare?: { current: number; previous: number; currentText: string; previousText: string };
   onHelp: (id: MetricId) => void;
 };
 
 /** One number: kind icon + name + "?" button, big value with its unit, one-line explanation. */
-export default function Metric({ id, value, unit, note, href, hero, split, onHelp }: Props) {
+export default function Metric({ id, value, unit, note, href, hero, split, compare, onHelp }: Props) {
   const t = useT();
   const name = t(metricKey(id, "name"));
   const { kind, icon } = KIND[id];
@@ -75,6 +77,7 @@ export default function Metric({ id, value, unit, note, href, hero, split, onHel
           <span className="num__unit">{unitText}</span>
         </p>
         <p className="card__note">{note}</p>
+        {compare ? <CompareBars {...compare} /> : null}
       </div>
       {hero && split ? (
         <p className="split">
@@ -91,5 +94,24 @@ export default function Metric({ id, value, unit, note, href, hero, split, onHel
         </p>
       ) : null}
     </article>
+  );
+}
+
+/** Two bars, this period on top of the previous one; widths are shares of the larger value, so equal numbers draw equal bars. */
+function CompareBars({ current, previous, currentText, previousText }: NonNullable<Props["compare"]>) {
+  const t = useT();
+  const max = Math.max(current, previous, 0);
+  const width = (n: number) => (max > 0 ? `${Math.max(0, Math.min(100, (n / max) * 100))}%` : "0%");
+  return (
+    <div className="bars" aria-hidden="true">
+      <div className="bars__row bars__row--now">
+        <span>{t("bars.now")}</span>
+        <span className="bars__track" title={currentText}><span className="bars__fill" style={{ width: width(current) }} /></span>
+      </div>
+      <div className="bars__row">
+        <span>{t("bars.prev")}</span>
+        <span className="bars__track" title={previousText}><span className="bars__fill" style={{ width: width(previous) }} /></span>
+      </div>
+    </div>
   );
 }

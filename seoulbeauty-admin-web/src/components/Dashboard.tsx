@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import AdminShell from "./AdminShell";
@@ -166,10 +167,48 @@ export default function Dashboard() {
         <span className="period__hint">{t("period.hint")}</span>
       </div>
 
+      {summary && features ? <Shortcuts features={features} pending={summary.catalog.hospitalsPending} /> : null}
+
       {summary ? <SummaryView summary={summary} period={period} onHelp={setHelp} /> : null}
 
       <HelpDialog metric={help} days={days} onClose={() => setHelp(null)} />
     </AdminShell>
+  );
+}
+
+/** Links to the pages of this panel that are switched on, plus the old admin; nothing here is new behaviour. */
+function Shortcuts({ features, pending }: { features: Features; pending: number }) {
+  const t = useT();
+  const items: { key: string; href: string; external?: boolean; icon: "hospital" | "clock" | "collection" | "gear"; name: MessageKey; hint: MessageKey; count?: number }[] = [];
+  if (features.hospitals) {
+    items.push({ key: "hospitals", href: "/hospitals", icon: "hospital", name: "quick.hospitals", hint: "quick.hospitalsHint" });
+    items.push({ key: "pending", href: "/hospitals?pending=1", icon: "clock", name: "quick.pending", hint: "quick.pendingHint", count: pending });
+  }
+  if (features.archive) items.push({ key: "archive", href: "/hospital-archive", icon: "collection", name: "quick.archive", hint: "quick.archiveHint" });
+  items.push({ key: "legacy", href: PHP_ADMIN_URL, external: true, icon: "gear", name: "quick.legacy", hint: "quick.legacyHint" });
+  return (
+    <Section id="sec-quick" title={t("sec.quick")} desc={t("sec.quick.desc")}>
+      <ul className="quick">
+        {items.map((item) => {
+          const body = (
+            <>
+              <span className="quick__ico"><Icon name={item.icon} size={18} /></span>
+              <span className="quick__text">
+                <span className="quick__name">{t(item.name)}</span>
+                <span className="quick__hint">{t(item.hint)}</span>
+              </span>
+              {item.count !== undefined && item.count > 0 ? <span className="quick__count">{formatNumber(item.count)}</span> : null}
+              <Icon name="chevron" size={16} className="chev" />
+            </>
+          );
+          return (
+            <li key={item.key}>
+              {item.external ? <a className="quick__item" href={item.href}>{body}</a> : <Link className="quick__item" href={item.href}>{body}</Link>}
+            </li>
+          );
+        })}
+      </ul>
+    </Section>
   );
 }
 
@@ -247,9 +286,9 @@ function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; p
 
       <Section id="sec-bookings" title={t("sec.bookings")} desc={t("sec.bookings.desc")}>
         <div className="grid">
-          <Metric id="bookCount" value={formatNumber(b.count)} unit="case" note={<Delta current={b.count} previous={b.prev.count} days={days} />} onHelp={onHelp} />
-          <Metric id="bookAmount" value={formatNumber(b.amount)} unit="won" note={<Delta current={b.amount} previous={b.prev.amount} days={days} />} onHelp={onHelp} />
-          <Metric id="bookPaid" value={formatNumber(b.paidAmount)} unit="won" note={<Delta current={b.paidAmount} previous={b.prev.paidAmount} days={days} />} onHelp={onHelp} />
+          <Metric id="bookCount" value={formatNumber(b.count)} unit="case" note={<Delta current={b.count} previous={b.prev.count} days={days} />} compare={{ current: b.count, previous: b.prev.count, currentText: formatNumber(b.count), previousText: formatNumber(b.prev.count) }} onHelp={onHelp} />
+          <Metric id="bookAmount" value={formatNumber(b.amount)} unit="won" note={<Delta current={b.amount} previous={b.prev.amount} days={days} />} compare={{ current: b.amount, previous: b.prev.amount, currentText: formatNumber(b.amount), previousText: formatNumber(b.prev.amount) }} onHelp={onHelp} />
+          <Metric id="bookPaid" value={formatNumber(b.paidAmount)} unit="won" note={<Delta current={b.paidAmount} previous={b.prev.paidAmount} days={days} />} compare={{ current: b.paidAmount, previous: b.prev.paidAmount, currentText: formatNumber(b.paidAmount), previousText: formatNumber(b.prev.paidAmount) }} onHelp={onHelp} />
           <Metric id="bookRefund" value={formatNumber(b.refundedAmount)} unit="won" note={t("m.bookRefund.note", { days })} onHelp={onHelp} />
           <Metric
             id="bookCancel"
