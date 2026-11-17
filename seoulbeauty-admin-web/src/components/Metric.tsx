@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import Icon, { type IconName } from "./Icon";
 import { isLongValue, isXLongValue } from "@/lib/format";
@@ -43,6 +44,8 @@ type Props = {
   unit: MetricUnit;
   /** One line under the number: a caption or the change against the previous period. */
   note: ReactNode;
+  /** When set, the whole card opens this page; the name becomes the link and the "?" button stays separate. */
+  href?: string;
   hero?: boolean;
   /** Hero only: the two parts of the overall number, already formatted. */
   split?: { general: string; admins: string };
@@ -50,11 +53,11 @@ type Props = {
 };
 
 /** One number: kind icon + name + "?" button, big value with its unit, one-line explanation. */
-export default function Metric({ id, value, unit, note, hero, split, onHelp }: Props) {
+export default function Metric({ id, value, unit, note, href, hero, split, onHelp }: Props) {
   const t = useT();
   const name = t(metricKey(id, "name"));
   const { kind, icon } = KIND[id];
-  const cls = ["card", `c-${kind}`, hero ? "hero" : "", isLongValue(value) ? "is-long" : "", isXLongValue(value) ? "is-xlong" : ""].filter(Boolean).join(" ");
+  const cls = ["card", `c-${kind}`, hero ? "hero" : "", href ? "card--link" : "", isLongValue(value) ? "is-long" : "", isXLongValue(value) ? "is-xlong" : ""].filter(Boolean).join(" ");
   const unitText = t(`unit.${unit}`);
   const personUnit = t("unit.person");
   return (
@@ -62,7 +65,7 @@ export default function Metric({ id, value, unit, note, hero, split, onHelp }: P
       <div className="card__main">
         <header className="card__top">
           <Icon name={icon} size={18} className="card__icon" />
-          <h3 className="card__name">{name}</h3>
+          <h3 className="card__name">{href ? <Link className="card__link" href={href}>{name}</Link> : name}</h3>
           <button type="button" className="q" onClick={() => onHelp(id)} aria-label={t("m.help", { name })} title={t("m.help", { name })}>
             <Icon name="help" size={18} />
           </button>

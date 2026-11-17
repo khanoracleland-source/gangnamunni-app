@@ -280,7 +280,7 @@ function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; p
 
       <Section id="sec-hospitals" title={t("sec.hospitals")} desc={t("sec.hospitals.desc")}>
         <div className="grid">
-          <Metric id="hospitals" value={formatNumber(catalog.hospitals)} unit="place" note={t("m.hospitals.note", { n: formatNumber(catalog.hospitalsPending) })} onHelp={onHelp} />
+          <Metric id="hospitals" href="/hospitals" value={formatNumber(catalog.hospitals)} unit="place" note={t("m.hospitals.note", { n: formatNumber(catalog.hospitalsPending) })} onHelp={onHelp} />
           <Metric id="doctors" value={formatNumber(catalog.doctors)} unit="person" note={t("m.doctors.note")} onHelp={onHelp} />
           <Metric id="treatments" value={formatNumber(catalog.treatments)} unit="item" note={t("m.treatments.note")} onHelp={onHelp} />
         </div>
