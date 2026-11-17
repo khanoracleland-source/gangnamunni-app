@@ -12,12 +12,15 @@ const positiveInt = (value: string | null): number => {
 
 /** Reads the list state from the address. Anything missing or invalid becomes the default, never an error. */
 export function parseListQuery(params: { get(name: string): string | null }): HospitalListQuery {
+  const unreviewed = params.get("unreviewed") === "1";
   const active = params.get("active");
   const perPage = positiveInt(params.get("perPage"));
   return {
     search: (params.get("search") ?? "").trim().slice(0, SEARCH_MAX_LENGTH),
     treatmentId: positiveInt(params.get("treatmentId")),
-    active: active === "1" || active === "0" ? (active as ActiveFilter) : "all",
+    // The unreviewed filter wins over the active filter: the two are never combined.
+    active: !unreviewed && (active === "1" || active === "0") ? (active as ActiveFilter) : "all",
+    unreviewed,
     page: Math.max(1, positiveInt(params.get("page"))),
     perPage: (PER_PAGE_OPTIONS as readonly number[]).includes(perPage) ? perPage : DEFAULT_PER_PAGE,
   };
@@ -28,14 +31,15 @@ export function listHref(query: HospitalListQuery): string {
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
   if (query.treatmentId > 0) params.set("treatmentId", String(query.treatmentId));
-  if (query.active !== "all") params.set("active", query.active);
+  if (query.unreviewed) params.set("unreviewed", "1");
+  else if (query.active !== "all") params.set("active", query.active);
   if (query.perPage !== DEFAULT_PER_PAGE) params.set("perPage", String(query.perPage));
   if (query.page > 1) params.set("page", String(query.page));
   const qs = params.toString();
   return qs ? `/hospitals?${qs}` : "/hospitals";
 }
 
-export const hasFilters = (query: HospitalListQuery): boolean => query.search !== "" || query.treatmentId > 0 || query.active !== "all";
+export const hasFilters = (query: HospitalListQuery): boolean => query.search !== "" || query.treatmentId > 0 || query.active !== "all" || query.unreviewed;
 
 /** Page numbers to offer: up to `size` of them, around the current page. */
 export function pageWindow(page: number, pages: number, size = 5): number[] {

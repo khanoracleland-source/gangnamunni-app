@@ -9,8 +9,8 @@ const NONE: Scope = { scope: 'own', hospitalIds: [] };
 
 describe('normalizeListQuery', () => {
   it('defaults', () => {
-    expect(normalizeListQuery({})).toEqual({ search: '', treatmentId: 0, active: 'all', page: 1, perPage: 20 });
-    expect(normalizeListQuery(undefined)).toEqual({ search: '', treatmentId: 0, active: 'all', page: 1, perPage: 20 });
+    expect(normalizeListQuery({})).toEqual({ search: '', treatmentId: 0, active: 'all', unreviewed: false, page: 1, perPage: 20 });
+    expect(normalizeListQuery(undefined)).toEqual({ search: '', treatmentId: 0, active: 'all', unreviewed: false, page: 1, perPage: 20 });
   });
   it.each([['10', 10], ['20', 20], ['50', 50], ['15', 20], ['0', 20], ['100', 20], ['-10', 20], ['abc', 20], ['10.5', 20], ['1e1', 20], [undefined, 20], [['10', '50'], 20]])(
     'perPage %j -> %d', (raw, want) => {
@@ -32,6 +32,23 @@ describe('normalizeListQuery', () => {
     expect(Array.from(normalizeListQuery({ search: '병'.repeat(150) }).search)).toHaveLength(100);
     expect(normalizeListQuery({ search: ['a', 'b'] }).search).toBe('');
     expect(normalizeListQuery({ search: { $ne: '' } }).search).toBe('');
+  });
+});
+
+describe('unreviewed filter', () => {
+  it.each([['1', true], ['0', false], ['true', false], ['', false], [undefined, false], [['1'], false]])('unreviewed %j -> %s', (raw, want) => {
+    expect(normalizeListQuery({ unreviewed: raw }).unreviewed).toBe(want);
+  });
+  it('wins over active and adds a parameter-free condition', () => {
+    const q = normalizeListQuery({ unreviewed: '1', active: '0' });
+    expect(q.active).toBe('all');
+    const built = countQuery(ALL, q);
+    expect(built.sql).toContain('h.has_unreviewed_changes = 1');
+    expect(built.sql).not.toContain('is_active');
+    expect(built.values).toEqual(countQuery(ALL, normalizeListQuery({})).values);
+  });
+  it('is absent by default', () => {
+    expect(countQuery(ALL, normalizeListQuery({})).sql).not.toContain('has_unreviewed_changes');
   });
 });
 

@@ -26,6 +26,8 @@ export interface ListQuery {
   search: string;
   treatmentId: number;
   active: 'all' | '1' | '0';
+  /** Only hospitals whose owner edits are still waiting for review. */
+  unreviewed: boolean;
   page: number;
   perPage: number;
 }
@@ -48,7 +50,9 @@ export function normalizeListQuery(q: Record<string, unknown> | undefined | null
   return {
     search,
     treatmentId: positiveInt(src.treatmentId),
-    active: active === '1' || active === '0' ? active : 'all',
+    // The unreviewed filter wins over the active filter: the two are never combined.
+    active: one(src.unreviewed) === '1' ? 'all' : active === '1' || active === '0' ? active : 'all',
+    unreviewed: one(src.unreviewed) === '1',
     page: Math.min(MAX_PAGE, Math.max(1, positiveInt(src.page))),
     perPage: PER_PAGE_CHOICES.includes(perPage) ? perPage : DEFAULT_PER_PAGE,
   };
@@ -91,6 +95,7 @@ function listWhere(s: Scope, q: ListQuery): Query {
   }
   if (q.active === '1') sql += ' AND h.is_active = 1';
   if (q.active === '0') sql += ' AND COALESCE(h.is_active, 0) = 0';
+  if (q.unreviewed) sql += ' AND h.has_unreviewed_changes = 1';
   return { sql, values };
 }
 

@@ -6,13 +6,14 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
+import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
 import { ActivePill, Chips, GradePill, Notice, Pill, Section } from "./parts";
 import {
   PER_PAGE_OPTIONS,
   fetchHospitals,
   fetchMe,
   fetchTreatmentOptions,
-  type ActiveFilter,
+  setHospitalActive,
   type HospitalList as HospitalListData,
   type HospitalListItem,
   type HospitalListQuery,
@@ -21,7 +22,9 @@ import {
 } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatDay, formatNumber } from "@/lib/format";
+import { failureKey } from "@/lib/hospitalEdit";
 import { SEARCH_MAX_LENGTH, hasFilters, listHref, pageWindow, parseListQuery } from "@/lib/hospitals";
+import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "error";
@@ -39,7 +42,21 @@ type State = {
 
 const INITIAL: State = { phase: "loading", errorKind: "load", me: null, list: null, stale: false, settled: "" };
 
-const ACTIVE_FILTERS: readonly ActiveFilter[] = ["all", "1", "0"];
+/** What the four count cards filter by. Exactly one is chosen; "all" is no filter. */
+type StatFilter = "all" | "active" | "inactive" | "unreviewed";
+
+const STAT_FILTERS: readonly { key: StatFilter; label: MessageKey; note: MessageKey }[] = [
+  { key: "all", label: "h.stats.total", note: "h.stats.totalNote" },
+  { key: "active", label: "h.stats.active", note: "h.stats.activeNote" },
+  { key: "inactive", label: "h.stats.inactive", note: "h.stats.inactiveNote" },
+  { key: "unreviewed", label: "h.stats.unreviewed", note: "h.stats.unreviewedNote" },
+];
+
+const statFilterOf = (query: HospitalListQuery): StatFilter =>
+  query.unreviewed ? "unreviewed" : query.active === "1" ? "active" : query.active === "0" ? "inactive" : "all";
+
+/** The hospital whose active state is being asked about, and the state it would get. */
+type ActiveAsk = { id: number; name: string; next: boolean };
 
 /** The approved hospitals the admin may see: counts, search and filters, a table (cards on narrow screens), pages. */
 export default function HospitalList() {
@@ -122,6 +139,67 @@ export default function HospitalList() {
   const retry = () => setAttempt((n) => n + 1);
 
   const { phase, me, list, stale } = state;
+  const selectedStat = statFilterOf(query);
+  const pickStat = (key: StatFilter) => {
+    if (key === selectedStat) return;
+    go({ active: key === "active" ? "1" : key === "inactive" ? "0" : "all", unreviewed: key === "unreviewed" });
+  };
+
+  // Active switch: ask first, then the row is updated from the answer (the list is not loaded again).
+  const [ask, setAsk] = useState<ActiveAsk | null>(null);
+  const [working, setWorking] = useState(false);
+  const [askError, setAskError] = useState<MessageKey | null>(null);
+  const askActive = (target: ActiveAsk) => {
+    setAskError(null);
+    setAsk(target);
+  };
+  const confirmActive = async () => {
+    if (!ask || working) return;
+    setWorking(true);
+    setAskError(null);
+    const res = await setHospitalActive(ask.id, ask.next);
+    setWorking(false);
+    if (res.ok) {
+      const { id } = ask;
+      const isActive = res.data.isActive;
+      setState((s) => {
+        const row = s.list?.items.find((item) => item.id === id);
+        if (!s.list || !row || row.isActive === isActive) return s;
+        const delta = isActive ? 1 : -1;
+        // With the active or inactive card chosen, a row that no longer matches leaves the list at once.
+        const leaves = (query.active === "1" && !isActive) || (query.active === "0" && isActive);
+        return {
+          ...s,
+          list: {
+            ...s.list,
+            total: leaves ? Math.max(0, s.list.total - 1) : s.list.total,
+            stats: { ...s.list.stats, active: Math.max(0, s.list.stats.active + delta), inactive: Math.max(0, s.list.stats.inactive - delta) },
+            items: leaves ? s.list.items.filter((item) => item.id !== id) : s.list.items.map((item) => (item.id === id ? { ...item, isActive } : item)),
+          },
+        };
+      });
+      setAsk(null);
+      return;
+    }
+    if (res.status === 401) {
+      halted.current = true;
+      window.location.assign(PHP_ADMIN_URL);
+      return;
+    }
+    setAskError(res.status === 403 || res.status === 404 ? failureKey(res.status) : "h.act.fail");
+  };
+  const askSpec: ConfirmSpec | null = ask
+    ? {
+        title: t(ask.next ? "h.act.activate.title" : "h.act.deactivate.title"),
+        name: ask.name,
+        body: t(ask.next ? "h.act.activate.body" : "h.act.deactivate.body"),
+        confirmLabel: t(ask.next ? "h.act.activate" : "h.act.deactivate"),
+        cancelLabel: t("h.c.cancel"),
+        focus: "cancel",
+      }
+    : null;
+  // Only a super admin may change it (the server refuses anyone else) and only while changes are switched on.
+  const canToggle = me?.features.hospitalsWrite === true && me.admin.role === "super_admin";
 
   let screen: ReactNode = null;
   if (phase === "loading") screen = <LoadingScreen text={t("h.loading")} />;
@@ -139,12 +217,11 @@ export default function HospitalList() {
       {list ? (
         <>
           <Section id="sec-h-stats" title={t("h.stats.title")} desc={scope === "own" ? t("h.stats.descOwn") : t("h.stats.desc")}>
-            <dl className="stats">
-              <Stat label={t("h.stats.total")} value={list.stats.total} note={t("h.stats.totalNote")} />
-              <Stat label={t("h.stats.active")} value={list.stats.active} note={t("h.stats.activeNote")} />
-              <Stat label={t("h.stats.inactive")} value={list.stats.inactive} note={t("h.stats.inactiveNote")} />
-              <Stat label={t("h.stats.unreviewed")} value={list.stats.unreviewed} note={t("h.stats.unreviewedNote")} />
-            </dl>
+            <ul className="stats" role="group" aria-label={t("h.stats.group")}>
+              {STAT_FILTERS.map((f) => (
+                <Stat key={f.key} label={t(f.label)} value={list.stats[f.key === "all" ? "total" : f.key]} note={t(f.note)} pressed={selectedStat === f.key} onSelect={() => pickStat(f.key)} />
+              ))}
+            </ul>
           </Section>
 
           <Section id="sec-h-find" title={t("h.find.title")} desc={t("h.find.desc")}>
@@ -165,16 +242,6 @@ export default function HospitalList() {
                     ))}
                   </select>
                 </label>
-                <div className="field" role="group" aria-labelledby="h-active-label">
-                  <span id="h-active-label" className="field__label">{t("h.find.active")}</span>
-                  <div className="seg">
-                    {ACTIVE_FILTERS.map((value) => (
-                      <button key={value} type="button" aria-pressed={query.active === value} onClick={() => go({ active: value })}>
-                        {t(`h.find.active.${value}`)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <label className="field field--narrow">
                   <span className="field__label">{t("h.find.perPage")}</span>
                   <select className="sel sel--field" value={query.perPage} onChange={(e) => go({ perPage: Number(e.target.value) })}>
@@ -195,28 +262,50 @@ export default function HospitalList() {
               </Notice>
             ) : null}
             <div className="list-head">
-              <p className="list-head__count" role="status" aria-live="polite">
-                {busy ? t("h.list.busy") : t("h.list.count", { n: formatNumber(list.total) })}
-              </p>
+              <div className="list-head__main">
+                <p className="list-head__count" role="status" aria-live="polite">
+                  {busy ? t("h.list.busy") : t("h.list.count", { n: formatNumber(list.total) })}
+                </p>
+                {selectedStat !== "all" ? <Pill tone="info">{t(STAT_FILTERS.find((f) => f.key === selectedStat)?.label ?? "h.stats.total")}</Pill> : null}
+              </div>
               {hasFilters(query) ? <Link className="txtbtn" href="/hospitals">{t("h.find.reset")}</Link> : null}
             </div>
-            <ListTable list={list} busy={busy} filtered={hasFilters(query)} canEdit={me?.features.hospitalsWrite === true} />
+            <ListTable
+              list={list}
+              busy={busy}
+              filtered={hasFilters(query)}
+              canEdit={me?.features.hospitalsWrite === true}
+              canToggle={canToggle}
+              askingId={ask && working ? ask.id : null}
+              onToggle={askActive}
+            />
             <Pager query={query} total={list.total} />
           </Section>
+          <ConfirmDialog
+            spec={askSpec}
+            busy={working}
+            error={askError ? t(askError) : null}
+            onConfirm={() => void confirmActive()}
+            onClose={() => {
+              if (!working) setAsk(null);
+            }}
+          />
         </>
       ) : null}
     </AdminShell>
   );
 }
 
-function Stat({ label, value, note }: { label: string; value: number; note: string }) {
+function Stat({ label, value, note, pressed, onSelect }: { label: string; value: number; note: string; pressed: boolean; onSelect: () => void }) {
   const t = useT();
   return (
-    <div className="stat">
-      <dt className="stat__label">{label}</dt>
-      <dd className="stat__value">{t("h.count", { n: formatNumber(value) })}</dd>
-      <dd className="stat__note">{note}</dd>
-    </div>
+    <li>
+      <button type="button" className="stat stat--btn" aria-pressed={pressed} onClick={onSelect}>
+        <span className="stat__label">{label}</span>
+        <span className="stat__value">{t("h.count", { n: formatNumber(value) })}</span>
+        <span className="stat__note">{note}</span>
+      </button>
+    </li>
   );
 }
 
@@ -249,7 +338,23 @@ function SearchForm({ initial, onSearch }: { initial: string; onSearch: (search:
   );
 }
 
-function ListTable({ list, busy, filtered, canEdit }: { list: HospitalListData; busy: boolean; filtered: boolean; canEdit: boolean }) {
+function ListTable({
+  list,
+  busy,
+  filtered,
+  canEdit,
+  canToggle,
+  askingId,
+  onToggle,
+}: {
+  list: HospitalListData;
+  busy: boolean;
+  filtered: boolean;
+  canEdit: boolean;
+  canToggle: boolean;
+  askingId: number | null;
+  onToggle: (target: ActiveAsk) => void;
+}) {
   const t = useT();
   if (list.items.length === 0) {
     const message = list.total > 0 ? t("h.list.emptyPage") : filtered ? t("h.list.emptyFiltered") : list.scope === "own" ? t("h.list.emptyOwn") : t("h.list.empty");
@@ -283,14 +388,26 @@ function ListTable({ list, busy, filtered, canEdit }: { list: HospitalListData; 
       </thead>
       <tbody role="rowgroup">
         {list.items.map((h) => (
-          <Row key={h.id} hospital={h} canEdit={canEdit} />
+          <Row key={h.id} hospital={h} canEdit={canEdit} canToggle={canToggle} switching={askingId === h.id} onToggle={onToggle} />
         ))}
       </tbody>
     </table>
   );
 }
 
-function Row({ hospital: h, canEdit }: { hospital: HospitalListItem; canEdit: boolean }) {
+function Row({
+  hospital: h,
+  canEdit,
+  canToggle,
+  switching,
+  onToggle,
+}: {
+  hospital: HospitalListItem;
+  canEdit: boolean;
+  canToggle: boolean;
+  switching: boolean;
+  onToggle: (target: ActiveAsk) => void;
+}) {
   const t = useT();
   const name = h.name || t("h.noName");
   const href = `/hospitals/${h.id}`;
@@ -305,7 +422,28 @@ function Row({ hospital: h, canEdit }: { hospital: HospitalListItem; canEdit: bo
       <td role="cell" className="tbl__phone" data-label={t("h.col.phone")}>{h.phone || "—"}</td>
       <td role="cell" className="tbl__cat" data-label={t("h.col.categories")}><Chips items={h.categories} max={3} /></td>
       <td role="cell" className="tbl__ad" data-label={t("h.col.ad")}><GradePill grade={h.adGrade} /></td>
-      <td role="cell" className="tbl__active" data-label={t("h.col.active")}><ActivePill active={h.isActive} /></td>
+      <td role="cell" className="tbl__active" data-label={t("h.col.active")}>{canToggle ? (
+          <span className="act">
+            <ActivePill active={h.isActive} />
+            <button
+              type="button"
+              role="switch"
+              className="switch"
+              aria-checked={h.isActive}
+              aria-label={t("h.act.switch", { name })}
+              aria-disabled={switching || undefined}
+              aria-busy={switching || undefined}
+              onClick={() => {
+                if (!switching) onToggle({ id: h.id, name, next: !h.isActive });
+              }}
+            >
+              <span className="switch__thumb" aria-hidden="true" />
+            </button>
+          </span>
+        ) : (
+          <ActivePill active={h.isActive} />
+        )}
+      </td>
       <td role="cell" className="tbl__rating" data-label={t("h.col.rating")}>
         {h.rating > 0 ? t("h.ratingValue", { rating: h.rating.toFixed(1), count: formatNumber(h.reviewCount) }) : "—"}
       </td>

@@ -7,6 +7,8 @@ import { useT } from "@/lib/locale";
 
 export type ConfirmSpec = {
   title: string;
+  /** What the question is about (a hospital's name), shown between the title and the text. */
+  name?: string;
   body: string;
   confirmLabel: string;
   cancelLabel: string;
@@ -66,6 +68,7 @@ export default function ConfirmDialog({
               <Icon name="close" />
             </button>
           </div>
+          {spec.name ? <p className="dialog__text dialog__text--strong">{spec.name}</p> : null}
           <p className="dialog__text">{spec.body}</p>
           {error ? (
             <div className="dialog__err">

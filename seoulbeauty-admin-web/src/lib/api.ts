@@ -195,6 +195,8 @@ export type HospitalListQuery = {
   /** 0 = every treatment. */
   treatmentId: number;
   active: ActiveFilter;
+  /** Only hospitals with changes not reviewed yet. Never sent together with `active`. */
+  unreviewed: boolean;
   page: number;
   perPage: number;
 };
@@ -230,7 +232,8 @@ export async function fetchHospitals(query: HospitalListQuery, signal?: AbortSig
   const params = new URLSearchParams();
   if (query.search) params.set("search", query.search);
   if (query.treatmentId > 0) params.set("treatmentId", String(query.treatmentId));
-  if (query.active !== "all") params.set("active", query.active);
+  if (query.unreviewed) params.set("unreviewed", "1");
+  else if (query.active !== "all") params.set("active", query.active);
   params.set("page", String(query.page));
   params.set("perPage", String(query.perPage));
   const res = await getJson(`/v1/hospitals?${params.toString()}`, signal);

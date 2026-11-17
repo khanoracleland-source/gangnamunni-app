@@ -639,16 +639,30 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .panel { min-width: 0; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
 .panel--empty { color: var(--muted); font-size: 14px; }
 
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; gap: 16px; margin: 0; padding: 0; }
+.stats > li { display: flex; min-width: 0; }
 .stat { min-width: 0; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
 .stat__label { color: var(--muted); font-size: 14px; font-weight: 500; }
 .stat__value { margin-top: 4px; font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .stat__note { margin-top: 2px; color: var(--muted); font-size: 13px; line-height: 1.45; }
 
+/* A count card that filters the list: a button, so the three texts are blocks of their own. */
+.stat--btn { display: block; width: 100%; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.stat--btn .stat__label, .stat--btn .stat__value, .stat--btn .stat__note { display: block; }
+.stat--btn:hover { background: var(--surface-2); border-color: var(--control-line); }
+.stat--btn:active { background: var(--line); }
+.stat--btn:focus-visible { border-radius: var(--r-md); }
+.stat--btn[aria-pressed="true"],
+.stat--btn[aria-pressed="true"]:hover { background: var(--accent-soft); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.stat--btn[aria-pressed="true"] .stat__label { color: var(--ink); }
+.stat--btn[aria-pressed="true"] .stat__value { color: var(--accent-text); }
+
 /* Search and filters */
 .filters { display: grid; gap: 16px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
 .filters__search { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
 .filters__row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; }
+.filters__row > .field { flex: 1 1 320px; }
+.filters__row > .field--narrow { flex: 0 0 140px; }
 .filters__hint { color: var(--muted); font-size: 13px; }
 .field { display: flex; flex: 1 1 220px; flex-direction: column; gap: 6px; min-width: 0; }
 .field--grow { flex: 1 1 0; }
@@ -661,6 +675,7 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 
 /* List: a table from 900px, one card per row below that */
 .list-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; margin-bottom: 12px; }
+.list-head__main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
 .list-head__count { font-size: 14px; font-weight: 600; }
 
 .tbl { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); font-size: 14px; }
@@ -672,7 +687,19 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .tbl__id { width: 48px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .tbl__phone { width: 120px; font-variant-numeric: tabular-nums; }
 .tbl__ad { width: 48px; }
-.tbl__active { width: 92px; }
+.tbl__active { width: 132px; }
+
+/* Active state of a row: the pill, and (super admin) the switch beside it. */
+.act { display: inline-flex; align-items: center; gap: 8px; }
+.act .pill { min-width: 56px; justify-content: center; }
+.switch { position: relative; flex: none; width: 40px; height: 24px; padding: 0; background: var(--control-line); border: 1px solid transparent; border-radius: var(--r-pill); cursor: pointer; }
+.switch::before { content: ""; position: absolute; inset: -4px 0; }
+.switch__thumb { position: absolute; top: 2px; left: 3px; width: 18px; height: 18px; background: var(--surface); border-radius: 50%; transition: transform 0.15s; }
+.switch[aria-checked="true"] { background: var(--up); }
+.switch[aria-checked="true"] .switch__thumb { transform: translateX(16px); }
+.switch[aria-checked="false"]:hover { background: var(--muted); }
+.switch:focus-visible { border-radius: var(--r-pill); }
+.switch[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 .tbl__rating { width: 96px; font-variant-numeric: tabular-nums; }
 .tbl__date { width: 96px; font-variant-numeric: tabular-nums; }
 .tbl__go { width: 104px; }
@@ -748,6 +775,16 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .dialog__image { display: block; max-width: 100%; max-height: calc(100dvh - 220px); margin: 0 auto; object-fit: contain; background: var(--surface-2); border-radius: var(--r-sm); }
 .dialog--image .dialog__foot { flex-wrap: wrap; gap: 8px; }
 
+@media (min-width: 900px) and (max-width: 1199px) {
+  .tbl__active { width: 120px; }
+  .act { gap: 6px; }
+}
+
+@media (max-width: 899px), (pointer: coarse) {
+  /* Wider press area, same look: 44 x 44. */
+  .switch::before { inset: -10px -2px; }
+}
+
 @media (max-width: 899px) {
   /* Each hospital becomes a card; the column name in front of a value comes from the cell's data-label. */
   .tbl { display: block; overflow: visible; background: transparent; border: 0; border-radius: 0; }
@@ -784,7 +821,7 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   .filters__search { flex-wrap: wrap; }
   .filters__search .field { flex-basis: 100%; }
   .filters__search .btn { flex: 1; }
-  .field, .field--narrow { flex: 1 1 100%; }
+  .field, .field--narrow, .filters__row > .field, .filters__row > .field--narrow { flex: 1 1 100%; }
   .field .seg { align-self: stretch; }
   .page-actions { width: 100%; }
   .page-actions .btn { flex: 1 1 auto; }
@@ -797,6 +834,7 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 }
 
 @media (max-width: 360px) {
+  .stats { grid-template-columns: minmax(0, 1fr); }
   .doctor { gap: 12px; }
   .doctor__photo { width: 72px; }
   .tbl td::before { width: 64px; }
