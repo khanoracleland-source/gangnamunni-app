@@ -506,7 +506,7 @@ async function sendJson(method: "PATCH" | "POST" | "PUT" | "DELETE", path: strin
         ...(typeof d.index === "number" ? { index: d.index } : {}),
         ...(typeof d.field === "string" ? { field: d.field } : {}),
         ...(typeof d.reason === "string" ? { reason: d.reason } : {}),
-        ...(typeof d.hospitalCount === "number" ? { hospitalCount: d.hospitalCount } : {}),
+        ...(typeof d.hospitalCount === "number" ? { hospitalCount: d.hospitalCount } : typeof d.count === "number" ? { hospitalCount: d.count } : {}),
         blockers: blockers(d.blockers),
         deletableAfter: str(d.deletableAfter),
       };
@@ -1506,4 +1506,53 @@ export async function addTreatmentAlias(id: number, alias: string, lang: string)
 
 export async function removeTreatmentAlias(id: number, aliasId: number): Promise<WriteResult<TreatmentChange>> {
   return changed(await sendJson("DELETE", `${treatmentPath(id)}/aliases/${encodeURIComponent(String(aliasId))}`));
+}
+
+// ───────── Treatment master: categories, table mode, conflict pairs ─────────
+
+export type CategoryInput = Partial<{ name: string; icon: string; sortOrder: number }>;
+export type CategoryChange = { categories: TreatmentCategory[] };
+
+const categories = (res: WriteResult<Json>): WriteResult<CategoryChange> =>
+  res.ok ? { ok: true, data: { categories: list(obj(res.data).categories).map(masterCategory).filter((c) => c.id > 0) } } : res;
+
+const categoryPath = (id: number): string => `/v1/treatment-categories/${encodeURIComponent(String(id))}`;
+
+export async function createCategory(input: CategoryInput): Promise<WriteResult<CategoryChange>> {
+  return categories(await sendJson("POST", "/v1/treatment-categories", input));
+}
+
+export async function updateCategory(id: number, input: CategoryInput): Promise<WriteResult<CategoryChange>> {
+  return categories(await sendJson("PATCH", categoryPath(id), input));
+}
+
+export async function setCategoryActive(id: number, active: boolean): Promise<WriteResult<CategoryChange>> {
+  return categories(await sendJson("POST", `${categoryPath(id)}/active`, { active }));
+}
+
+/** A 409 "in_use" carries the number of treatments the category still has in `hospitalCount` (the field the failure type has for a count). */
+export async function deleteCategory(id: number): Promise<WriteResult<CategoryChange>> {
+  return categories(await sendJson("DELETE", categoryPath(id)));
+}
+
+/** Stores the order of all categories: position in the list = new order value (1, 2, 3 ...). */
+export async function reorderCategories(ids: number[]): Promise<WriteResult<CategoryChange>> {
+  return categories(await sendJson("PUT", "/v1/treatment-categories/order", { ids }));
+}
+
+export async function saveTableMode(mode: TableMode): Promise<WriteResult<{ tableMode: TableMode }>> {
+  const res = await sendJson("PUT", "/v1/treatment-settings/table-mode", { mode });
+  return res.ok ? { ok: true, data: { tableMode: tableMode(obj(res.data).tableMode) } } : res;
+}
+
+export type ConflictChange = { conflicts: TreatmentConflict[]; existed: boolean };
+
+export async function addConflict(a: number, b: number): Promise<WriteResult<ConflictChange>> {
+  const res = await sendJson("POST", "/v1/treatment-conflicts", { a, b });
+  return res.ok ? { ok: true, data: { conflicts: masterConflicts(obj(res.data).conflicts), existed: obj(res.data).existed === true } } : res;
+}
+
+export async function removeConflict(id: number): Promise<WriteResult<ConflictChange>> {
+  const res = await sendJson("DELETE", `/v1/treatment-conflicts/${encodeURIComponent(String(id))}`);
+  return res.ok ? { ok: true, data: { conflicts: masterConflicts(obj(res.data).conflicts), existed: true } } : res;
 }

@@ -154,8 +154,8 @@ export default function TreatmentsPage() {
 
           <div id="tm-panel" role="tabpanel" aria-labelledby={`tm-tab-${query.tab}`}>
             {query.tab === "treatments" ? <TreatmentsTab data={data} query={query} canWrite={!readOnly} refresh={refresh} /> : null}
-            {query.tab === "categories" ? <CategoriesTab data={data} /> : null}
-            {query.tab === "conflicts" ? <ConflictsTab data={data} /> : null}
+            {query.tab === "categories" ? <CategoriesTab data={data} canWrite={!readOnly} refresh={refresh} /> : null}
+            {query.tab === "conflicts" ? <ConflictsTab data={data} canWrite={!readOnly} refresh={refresh} /> : null}
           </div>
         </>
       ) : null}
