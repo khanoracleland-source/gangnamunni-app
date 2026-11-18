@@ -144,6 +144,15 @@ describe('admin API: treatment master writes', () => {
       expect(r.body.field).toBe(field);
       expect(rwCalls).toHaveLength(0);
     });
+    it('a long name without a hashtag still saves: the derived hashtag is cut to the limit', async () => {
+      const r = await send('post', '/v1/treatments', { name: 'x'.repeat(150), categoryId: 1 });
+      expect(r.status).toBe(200);
+      const ins = rwCalls.find((c) => c.sql.startsWith('INSERT INTO gangnamunni_treatment_master'))!;
+      expect((ins.values as unknown[]).find((v) => typeof v === 'string' && (v as string).startsWith('#'))).toHaveLength(100);
+      const own = await send('post', '/v1/treatments', { name: 'ok', categoryId: 1, hashtag: 'y'.repeat(150) });
+      expect(own.status).toBe(400);
+      expect(own.body.field).toBe('hashtag');
+    });
     it('PATCH changes only sent columns; unknown id -> 404', async () => {
       const ok = await send('patch', '/v1/treatments/10', { name: 'Botox 2' });
       expect(ok.status).toBe(200);

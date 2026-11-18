@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { toast } from "sonner";
 import AdminShell from "../AdminShell";
 import { Notice } from "../hospitals/parts";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
@@ -83,7 +84,8 @@ export default function TreatmentsPage() {
   const refresh = useCallback(async () => {
     const res = await fetchTreatments();
     if (res.ok) setState((s) => (s.phase === "ready" ? { ...s, data: res.data } : s));
-  }, []);
+    else toast.error(t("tmw.err.reload"));
+  }, [t]);
   const { phase, me, data } = state;
   const busy = phase === "loading";
 

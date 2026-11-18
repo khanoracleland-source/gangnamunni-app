@@ -123,7 +123,7 @@ export default function TreatmentsTab({ data, query, canWrite, refresh }: { data
       toast.success(t("tmw.ok.deleted"));
       setSelected((s) => new Set([...s].filter((id) => id !== deleting.id)));
       await refresh();
-    } else if (res.status === 409 && res.error === "in_use") toast.error(t("tmw.del.inUse", { n: formatNumber(res.hospitalCount ?? 0) }));
+    } else if (res.status === 409 && res.error === "in_use") toast.error((res.hospitalCount ?? 0) > 0 ? t("tmw.del.inUse", { n: formatNumber(res.hospitalCount ?? 0) }) : t("tmw.del.linked"));
     else fail(res);
     setBusy(false);
     setDeleting(null);

@@ -28,8 +28,16 @@ export const isFieldError = (v: unknown): v is FieldError => !!v && typeof v ===
 export const asObject = (body: unknown): Record<string, unknown> | null =>
   body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : null;
 
-/** The hashtag the PHP page derives from a name: "#" plus the name without ASCII spaces. */
-export const hashtagFromName = (name: string): string => `#${name.replace(/ /g, '')}`;
+/** The hashtag the PHP page derives from a name: "#" plus the name without ASCII spaces, cut to the hashtag limit (a derived hashtag is never refused as too long). */
+export const hashtagFromName = (name: string): string => {
+  let out = '';
+  // Whole characters only, and never more than the limit in the same unit the length check uses.
+  for (const ch of `#${name.replace(/ /g, '')}`) {
+    if (out.length + ch.length > HASHTAG_MAX) break;
+    out += ch;
+  }
+  return out;
+};
 
 /** A sent hashtag: blank -> derived from the name; a missing "#" is added. */
 export function normalizeHashtag(raw: string, name: string): string {

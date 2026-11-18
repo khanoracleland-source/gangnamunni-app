@@ -54,7 +54,8 @@ type Props = {
  */
 export default function TreatmentTable({ rows, sort, dir, onSort, onAliases, actions }: Props) {
   const t = useT();
-  const allSelected = actions !== undefined && rows.length > 0 && rows.every((r) => actions.selected.has(r.id));
+  const selectedCount = actions ? rows.filter((r) => actions.selected.has(r.id)).length : 0;
+  const allSelected = rows.length > 0 && selectedCount === rows.length;
   return (
     <table className="tbl tbl--tm" role="table">
       <caption className="sr-only">{t("tm.list.caption")}</caption>
@@ -62,7 +63,15 @@ export default function TreatmentTable({ rows, sort, dir, onSort, onAliases, act
         <tr role="row">
           {actions ? (
             <th role="columnheader" scope="col" className="tm__c-sel">
-              <input type="checkbox" checked={allSelected} onChange={(e) => actions.onSelectAll(e.target.checked)} aria-label={t("tmw.bulk.all")} />
+              <input
+                type="checkbox"
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = selectedCount > 0 && !allSelected;
+                }}
+                onChange={(e) => actions.onSelectAll(e.target.checked)}
+                aria-label={t("tmw.bulk.all")}
+              />
             </th>
           ) : null}
           {COLUMNS.map((col) => {

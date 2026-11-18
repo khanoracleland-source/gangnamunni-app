@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import Icon from "../Icon";
 import { Pill, type PillTone } from "../hospitals/parts";
 import { addTreatmentAlias, removeTreatmentAlias, type TreatmentItem } from "@/lib/api";
-import { failureKey } from "./writeErrors";
+import { failureKey, reasonKey } from "./writeErrors";
 import { formatNumber } from "@/lib/format";
 import { useT } from "@/lib/locale";
 
@@ -37,7 +37,7 @@ export default function AliasDialog({ item, canWrite, onChanged, onClose }: { it
       setAlias("");
       toast.success(t("tmw.ok.aliasAdded"));
       await onChanged();
-    } else setError(t(failureKey(res)));
+    } else setError(t(res.status === 400 && res.error === "invalid_field" ? reasonKey(res.reason) : failureKey(res)));
     setBusy(false);
   };
   const remove = async (aliasId: number) => {
