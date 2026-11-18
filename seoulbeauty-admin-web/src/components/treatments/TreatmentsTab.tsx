@@ -2,11 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import Icon from "../Icon";
 import { Pill } from "../hospitals/parts";
+import ConfirmDialog, { type ConfirmSpec } from "../hospitals/ConfirmDialog";
 import AliasDialog from "./AliasDialog";
-import TreatmentTable from "./TreatmentTable";
-import type { TreatmentItem, TreatmentsData } from "@/lib/api";
+import TreatmentDialog from "./TreatmentDialog";
+import TreatmentTable, { type RowActions } from "./TreatmentTable";
+import { failureKey } from "./writeErrors";
+import { bulkTreatments, deleteTreatment, reorderTreatments, setTreatmentActive, type BulkAction, type TreatmentItem, type TreatmentsData } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
@@ -49,12 +53,19 @@ export const SORT_LABELS: Record<TreatmentSortKey, MessageKey> = {
 };
 
 /** The treatments tab: count cards (they narrow the list), search and category chips, the sortable list. */
-export default function TreatmentsTab({ data, query }: { data: TreatmentsData; query: TreatmentsQuery }) {
+export default function TreatmentsTab({ data, query, canWrite, refresh }: { data: TreatmentsData; query: TreatmentsQuery; canWrite: boolean; refresh: () => Promise<void> }) {
   const t = useT();
   const router = useRouter();
   // The count cards narrow the list without touching the address; the address keeps the rest.
   const [active, setActive] = useState<ActiveFilter>("all");
-  const [aliasesOf, setAliasesOf] = useState<TreatmentItem | null>(null);
+  const [aliasesId, setAliasesId] = useState(0);
+  // null = closed, "new" = add form, an item = edit form.
+  const [editing, setEditing] = useState<TreatmentItem | "new" | null>(null);
+  const [deleting, setDeleting] = useState<TreatmentItem | null>(null);
+  const [bulkDelete, setBulkDelete] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [busyId, setBusyId] = useState(0);
+  const [busy, setBusy] = useState(false);
 
   const stats = useMemo(() => deriveStats(data.items, data.categories), [data]);
   const perCategory = useMemo(() => countByCategory(data.items), [data]);
@@ -62,6 +73,81 @@ export default function TreatmentsTab({ data, query }: { data: TreatmentsData; q
   const filtered = hasTreatmentFilters(query, active);
   const categoryChips = data.categories.filter((c) => c.isActive || c.id === query.cat);
   const selectedCategory = data.categories.find((c) => c.id === query.cat) ?? null;
+
+  const aliasesOf = data.items.find((i) => i.id === aliasesId) ?? null;
+  // Only treatments that are on screen count as selected, so a filter never leaves hidden ones in the bulk action.
+  const picked = useMemo(() => rows.filter((r) => selected.has(r.id)), [rows, selected]);
+  const canMove = canWrite && query.sort === "order" && query.q === "" && active === "all";
+
+  const fail = (res: Parameters<typeof failureKey>[0]) => toast.error(t(failureKey(res)));
+  const toggleActive = async (item: TreatmentItem, next: boolean) => {
+    setBusyId(item.id);
+    const res = await setTreatmentActive(item.id, next);
+    if (res.ok) {
+      toast.success(t(next ? "tmw.ok.on" : "tmw.ok.off"));
+      await refresh();
+    } else fail(res);
+    setBusyId(0);
+  };
+  const move = async (item: TreatmentItem, dir: -1 | 1) => {
+    // The ids of the category in the order shown, with this one swapped with its neighbour.
+    const ids = rows.filter((r) => r.categoryId === item.categoryId).map((r) => r.id);
+    const at = ids.indexOf(item.id);
+    const to = at + dir;
+    if (at < 0 || to < 0 || to >= ids.length) return;
+    [ids[at], ids[to]] = [ids[to], ids[at]];
+    setBusyId(item.id);
+    const res = await reorderTreatments(ids);
+    if (res.ok) {
+      toast.success(t("tmw.ok.moved"));
+      await refresh();
+    } else fail(res);
+    setBusyId(0);
+  };
+  const runBulk = async (action: BulkAction) => {
+    setBusy(true);
+    const res = await bulkTreatments(action, picked.map((r) => r.id));
+    if (res.ok) {
+      const skipped = res.data.skipped.length;
+      if (skipped > 0) toast.warning(t("tmw.ok.bulkSkipped", { n: formatNumber(res.data.done), m: formatNumber(skipped) }));
+      else toast.success(t("tmw.ok.bulk", { n: formatNumber(res.data.done) }));
+      setSelected(new Set());
+      await refresh();
+    } else fail(res);
+    setBusy(false);
+    setBulkDelete(false);
+  };
+  const removeOne = async () => {
+    if (!deleting) return;
+    setBusy(true);
+    const res = await deleteTreatment(deleting.id);
+    if (res.ok) {
+      toast.success(t("tmw.ok.deleted"));
+      setSelected((s) => new Set([...s].filter((id) => id !== deleting.id)));
+      await refresh();
+    } else if (res.status === 409 && res.error === "in_use") toast.error(t("tmw.del.inUse", { n: formatNumber(res.hospitalCount ?? 0) }));
+    else fail(res);
+    setBusy(false);
+    setDeleting(null);
+  };
+  const actions: RowActions | undefined = canWrite
+    ? {
+        selected,
+        canMove,
+        busyId,
+        onSelect: (id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }),
+        onSelectAll: (all) => setSelected(all ? new Set(rows.map((r) => r.id)) : new Set()),
+        onEdit: setEditing,
+        onDelete: setDeleting,
+        onActive: (item, next) => void toggleActive(item, next),
+        onMove: (item, dir) => void move(item, dir),
+      }
+    : undefined;
+  const deleteSpec: ConfirmSpec | null = deleting
+    ? { title: t("tmw.del.title"), name: deleting.name, body: t("tmw.del.body"), note: t("tmw.del.impact", { a: formatNumber(deleting.aliasCount), h: formatNumber(deleting.hospitalCount) }), confirmLabel: t("tmw.del.confirm"), cancelLabel: t("tmw.cancel"), focus: "cancel" }
+    : bulkDelete
+      ? { title: t("tmw.bulk.deleteTitle"), body: t("tmw.bulk.deleteBody", { n: formatNumber(picked.length) }), confirmLabel: t("tmw.del.confirm"), cancelLabel: t("tmw.cancel"), focus: "cancel" }
+      : null;
 
   const replace = (patch: Partial<TreatmentsQuery>) => router.replace(treatmentsHref({ ...query, ...patch }), { scroll: false });
   const reset = () => {
@@ -125,7 +211,18 @@ export default function TreatmentsTab({ data, query }: { data: TreatmentsData; q
           <span>{t("tm.list.sortHint")}</span>
         </p>
         <SortSelect sort={query.sort} dir={query.dir} onChange={(sort, dir) => replace({ sort, dir })} />
+        {canWrite ? <button type="button" className="btn btn--primary tm__new" onClick={() => setEditing("new")}>{t("tmw.new")}</button> : null}
       </div>
+      {canWrite && picked.length > 0 ? (
+        <div className="tm__bulk" role="group" aria-label={t("tmw.bulk.group")}>
+          <span className="tm__bulk-n" role="status">{t("tmw.bulk.selected", { n: formatNumber(picked.length) })}</span>
+          <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => void runBulk("activate")}>{t("tmw.bulk.on")}</button>
+          <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => void runBulk("deactivate")}>{t("tmw.bulk.off")}</button>
+          <button type="button" className="btn btn--ghost btn--reject" disabled={busy} onClick={() => setBulkDelete(true)}>{t("tmw.bulk.delete")}</button>
+          <button type="button" className="txtbtn" disabled={busy} onClick={() => setSelected(new Set())}>{t("tmw.bulk.clear")}</button>
+        </div>
+      ) : null}
+      {canWrite && !canMove ? <p className="filters__hint tm__move-hint">{t("tmw.move.hint")}</p> : null}
 
       {rows.length === 0 ? (
         <div className="empty tm__empty">
@@ -135,10 +232,33 @@ export default function TreatmentsTab({ data, query }: { data: TreatmentsData; q
           {filtered ? <button type="button" className="btn btn--ghost" onClick={reset}>{t("tm.find.reset")}</button> : null}
         </div>
       ) : (
-        <TreatmentTable rows={rows} sort={query.sort} dir={query.dir} onSort={sortBy} onAliases={setAliasesOf} />
+        <TreatmentTable rows={rows} sort={query.sort} dir={query.dir} onSort={sortBy} onAliases={(item) => setAliasesId(item.id)} actions={actions} />
       )}
 
-      {aliasesOf ? <AliasDialog item={aliasesOf} onClose={() => setAliasesOf(null)} /> : null}
+      {aliasesOf ? <AliasDialog item={aliasesOf} canWrite={canWrite} onChanged={refresh} onClose={() => setAliasesId(0)} /> : null}
+      {editing ? (
+        <TreatmentDialog
+          item={editing === "new" ? null : editing}
+          data={data}
+          onClose={() => setEditing(null)}
+          onSaved={(_, created) => {
+            setEditing(null);
+            toast.success(t(created ? "tmw.ok.created" : "tmw.ok.updated"));
+            void refresh();
+          }}
+        />
+      ) : null}
+      <ConfirmDialog
+        spec={deleteSpec}
+        busy={busy}
+        onConfirm={() => void (deleting ? removeOne() : runBulk("delete"))}
+        onClose={() => {
+          if (!busy) {
+            setDeleting(null);
+            setBulkDelete(false);
+          }
+        }}
+      />
     </>
   );
 }

@@ -4,7 +4,7 @@ import request from 'supertest';
 import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { TreatmentsModule } from './treatments.module';
-import { DB } from '../db/db.module';
+import { DB, DB_RW } from '../db/db.module';
 
 const SUPER = 'PHPSESSID=super';
 const HOSPITAL = 'PHPSESSID=hospital12';
@@ -66,7 +66,7 @@ describe('GET /v1/treatments (treatment master, read-only)', () => {
     calls.length = 0;
     dbStub.query.mockClear();
     (global.fetch as jest.Mock).mockClear();
-    @Global() @Module({ providers: [{ provide: DB, useValue: dbStub }], exports: [DB] }) class TestDbModule {}
+    @Global() @Module({ providers: [{ provide: DB, useValue: dbStub }, { provide: DB_RW, useValue: { get: () => null } }], exports: [DB, DB_RW] }) class TestDbModule {}
     const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, MeModule, TreatmentsModule] }).compile();
     app = mod.createNestApplication();
     await app.init();

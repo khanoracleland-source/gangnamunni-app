@@ -470,6 +470,10 @@ export type WriteFailure = {
   /** Present on a 409 "blocked" answer to a delete. */
   blockers: DeleteBlocker[];
   deletableAfter: string;
+  /** Treatment master: why a field was refused ("required", "too_long", "bad_format", "range"). */
+  reason?: string;
+  /** Treatment master: on a 409 "in_use", how many hospital assignments still point at the treatment. */
+  hospitalCount?: number;
 };
 export type WriteResult<T> = { ok: true; data: T } | WriteFailure;
 
@@ -501,6 +505,8 @@ async function sendJson(method: "PATCH" | "POST" | "PUT" | "DELETE", path: strin
         error: str(d.error),
         ...(typeof d.index === "number" ? { index: d.index } : {}),
         ...(typeof d.field === "string" ? { field: d.field } : {}),
+        ...(typeof d.reason === "string" ? { reason: d.reason } : {}),
+        ...(typeof d.hospitalCount === "number" ? { hospitalCount: d.hospitalCount } : {}),
         blockers: blockers(d.blockers),
         deletableAfter: str(d.deletableAfter),
       };
@@ -1426,4 +1432,78 @@ export async function fetchTreatments(signal?: AbortSignal): Promise<ApiResult<T
       conflicts: masterConflicts(d.conflicts),
     },
   };
+}
+
+
+// ───────── Treatment master: changes (super admin, behind the write switch) ─────────
+
+/** What the form sends. On create every key is sent; on change only the keys that differ. Prices are in units of 10,000 won. */
+export type TreatmentInput = Partial<{
+  name: string;
+  categoryId: number;
+  hashtag: string;
+  description: string;
+  precautions: string;
+  durationMin: number;
+  recoveryDays: number;
+  repeatCycleMonths: number;
+  avgPriceMin: number;
+  avgPriceMax: number;
+  anesthesiaType: AnesthesiaType;
+  revisitDays: number | null;
+  revisitStrict: boolean;
+  conflictIds: number[];
+}>;
+
+export type TreatmentChange = { item: TreatmentItem; conflicts: TreatmentConflict[] };
+export type BulkAction = "activate" | "deactivate" | "delete";
+export type BulkResult = { done: number; skipped: { id: number; reason: string }[]; conflicts: TreatmentConflict[] };
+
+const changed = (res: WriteResult<Json>): WriteResult<TreatmentChange> =>
+  res.ok ? { ok: true, data: { item: masterTreatment(obj(res.data).item), conflicts: masterConflicts(obj(res.data).conflicts) } } : res;
+
+const treatmentPath = (id: number): string => `/v1/treatments/${encodeURIComponent(String(id))}`;
+
+export async function createTreatment(input: TreatmentInput): Promise<WriteResult<TreatmentChange>> {
+  return changed(await sendJson("POST", "/v1/treatments", input));
+}
+
+export async function updateTreatment(id: number, input: TreatmentInput): Promise<WriteResult<TreatmentChange>> {
+  return changed(await sendJson("PATCH", treatmentPath(id), input));
+}
+
+export async function setTreatmentActive(id: number, active: boolean): Promise<WriteResult<TreatmentChange>> {
+  return changed(await sendJson("POST", `${treatmentPath(id)}/active`, { active }));
+}
+
+export async function deleteTreatment(id: number): Promise<WriteResult<{ conflicts: TreatmentConflict[] }>> {
+  const res = await sendJson("DELETE", treatmentPath(id));
+  return res.ok ? { ok: true, data: { conflicts: masterConflicts(obj(res.data).conflicts) } } : res;
+}
+
+export async function bulkTreatments(action: BulkAction, ids: number[]): Promise<WriteResult<BulkResult>> {
+  const res = await sendJson("POST", "/v1/treatments/bulk", { action, ids });
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: {
+      done: num(d.done),
+      skipped: list(d.skipped).map((x) => ({ id: num(obj(x).id), reason: str(obj(x).reason) })),
+      conflicts: masterConflicts(d.conflicts),
+    },
+  };
+}
+
+/** Stores the order of the given treatments: position in the list = new order value (1, 2, 3 ...). */
+export async function reorderTreatments(ids: number[]): Promise<WriteResult<Json>> {
+  return sendJson("PUT", "/v1/treatments/order", { ids });
+}
+
+export async function addTreatmentAlias(id: number, alias: string, lang: string): Promise<WriteResult<TreatmentChange>> {
+  return changed(await sendJson("POST", `${treatmentPath(id)}/aliases`, { alias, lang }));
+}
+
+export async function removeTreatmentAlias(id: number, aliasId: number): Promise<WriteResult<TreatmentChange>> {
+  return changed(await sendJson("DELETE", `${treatmentPath(id)}/aliases/${encodeURIComponent(String(aliasId))}`));
 }

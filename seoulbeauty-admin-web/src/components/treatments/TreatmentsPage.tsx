@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import { Notice } from "../hospitals/parts";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
@@ -79,6 +79,11 @@ export default function TreatmentsPage() {
   }, [attempt]);
 
   const retry = () => setAttempt((n) => n + 1);
+  // After a change the list is read again, quietly: the screen stays, only the data is replaced.
+  const refresh = useCallback(async () => {
+    const res = await fetchTreatments();
+    if (res.ok) setState((s) => (s.phase === "ready" ? { ...s, data: res.data } : s));
+  }, []);
   const { phase, me, data } = state;
   const busy = phase === "loading";
 
@@ -146,7 +151,7 @@ export default function TreatmentsPage() {
           </div>
 
           <div id="tm-panel" role="tabpanel" aria-labelledby={`tm-tab-${query.tab}`}>
-            {query.tab === "treatments" ? <TreatmentsTab data={data} query={query} /> : null}
+            {query.tab === "treatments" ? <TreatmentsTab data={data} query={query} canWrite={!readOnly} refresh={refresh} /> : null}
             {query.tab === "categories" ? <CategoriesTab data={data} /> : null}
             {query.tab === "conflicts" ? <ConflictsTab data={data} /> : null}
           </div>

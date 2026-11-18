@@ -23,12 +23,28 @@ const COLUMNS: readonly Column[] = [
   { key: "active", label: "tm.col.active", className: "tm__c-active" },
 ];
 
+/** What the list can do when changes are switched on; absent = read only. */
+export type RowActions = {
+  selected: Set<number>;
+  /** Moving is offered only in the stored order with no search or card filter. */
+  canMove: boolean;
+  onSelect: (id: number) => void;
+  onSelectAll: (all: boolean) => void;
+  onEdit: (item: TreatmentItem) => void;
+  onDelete: (item: TreatmentItem) => void;
+  onActive: (item: TreatmentItem, active: boolean) => void;
+  onMove: (item: TreatmentItem, dir: -1 | 1) => void;
+  /** Id of the treatment whose change is being saved; its controls wait. */
+  busyId: number;
+};
+
 type Props = {
   rows: TreatmentItem[];
   sort: TreatmentSortKey;
   dir: SortDir;
   onSort: (key: TreatmentSortKey) => void;
   onAliases: (item: TreatmentItem) => void;
+  actions?: RowActions;
 };
 
 /**
@@ -36,13 +52,19 @@ type Props = {
  * Below 900px the cells become blocks, so their table roles are written out to keep them a table for assistive
  * technology, and each cell carries its column name in data-label (drawn by CSS).
  */
-export default function TreatmentTable({ rows, sort, dir, onSort, onAliases }: Props) {
+export default function TreatmentTable({ rows, sort, dir, onSort, onAliases, actions }: Props) {
   const t = useT();
+  const allSelected = actions !== undefined && rows.length > 0 && rows.every((r) => actions.selected.has(r.id));
   return (
     <table className="tbl tbl--tm" role="table">
       <caption className="sr-only">{t("tm.list.caption")}</caption>
       <thead role="rowgroup">
         <tr role="row">
+          {actions ? (
+            <th role="columnheader" scope="col" className="tm__c-sel">
+              <input type="checkbox" checked={allSelected} onChange={(e) => actions.onSelectAll(e.target.checked)} aria-label={t("tmw.bulk.all")} />
+            </th>
+          ) : null}
           {COLUMNS.map((col) => {
             const sorted = sort === col.key;
             return (
@@ -54,18 +76,27 @@ export default function TreatmentTable({ rows, sort, dir, onSort, onAliases }: P
               </th>
             );
           })}
+          {actions ? <th role="columnheader" scope="col" className="tm__c-act"><span className="sr-only">{t("tmw.edit")}</span></th> : null}
         </tr>
       </thead>
       <tbody role="rowgroup">
         {rows.map((item, index) => (
-          <Row key={item.id} item={item} position={index + 1} onAliases={onAliases} />
+          <Row
+            key={item.id}
+            item={item}
+            position={index + 1}
+            onAliases={onAliases}
+            actions={actions}
+            first={actions?.canMove ? rows.findIndex((r) => r.categoryId === item.categoryId) === index : false}
+            last={actions?.canMove ? rows.map((r) => r.categoryId).lastIndexOf(item.categoryId) === index : false}
+          />
         ))}
       </tbody>
     </table>
   );
 }
 
-function Row({ item, position, onAliases }: { item: TreatmentItem; position: number; onAliases: (item: TreatmentItem) => void }) {
+function Row({ item, position, onAliases, actions, first, last }: { item: TreatmentItem; position: number; onAliases: (item: TreatmentItem) => void; actions?: RowActions; first: boolean; last: boolean }) {
   const t = useT();
   const image = imageUrl(item.defaultImageUrl);
   const preview = descriptionPreview(item.description);
@@ -74,8 +105,23 @@ function Row({ item, position, onAliases }: { item: TreatmentItem; position: num
   const recovery = item.recoveryDays > 0 ? t("tm.days", { n: formatNumber(item.recoveryDays) }) : <span className="muted">—</span>;
   return (
     <tr role="row" className={item.isActive ? undefined : "is-off"}>
-      <td role="cell" className="tm__c-order" data-label={t("tm.col.order")}>
+      {actions ? (
+        <td role="cell" className="tm__c-sel">
+          <input type="checkbox" checked={actions.selected.has(item.id)} onChange={() => actions.onSelect(item.id)} aria-label={t("tmw.bulk.one", { name: item.name })} />
+        </td>
+      ) : null}
+      <td role="cell" className={actions?.canMove ? "tm__c-order tm__c-order--w" : "tm__c-order"} data-label={t("tm.col.order")}>
         <span className="tm__order">{formatNumber(position)}</span>
+        {actions?.canMove ? (
+          <span className="tm__move">
+            <button type="button" className="tm__move-btn" disabled={first || actions.busyId > 0} onClick={() => actions.onMove(item, -1)} aria-label={t("tmw.move.up", { name: item.name })}>
+              <Icon name="chevronUp" size={14} />
+            </button>
+            <button type="button" className="tm__move-btn tm__move-btn--down" disabled={last || actions.busyId > 0} onClick={() => actions.onMove(item, 1)} aria-label={t("tmw.move.down", { name: item.name })}>
+              <Icon name="chevronUp" size={14} />
+            </button>
+          </span>
+        ) : null}
       </td>
       <td role="cell" className="tm__c-hashtag" data-label={t("tm.col.hashtag")}>
         <span className="tm__hashtag" title={item.hashtag}>{item.hashtag || "—"}</span>
@@ -123,7 +169,7 @@ function Row({ item, position, onAliases }: { item: TreatmentItem; position: num
       </td>
       <td role="cell" className="tm__c-links" data-label={t("tm.col.links")}>
         <span className="tm__links">
-          {item.aliasCount > 0 ? (
+          {item.aliasCount > 0 || actions ? (
             <button type="button" className="tm__alias-btn" onClick={() => onAliases(item)} aria-label={t("tm.aliasesOf", { name: item.name, n: item.aliasCount })}>
               {formatNumber(item.aliasCount)}
             </button>
@@ -140,9 +186,42 @@ function Row({ item, position, onAliases }: { item: TreatmentItem; position: num
           )}
         </span>
       </td>
-      <td role="cell" className="tm__c-active tm__table-only" data-label={t("tm.col.active")}>
-        <ActivePill active={item.isActive} />
+      <td role="cell" className={actions ? "tm__c-active tm__c-active--w" : "tm__c-active tm__table-only"} data-label={t("tm.col.active")}>
+        {actions ? (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={item.isActive}
+            className="tm__switch"
+            disabled={actions.busyId === item.id}
+            onClick={() => actions.onActive(item, !item.isActive)}
+            aria-label={t("tmw.toggle", { name: item.name })}
+          >
+            <span className="tm__switch-knob" />
+          </button>
+        ) : (
+          <ActivePill active={item.isActive} />
+        )}
       </td>
+      {actions ? (
+        <td role="cell" className="tm__c-act">
+          <span className="tm__acts">
+            <button type="button" className="ibtn" onClick={() => actions.onEdit(item)} aria-label={`${t("tmw.edit")} · ${item.name}`} title={t("tmw.edit")}>
+              <Icon name="edit" size={16} />
+            </button>
+            <button
+              type="button"
+              className="ibtn"
+              onClick={() => actions.onDelete(item)}
+              disabled={item.hospitalCount > 0}
+              aria-label={`${t("tmw.delete")} · ${item.name}`}
+              title={item.hospitalCount > 0 ? t("tmw.del.inUse", { n: formatNumber(item.hospitalCount) }) : t("tmw.delete")}
+            >
+              <Icon name="trash" size={16} />
+            </button>
+          </span>
+        </td>
+      ) : null}
       <td role="cell" className="tbl__go tm__c-foot">
         <span className="tm__foot-order">{t("tm.orderOf", { n: formatNumber(position) })}</span>
       </td>

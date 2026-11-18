@@ -60,7 +60,7 @@ export function treatmentsHref(query: Partial<TreatmentsQuery>): string {
 
 export const hasTreatmentFilters = (query: TreatmentsQuery, active: ActiveFilter): boolean => query.cat > 0 || query.q !== "" || active !== "all";
 
-const fold = (value: string): string => value.normalize("NFC").toLowerCase();
+export const fold = (value: string): string => value.normalize("NFC").toLowerCase();
 
 /** Does the treatment match the search text? Name, hashtag, description and every alias are searched, case folded. */
 export function matchesSearch(item: TreatmentItem, q: string): boolean {
