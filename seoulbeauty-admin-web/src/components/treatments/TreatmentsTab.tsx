@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import Icon from "../Icon";
 import { Pill } from "../hospitals/parts";
@@ -266,12 +266,17 @@ function SearchBox({ q, onChange }: { q: string; onChange: (q: string) => void }
   const [draft, setDraft] = useState<{ text: string; base: string } | null>(null);
   const value = draft && draft.base === q ? draft.text : q;
   const wanted = value.trim().slice(0, SEARCH_MAX_LENGTH);
+  // The parent passes a new function on every render; the timer must not restart because of that, so the latest one is kept aside.
+  const latest = useRef(onChange);
+  useEffect(() => {
+    latest.current = onChange;
+  });
 
   useEffect(() => {
     if (wanted === q) return;
-    const timer = window.setTimeout(() => onChange(wanted), SEARCH_DEBOUNCE_MS);
+    const timer = window.setTimeout(() => latest.current(wanted), SEARCH_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [wanted, q, onChange]);
+  }, [wanted, q]);
 
   return (
     <div className="tm__search" role="search">
