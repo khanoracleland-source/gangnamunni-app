@@ -395,8 +395,8 @@ button, select { font: inherit; color: inherit; }
 }
 .nav-item:hover { background: var(--rail-hover); color: #fff; }
 .nav-item:focus-visible { outline-offset: -2px; border-radius: 0; }
-/* On the navy rail the blue ring would vanish: focus there is drawn in the rail's own light ink (outline and ring alike). */
-.sidebar, .brand { --focus: var(--rail-ink); }
+/* On the navy rail the blue ring would vanish: focus there is drawn in the rail's own light ink. */
+.sidebar :focus-visible, .brand:focus-visible { outline-color: var(--rail-ink); }
 /* The open page: a lit row with a red tick in the gutter, the board's own "now trading" mark. */
 .nav-item::before { content: ""; position: absolute; left: 18px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 1px; background: transparent; }
 .nav-item[aria-current="page"] { background: var(--rail-bg-2); color: #fff; font-weight: 600; }
@@ -568,14 +568,13 @@ h1 { font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: -0.02
 .card__note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: auto; padding-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.45; }
 
 /* Two thin bars: this period against the one before it, drawn to scale. */
-/* One grid for both rows: the label column takes the longest label, so both bars start on the same line. */
-.bars { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 4px 8px; margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 16px; white-space: nowrap; }
-.bars__row { display: contents; }
+.bars { display: grid; gap: 4px; margin-top: 12px; }
+.bars__row { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: center; gap: 8px; color: var(--muted); font-size: 12px; line-height: 16px; white-space: nowrap; }
 .bars__track { height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
 .bars__fill { display: block; height: 100%; border-radius: 3px; background: var(--muted); transition: width var(--t-base) var(--ease); }
 .bars__row--now .bars__fill { background: var(--cat); }
 .bars__row--now { color: var(--ink); font-weight: 600; }
-.delta { display: inline-flex; align-items: center; min-height: 20px; padding: 1px 6px; line-height: 18px; border-radius: 4px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.delta { display: inline-flex; align-items: center; flex-wrap: wrap; min-height: 20px; padding: 1px 6px; line-height: 18px; border-radius: 4px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .delta--up { color: var(--rise); background: var(--rise-bg); }
 .delta--down { color: var(--fall); background: var(--fall-bg); }
 .delta--flat, .delta--none { color: var(--muted); }
@@ -760,9 +759,8 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 
 /* The ticker strip: every count in one joined row, divided by hairlines, like a quote board. */
 .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: stretch; gap: 0; margin: 0; padding: 0; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
-/* Each cell draws its left and top hairline over itself (a layer above the cell's own fill), so neighbours cannot cover it; the box clips the outer ones. */
-.stats > li { position: relative; display: flex; min-width: 0; background: var(--surface); }
-.stats > li::after { content: ""; position: absolute; inset: -1px 0 0 -1px; box-shadow: inset 1px 1px 0 var(--line); pointer-events: none; }
+/* Each cell draws its own right and bottom hairline; the box clips the outer ones, and an empty slot stays white. */
+.stats > li { display: flex; min-width: 0; background: var(--surface); box-shadow: 1px 0 0 var(--line), 0 1px 0 var(--line); }
 .stat { min-width: 0; padding: 14px 18px 12px; background: var(--surface); border: 0; border-radius: 0; }
 .stat__label { color: var(--muted); font-size: 12px; font-weight: 500; }
 .stat__value { margin-top: 2px; font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
@@ -1087,7 +1085,7 @@ select.input { padding-right: 8px; cursor: pointer; }
 .docup__pick .txtbtn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 .docup__file { display: flex; align-items: center; gap: 8px; flex: 1 1 160px; min-width: 0; font-size: 14px; }
 .docup__file--none { color: var(--muted); }
-.docup__name { min-width: 0; font-weight: 600; overflow-wrap: anywhere; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.docup__name { min-width: 0; font-weight: 600; overflow-wrap: anywhere; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
 .docup__size { flex: none; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .docup__acts { display: flex; flex-wrap: wrap; gap: 8px; }
 .docup .txtbtn, .docup .btn { min-height: 44px; }
