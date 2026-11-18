@@ -14,6 +14,7 @@ JSON API (read-only, plus hospital editing behind its own switch and its own dat
 | `PATCH /v1/hospitals/:id` | edit an approved hospital (whitelisted fields only) — `ADMIN_HOSPITALS_WRITE=1`; super admin: any, hospital roles: their own |
 | `POST /v1/hospitals/:id/active` | `{"active":true\|false}` — activate / deactivate — `super_admin` only, `ADMIN_HOSPITALS_WRITE=1` |
 | `POST /v1/hospitals/:id/revisions/review` | mark the unreviewed changes as reviewed — `super_admin` only, `ADMIN_HOSPITALS_WRITE=1` |
+| `GET /v1/treatments` | the whole treatment master (treatments with aliases, categories, conflict pairs, counters, home table mode) — `super_admin` only, `ADMIN_TREATMENTS_ENABLED=1` (section 13) |
 
 Who may call what:
 - `super_admin`: everything, all hospitals (`scope: "all"`).
@@ -968,6 +969,91 @@ Every review is logged: `journalctl -u seoulbeauty-admin-api | grep 'hospital re
 Rollback: `ADMIN_HOSPITALS_REVIEW=0` + restart (both routes 404, buttons disappear; reviewed rows stay as they are). To also close the door at the database:
 `REVOKE SELECT (status), UPDATE (status, reviewed_by, reviewed_at, reject_reason, rejection_reason) ON <DB_NAME>.gangnamunni_hospitals FROM 'sb_admin_rw'@'127.0.0.1';` and the same for `'localhost'`
 (leave `is_active`, `ad_grade`, `updated_at` if sections 6 / 7 still need them). A review itself is undone by restoring the dump above or by editing the row in the database.
+
+## 13. Treatment master (`ADMIN_TREATMENTS_ENABLED`, optional; super admin only)
+The global treatment catalogue of the PHP page `admin_treatments.php` (treatments, their aliases, the categories, the "cannot be booked on the same day" pairs and the home
+table mode). Independent of the hospital switches (sections 6-12): it needs only section 1 (read-only user) and, for editing, the write user of 6.1. Hospital roles
+get `403 {"error":"forbidden"}` on every route of this section, like on the PHP page. Off by default; with the switch off every route answers `404 {"error":"not_found"}`
+and `/v1/me` reports `"treatments":false`.
+
+Routes of this stage (reading only; nothing in this section writes):
+- `GET /v1/treatments` -> everything in one answer (the page filters, searches and sorts in the browser):
+  `{"stats":{"total","active","inactive","categories"},"schema":{"revisit","defaultImage","conflicts"},"tableMode":"excel"|"row"|"hybrid",`
+  `"categories":[{"id","name","slug","icon","sortOrder","isActive","treatmentCount"}],`
+  `"items":[{"id","categoryId","categoryName","sortOrder","name","hashtag","description","defaultImageUrl","durationMin","recoveryDays","anesthesiaType","repeatCycleMonths",`
+  `"revisitDays","revisitStrict","precautions","avgPriceMin","avgPriceMax","isActive","popularityScore","createdBy","createdAt","aliasCount","hospitalCount","aliases":[{"id","alias","lang"}]}],`
+  `"conflicts":[{"id","a","b"}]}`.
+  `stats.categories` counts the active categories; `total` / `active` / `inactive` and `treatmentCount` count every treatment (inactive ones too). `hospitalCount` = rows of
+  `gangnamunni_hospital_treatments` with that `treatment_id` (released assignments included). `defaultImageUrl` is `null` when blank; `revisitDays` `null` = no limit;
+  `createdAt` is `YYYY-MM-DD HH:MM:SS` (KST) or `null`. Order: category sort, treatment sort, popularity (desc), id - the order of the PHP page. Nothing is cached.
+- `/v1/me` -> `"features":{"treatments","treatmentsWrite","treatmentsImages"}` (the switches only; hospital roles never reach the routes).
+Writing (section 13.2) comes with the next stage; with `ADMIN_TREATMENTS_WRITE=0` every writing route answers 404 and the page hides its editing controls.
+
+The three optional parts come from PHP migrations that this API never runs (`hairwang_full/gangnamunni/sql/`): `treatment_master_default_image.sql` (column `default_image_url`),
+`treatment_master_revisit_20261021.sql` (columns `revisit_days`, `revisit_strict`) and `treatment_conflicts_20261023.sql` (table `gangnamunni_treatment_conflicts`). Each is read by
+its own statement: a missing table, column or grant (MySQL 1146 / 1054 / 1142 / 1143) makes that `schema` flag `false` (the page hides the fields; `defaultImageUrl` `null`,
+`revisitDays` `null`, `conflicts` `[]`) and is logged as a warning; the page is still served. The same for the setting row (`tableMode` falls back to `excel`). Any other
+database error on any statement answers `500 {"error":"server_error"}` (reason in the journal). The log line does not say whether the column or the grant is missing:
+check with `SHOW COLUMNS FROM gangnamunni_treatment_master LIKE 'revisit_days'` and `SHOW GRANTS FOR 'sb_admin_ro'@'127.0.0.1'`.
+
+### 13.1 Reading (run as the DB admin; `<DB_NAME>` = schema from step 1)
+Already granted by sections 1 / 10 / 10.6 (not repeated): `gangnamunni_treatment_master (id, name, category_id, hashtag, is_active, sort_order, default_image_url)`,
+`gangnamunni_treatment_categories (id, name, sort_order)`, `gangnamunni_hospital_treatments (hospital_id, treatment_id, status, is_active)`, `gangnamunni_settings (setting_key, setting_value)`.
+If 10.6 was not run, add `default_image_url` to the first statement below (or skip it while the column is not installed).
+```sql
+GRANT SELECT (description, duration_min, recovery_days, anesthesia_type, repeat_cycle_months, precautions, avg_price_min, avg_price_max, popularity_score, created_by, created_at)
+  ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (description, duration_min, recovery_days, anesthesia_type, repeat_cycle_months, precautions, avg_price_min, avg_price_max, popularity_score, created_by, created_at)
+  ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (slug, icon, is_active) ON <DB_NAME>.gangnamunni_treatment_categories TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (slug, icon, is_active) ON <DB_NAME>.gangnamunni_treatment_categories TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, treatment_id, alias, lang) ON <DB_NAME>.gangnamunni_treatment_aliases TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, treatment_id, alias, lang) ON <DB_NAME>.gangnamunni_treatment_aliases TO 'sb_admin_ro'@'localhost';
+-- optional: only after the matching migration is installed (a GRANT naming a missing column or table fails as a whole; the API reports the flag false until then)
+GRANT SELECT (revisit_days, revisit_strict) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (revisit_days, revisit_strict) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, tm_a_id, tm_b_id) ON <DB_NAME>.gangnamunni_treatment_conflicts TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, tm_a_id, tm_b_id) ON <DB_NAME>.gangnamunni_treatment_conflicts TO 'sb_admin_ro'@'localhost';
+SHOW GRANTS FOR 'sb_admin_ro'@'127.0.0.1';   -- check: still SELECT only; gangnamunni_treatment_reviews is NOT granted (the page does not read it)
+```
+Env, then `sudo systemctl restart seoulbeauty-admin-api`:
+```
+ADMIN_TREATMENTS_ENABLED=1
+```
+Check (super admin PHPSESSID):
+```bash
+C='-H Cookie:PHPSESSID=<value>'
+curl -s $C http://127.0.0.1:3300/v1/me                                   # "treatments":true,"treatmentsWrite":false,"treatmentsImages":false
+curl -s $C http://127.0.0.1:3300/v1/treatments | head -c 600             # {"stats":{...},"schema":{"revisit":true,"defaultImage":true,"conflicts":true},"tableMode":"excel",...
+curl -s -H 'Cookie: PHPSESSID=<hospital admin>' http://127.0.0.1:3300/v1/treatments   # 403 {"error":"forbidden"}
+journalctl -u seoulbeauty-admin-api | grep -i 'unavailable'              # a schema flag that is false says here which statement failed
+```
+Turning it off: `ADMIN_TREATMENTS_ENABLED=0` + restart (every route 404, the menu entry points back at the PHP page).
+
+### 13.2 Editing (`ADMIN_TREATMENTS_WRITE`, next stage - do not run yet)
+Will add create / edit / activate / delete / bulk / reorder of treatments, aliases, categories, conflict pairs and the home table mode, through the write user of 6.1.
+Keep `ADMIN_TREATMENTS_WRITE=0` until that stage is deployed. The grants it will need (for planning; the final list ships with that stage):
+```sql
+-- treatments
+GRANT SELECT (category_id, name, default_image_url) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (category_id, sort_order, name, hashtag, description, default_image_url, duration_min, recovery_days, anesthesia_type, repeat_cycle_months, precautions, avg_price_min, avg_price_max, is_active, created_by)
+  ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (category_id, sort_order, name, hashtag, description, default_image_url, duration_min, recovery_days, anesthesia_type, repeat_cycle_months, precautions, avg_price_min, avg_price_max, is_active)
+  ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
+GRANT DELETE ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
+-- aliases
+GRANT SELECT (id, treatment_id, alias, lang), INSERT (treatment_id, alias, lang), DELETE ON <DB_NAME>.gangnamunni_treatment_aliases TO 'sb_admin_rw'@'127.0.0.1';
+-- categories
+GRANT SELECT (id, slug), INSERT (name, slug, icon, sort_order, is_active), UPDATE (name, slug, icon, sort_order, is_active), DELETE ON <DB_NAME>.gangnamunni_treatment_categories TO 'sb_admin_rw'@'127.0.0.1';
+-- home table mode: the row tc_table_mode. UPDATE cannot be limited to one row, so the write user may change any setting_value; the API only ever names tc_table_mode.
+GRANT SELECT (id, setting_key), INSERT (setting_key, setting_value, setting_group, description), UPDATE (setting_value) ON <DB_NAME>.gangnamunni_settings TO 'sb_admin_rw'@'127.0.0.1';
+-- optional, after the matching migration
+GRANT UPDATE (revisit_days, revisit_strict) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, tm_a_id, tm_b_id), INSERT (tm_a_id, tm_b_id), DELETE ON <DB_NAME>.gangnamunni_treatment_conflicts TO 'sb_admin_rw'@'127.0.0.1';
+-- and each statement again for 'sb_admin_rw'@'localhost'
+```
+Deleting a treatment is a hard delete (as on the PHP page) and will be refused with `409 {"error":"in_use"}` while any hospital has it; a treatment that is part of a package
+(`gangnamunni_treatment_package_items`, foreign key `ON DELETE RESTRICT`) cannot be deleted by the database either. Take a dump of the five tables above before the first write.
 
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app

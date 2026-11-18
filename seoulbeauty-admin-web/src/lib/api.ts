@@ -16,8 +16,9 @@ export type Admin = {
 /**
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
+ * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -128,6 +129,9 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsTreatmentsQuestions: obj(d.features).hospitalsTreatmentsQuestions === true,
         hospitalsTreatmentsImages: obj(d.features).hospitalsTreatmentsImages === true,
         archive: obj(d.features).archive === true,
+        treatments: obj(d.features).treatments === true,
+        treatmentsWrite: obj(d.features).treatmentsWrite === true,
+        treatmentsImages: obj(d.features).treatmentsImages === true,
       },
     },
   };
@@ -1286,4 +1290,140 @@ export async function fetchArchiveItem(id: number, signal?: AbortSignal): Promis
 export async function ackArchive(id: number): Promise<WriteResult<Record<string, never>>> {
   const res = await sendJson("POST", `/v1/hospital-archive/${encodeURIComponent(String(id))}/ack`, {});
   return res.ok ? { ok: true, data: {} } : res;
+}
+
+// ───────── Treatment master (super admin) ─────────
+
+export const ANESTHESIA_TYPES = ["none", "local", "sedation", "general"] as const;
+export type AnesthesiaType = (typeof ANESTHESIA_TYPES)[number];
+const anesthesia = (v: unknown): AnesthesiaType => ((ANESTHESIA_TYPES as readonly unknown[]).includes(v) ? (v as AnesthesiaType) : "none");
+
+export const TABLE_MODES = ["excel", "row", "hybrid"] as const;
+export type TableMode = (typeof TABLE_MODES)[number];
+const tableMode = (v: unknown): TableMode => ((TABLE_MODES as readonly unknown[]).includes(v) ? (v as TableMode) : "excel");
+
+export type TreatmentAlias = { id: number; alias: string; lang: string };
+
+export type TreatmentItem = {
+  id: number;
+  categoryId: number;
+  categoryName: string;
+  sortOrder: number;
+  name: string;
+  hashtag: string;
+  description: string;
+  /** Stored address of the default image; null when there is none. May be relative to the old panel's folder. */
+  defaultImageUrl: string | null;
+  durationMin: number;
+  recoveryDays: number;
+  anesthesiaType: AnesthesiaType;
+  repeatCycleMonths: number;
+  revisitDays: number | null;
+  revisitStrict: boolean;
+  precautions: string;
+  /** In units of 10,000 won. */
+  avgPriceMin: number;
+  avgPriceMax: number;
+  isActive: boolean;
+  popularityScore: number;
+  createdBy: string;
+  /** "YYYY-MM-DD HH:MM:SS" or "" */
+  createdAt: string;
+  aliasCount: number;
+  /** Rows of hospital assignments that point at this treatment (any state). */
+  hospitalCount: number;
+  aliases: TreatmentAlias[];
+};
+
+export type TreatmentCategory = {
+  id: number;
+  name: string;
+  slug: string;
+  icon: string;
+  sortOrder: number;
+  isActive: boolean;
+  /** Every treatment of the category, inactive ones included. */
+  treatmentCount: number;
+};
+
+/** A pair of treatments that cannot be booked together on the same day; a < b. */
+export type TreatmentConflict = { id: number; a: number; b: number };
+
+export type TreatmentsData = {
+  /** `categories` counts active categories only; the other three count every treatment. */
+  stats: { total: number; active: number; inactive: number; categories: number };
+  /** Optional columns and tables the database has: without them the matching fields are empty and cannot be edited. */
+  schema: { revisit: boolean; defaultImage: boolean; conflicts: boolean };
+  tableMode: TableMode;
+  categories: TreatmentCategory[];
+  items: TreatmentItem[];
+  conflicts: TreatmentConflict[];
+};
+
+export function masterTreatment(raw: unknown): TreatmentItem {
+  const r = obj(raw);
+  const image = str(r.defaultImageUrl).trim();
+  return {
+    id: num(r.id),
+    categoryId: num(r.categoryId),
+    categoryName: text(r.categoryName),
+    sortOrder: num(r.sortOrder),
+    name: text(r.name),
+    hashtag: text(r.hashtag),
+    description: str(r.description),
+    defaultImageUrl: image === "" ? null : image,
+    durationMin: num(r.durationMin),
+    recoveryDays: num(r.recoveryDays),
+    anesthesiaType: anesthesia(r.anesthesiaType),
+    repeatCycleMonths: num(r.repeatCycleMonths),
+    revisitDays: numOrNull(r.revisitDays),
+    revisitStrict: bool(r.revisitStrict),
+    precautions: str(r.precautions),
+    avgPriceMin: num(r.avgPriceMin),
+    avgPriceMax: num(r.avgPriceMax),
+    isActive: bool(r.isActive),
+    popularityScore: num(r.popularityScore),
+    createdBy: text(r.createdBy),
+    createdAt: str(r.createdAt),
+    aliasCount: num(r.aliasCount),
+    hospitalCount: num(r.hospitalCount),
+    aliases: list(r.aliases)
+      .map((a) => ({ id: num(obj(a).id), alias: text(obj(a).alias), lang: str(obj(a).lang).toLowerCase() }))
+      .filter((a) => a.id > 0),
+  };
+}
+
+export function masterCategory(raw: unknown): TreatmentCategory {
+  const c = obj(raw);
+  return { id: num(c.id), name: text(c.name), slug: str(c.slug), icon: str(c.icon), sortOrder: num(c.sortOrder), isActive: bool(c.isActive), treatmentCount: num(c.treatmentCount) };
+}
+
+export const masterConflicts = (raw: unknown): TreatmentConflict[] =>
+  list(raw)
+    .map((x) => {
+      const c = obj(x);
+      const a = num(c.a);
+      const b = num(c.b);
+      return { id: num(c.id), a: Math.min(a, b), b: Math.max(a, b) };
+    })
+    .filter((c) => c.id > 0 && c.a > 0 && c.b > 0 && c.a !== c.b);
+
+/** The whole treatment master in one answer: filtering, searching and sorting happen in the browser. Super admin only (403 for anyone else). */
+export async function fetchTreatments(signal?: AbortSignal): Promise<ApiResult<TreatmentsData>> {
+  const res = await getJson("/v1/treatments", signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const stats = obj(d.stats);
+  const schema = obj(d.schema);
+  return {
+    ok: true,
+    data: {
+      stats: { total: num(stats.total), active: num(stats.active), inactive: num(stats.inactive), categories: num(stats.categories) },
+      schema: { revisit: bool(schema.revisit), defaultImage: bool(schema.defaultImage), conflicts: bool(schema.conflicts) },
+      tableMode: tableMode(d.tableMode),
+      categories: list(d.categories).map(masterCategory).filter((c) => c.id > 0),
+      items: list(d.items).map(masterTreatment).filter((item) => item.id > 0),
+      conflicts: masterConflicts(d.conflicts),
+    },
+  };
 }

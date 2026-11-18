@@ -494,7 +494,7 @@ h1 { font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: -0.02
 }
 .seg button:hover { color: var(--ink); }
 .seg button { transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
-.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(15, 27, 45, 0.12), 0 0 0 1px var(--line); }
+.seg button[aria-pressed="true"], .seg label.is-on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(15, 27, 45, 0.12), 0 0 0 1px var(--line); }
 .seg button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* ───────── Sections and cards ───────── */
@@ -1992,4 +1992,199 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 }
 @media (max-width: 639px) and (max-height: 480px) {
   .dialog--images { max-height: calc(100dvh - 8px); }
+}
+
+/* ───────── Treatment master (/treatments) ─────────
+   Tabs, count cards, search with category chips, a dense table (cards under 900px), the alias window, the category
+   and conflict lists. Tokens only; measurements are fixed px like the rest of the panel. */
+.tm__notice .notice { margin-bottom: 16px; }
+
+/* Three tabs on one hairline; the open tab is underlined in the primary colour. */
+.tm__tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tm__tab { display: inline-flex; flex: none; align-items: center; min-height: 44px; padding: 0 14px; color: var(--muted); font-size: 15px; font-weight: 600; white-space: nowrap; text-decoration: none; transition: color var(--t-fast) var(--ease); }
+.tm__tab:hover { color: var(--ink); }
+.tm__tab[aria-selected="true"] { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--primary); }
+.tm__tab:focus-visible { outline-offset: -2px; }
+.tm__tab-n { margin-left: 6px; padding: 0 6px; background: var(--surface-2); border-radius: var(--r-pill); color: var(--muted); font-size: 11px; font-weight: 700; line-height: 18px; font-variant-numeric: tabular-nums; }
+.tm__tab[aria-selected="true"] .tm__tab-n { background: var(--accent-soft); color: var(--accent-text); }
+.tm__tab-short { display: none; }
+
+.tm__stats { margin-bottom: 16px; }
+
+/* Search on the left, one line of guidance on the right; the category chips below. */
+.tm__filters { margin-bottom: 16px; }
+.tm__filters-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.tm__search { position: relative; flex: 1 1 320px; max-width: 420px; min-width: 0; }
+.tm__search .input { padding-left: 36px; }
+.tm__search-icon { position: absolute; top: 50%; left: 12px; margin-top: -8px; color: var(--muted); pointer-events: none; }
+.tm__filters-hint { flex: 1 1 200px; min-width: 0; }
+.tm__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.tm__chip { display: inline-flex; flex: none; align-items: center; height: 32px; padding: 0 12px; background: var(--surface); border: 1px solid var(--control-line); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.tm__chip { transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.tm__chip:hover { border-color: var(--muted); background: var(--surface-2); }
+.tm__chip[aria-pressed="true"], .tm__chip[aria-pressed="true"]:hover { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.tm__chip:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus); }
+.tm__chip-n { margin-left: 6px; color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.tm__chip[aria-pressed="true"] .tm__chip-n { color: var(--on-primary); opacity: 0.7; }
+
+.tm__list-order { color: var(--muted); font-weight: 400; }
+.tm__sort-hint { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+.tm__sort-select { display: none; }
+
+/* The table: 56px rows (a 44px image and its padding); the compact column set is the base, the full set from 1440px. */
+.tbl--tm td { height: 56px; }
+.tbl--tm .tm__c-order { width: 48px; }
+.tbl--tm .tm__c-hashtag { width: 96px; }
+.tbl--tm .tm__c-cat { width: 84px; }
+.tbl--tm .tm__c-duration { width: 52px; }
+.tbl--tm .tm__c-recovery { width: 52px; }
+.tbl--tm .tm__c-price { width: 96px; }
+.tbl--tm .tm__c-links { width: 76px; }
+.tbl--tm .tm__c-active { width: 72px; }
+.tbl--tm .tm__c-num, .tbl--tm th.tm__c-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tbl--tm .tm__c-cat .pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; line-height: 20px; }
+.tbl--tm tr.is-off, .tbl--tmcat tr.is-off { opacity: 0.72; }
+.tm__sort { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 0; background: none; border: 0; border-radius: var(--r-sm); color: inherit; font: inherit; cursor: pointer; }
+.tm__sort > span { overflow: hidden; text-overflow: ellipsis; }
+.tm__sort--num { flex-direction: row-reverse; }
+.tm__sort:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus); }
+.tm__sort-icon { flex: none; opacity: 0; transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.tm__sort:hover .tm__sort-icon { opacity: 0.6; }
+.tm__sort-icon.is-asc, .tm__sort-icon.is-desc, .tm__sort:hover .tm__sort-icon.is-asc, .tm__sort:hover .tm__sort-icon.is-desc { opacity: 1; color: var(--accent-text); }
+.tm__sort-icon.is-desc { transform: rotate(180deg); }
+.tm__order { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tm__hashtag { display: block; color: var(--accent-text); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm__namebox { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; }
+.tm__img { display: grid; flex: none; place-items: center; width: 44px; height: 44px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); color: var(--muted); }
+.tm__img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tm__name { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.tm__name-text { display: block; color: var(--ink); font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm__name-tag { display: none; color: var(--accent-text); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm__desc { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tm__price { font-weight: 600; }
+.tm__links { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; }
+.tm__alias-btn, .tm__hosp-link, .tm__link-zero { display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 32px; padding: 0 6px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tm__alias-btn { position: relative; background: none; border: 0; color: var(--accent-text); font-family: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.tm__alias-btn::before { content: ""; position: absolute; inset: -6px 0; }
+.tm__alias-btn:hover { background: var(--accent-soft); }
+.tm__hosp-link { color: var(--ink); text-decoration: none; }
+.tm__hosp-link:hover { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
+.tm__alias-btn:focus-visible, .tm__hosp-link:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus); }
+.tm__link-zero { color: var(--muted); font-weight: 400; }
+.tm__dot { color: var(--muted); }
+.tm__c-desc, .tm__c-foot, .tm__card-only { display: none; }
+
+/* Empty list: ring icon, a bold line, one line of help. */
+.tm__empty .state__ring { margin: 0; }
+.tm__empty-title { color: var(--ink); font-size: 15px; font-weight: 700; }
+
+/* Alias window: 560px wide on a desktop, the same bottom sheet as the price window on a phone. */
+@media (min-width: 640px) { .dialog--alias { width: min(560px, calc(100% - 32px)); } }
+.tm__alias-body { gap: 12px; }
+.tm__alias-hint { display: flex; gap: 8px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.tm__alias-hint .icon { flex: none; margin-top: 2px; color: var(--accent-text); }
+.tm__alias-list { margin: 0; padding: 0; list-style: none; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
+.tm__alias-list li { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 4px 12px; border-bottom: 1px solid var(--line); }
+.tm__alias-list li:last-child { border-bottom: 0; }
+.tm__alias-text { flex: 1; min-width: 0; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.tm__alias-empty { color: var(--muted); font-size: 14px; }
+.tm__alias-foot { display: flex; flex: none; justify-content: flex-end; padding: 0 24px 20px; background: var(--bg); }
+
+/* Categories tab: the table-layout setting as a read-only segmented control, then the list. */
+.tm__mode { display: grid; gap: 12px; margin-bottom: 16px; }
+.tm__mode-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.tm__mode-head h3 { font-size: 14px; font-weight: 700; }
+.tm__mode-head span { color: var(--muted); font-size: 12px; }
+.tm__seg { align-self: start; }
+.tm__seg label { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 16px; border-radius: var(--r-sm); color: var(--muted); font-size: 14px; font-weight: 500; white-space: nowrap; }
+.tbl--tmcat .tm__cc-order { width: 56px; }
+.tbl--tmcat .tm__cc-icon { width: 200px; }
+.tbl--tmcat .tm__cc-count { width: 80px; }
+.tbl--tmcat .tm__cc-count, .tbl--tmcat th.tm__cc-count { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl--tmcat .tm__cc-active { width: 72px; }
+.tm__cc-pos { display: none; }
+.tm__cc-title { font-weight: 600; }
+.tm__icobox { display: inline-grid; place-items: center; width: 28px; height: 28px; margin-right: 8px; background: var(--surface-2); border-radius: var(--r-sm); color: var(--muted); vertical-align: middle; }
+.tm__icocode { color: var(--muted); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; vertical-align: middle; }
+
+/* Conflicts tab: one row per pair, the "cannot" mark between the two names. */
+.tm__pairs { margin: 0; padding: 0; list-style: none; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
+.tm__pair { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 15px; font-weight: 600; }
+.tm__pair:last-child { border-bottom: 0; }
+.tm__pair-a, .tm__pair-b { min-width: 0; overflow-wrap: anywhere; }
+.tm__pair-b { display: flex; align-items: center; gap: 6px; }
+.tm__pair-bicon { display: none; flex: none; color: var(--down); }
+.tm__pair-x { display: grid; place-items: center; width: 32px; height: 32px; margin: 0 auto; background: var(--down-bg); border-radius: 50%; color: var(--down); }
+
+/* 1440px and up: the full column set (the content is at least 1120px wide). */
+@media (min-width: 1440px) {
+  .tbl--tm .tm__c-order { width: 56px; }
+  .tbl--tm .tm__c-hashtag { width: 108px; }
+  .tbl--tm .tm__c-cat { width: 92px; }
+  .tbl--tm .tm__c-duration { width: 60px; }
+  .tbl--tm .tm__c-recovery { width: 60px; }
+  .tbl--tm .tm__c-price { width: 108px; }
+  .tbl--tm .tm__c-links { width: 88px; }
+}
+/* 900-1279px: the hashtag column goes; the hashtag is written under the name instead. */
+@media (min-width: 900px) and (max-width: 1279px) {
+  .tbl--tm .tm__c-hashtag { display: none; }
+  .tm__name-tag { display: block; }
+}
+@media (min-width: 900px) and (max-width: 1199px) {
+  .tbl--tmcat .tm__cc-icon { width: 160px; }
+}
+
+/* Under 900px: cards (see .tbl above), chips in one scrolling row, the sort chosen from a list. */
+@media (max-width: 899px) {
+  .tm__filters-hint, .tm__sort-hint { display: none; }
+  .tm__sort-select { display: block; flex: 1 1 100%; }
+  .tm__chips { flex-wrap: nowrap; margin: 0 -16px; padding: 0 16px 4px; overflow-x: auto; scrollbar-width: none; }
+  .tm__chips::-webkit-scrollbar { display: none; }
+  .tm__chip { position: relative; height: 36px; }
+  .tm__chip::after { content: ""; position: absolute; inset: -4px 0; }
+  .tbl--tm td.tm__c-order, .tbl--tm td.tm__c-hashtag, .tbl--tm td.tm__table-only, .tbl--tmcat td.tm__table-only, .tm__table-only, .tm__desc { display: none; }
+  .tm__card-only { display: inline; }
+  .tbl--tm td.tbl__name { flex-wrap: nowrap; gap: 8px; margin-bottom: 0; }
+  .tbl--tm td.tbl__name .tbl__pill { flex: none; }
+  .tm__name-text { font-size: 16px; font-weight: 700; }
+  .tm__name-tag { display: block; }
+  .tbl--tm td.tm__c-desc::before { content: none; }
+  .tbl--tm td.tm__c-desc:empty { display: none; }
+  .tm__desc-card { display: block; min-width: 0; color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tbl--tm .tm__c-num { text-align: left; white-space: normal; }
+  .tbl--tm td.tbl__go { display: flex; align-items: center; gap: 4px; min-height: 36px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+  .tm__foot-order { color: var(--muted); font-size: 12px; }
+  .tm__alias-btn, .tm__hosp-link, .tm__link-zero { height: 36px; }
+  /* Category cards: order and name on the first line, icon code and count on the second. */
+  .tbl--tmcat tr { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-height: 60px; padding: 10px 16px; }
+  .tbl--tmcat td.tm__cc-order { display: none; }
+  .tbl--tmcat td.tbl__name { flex: 1 1 100%; flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 2px; }
+  .tm__cc-pos { display: inline; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .tm__cc-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tbl--tmcat td.tm__cc-icon, .tbl--tmcat td.tm__cc-count { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  .tbl--tmcat td.tm__cc-icon::before { content: none; }
+  .tbl--tmcat td.tm__cc-count::before { content: "·"; width: auto; color: var(--muted); font-size: 12px; line-height: inherit; }
+  .tm__icobox { display: none; }
+  .tbl--tmcat .tm__hosp-link, .tbl--tmcat .tm__link-zero { min-width: 0; height: auto; padding: 0; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+}
+
+/* Under 640px: the alias sheet has no foot (the close button in its head is enough); conflict pairs on two lines. */
+@media (max-width: 639px) {
+  .tm__alias-foot { display: none; }
+  .tm__pair { grid-template-columns: minmax(0, 1fr); gap: 2px; padding: 10px 16px; }
+  .tm__pair-x { display: none; }
+  .tm__pair-b { color: var(--muted); font-size: 13px; font-weight: 500; }
+  .tm__pair-bicon { display: inline-block; }
+}
+
+/* Under 577px: short tab labels, evenly spread, no counts; the search takes the whole row. */
+@media (max-width: 576px) {
+  .tm__tabs { gap: 4px; margin-bottom: 16px; }
+  .tm__tab { flex: 1 1 0; justify-content: center; padding: 0 6px; font-size: 14px; }
+  .tm__tab-long, .tm__tab-n { display: none; }
+  .tm__tab-short { display: inline; }
+  .tm__search { flex-basis: 100%; max-width: none; }
+  .tm__seg { width: 100%; }
+  .tm__seg label { flex: 1; padding: 0 6px; font-size: 13px; }
 }

@@ -79,6 +79,19 @@ const NEW = {
   ),
   sparkle: <path d="M9 3.5l1.6 4.4 4.4 1.6-4.4 1.6L9 15.5l-1.6-4.4L3 9.5l4.4-1.6zM15.5 3v3M14 4.5h3" />,
   unplug: <path d="M3 10h3.5M13.5 10H17M6.5 7v6l3.5-1.5v-3L6.5 7zM13.5 8v4" />,
+  search: (
+    <>
+      <circle cx="9" cy="9" r="5.5" />
+      <path d="M13.2 13.2 17 17" />
+    </>
+  ),
+  ban: (
+    <>
+      <circle cx="10" cy="10" r="6.5" />
+      <path d="M5.4 5.4l9.2 9.2" />
+    </>
+  ),
+  sort: <path d="M7 4.5v11M4.5 13 7 15.5 9.5 13M13 15.5v-11M10.5 7 13 4.5 15.5 7" />,
 } satisfies Record<string, ReactNode>;
 
 // Older icons, drawn on a 16x16 grid. Only the sidebar group headings still use them; they are

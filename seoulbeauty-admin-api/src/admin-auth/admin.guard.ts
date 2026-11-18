@@ -224,6 +224,40 @@ export class HospitalsTreatmentsImagesEnabledGuard implements CanActivate {
   }
 }
 
+/** Treatment master pages (/v1/treatments*, /v1/treatment-categories*, /v1/treatment-conflicts*, /v1/treatment-settings*); super admin only. Independent of the hospital switches; only the exact value "1" turns it on. */
+export const treatmentsEnabled = (): boolean => process.env.ADMIN_TREATMENTS_ENABLED === '1';
+/** Editing the treatment master (treatments, aliases, categories, conflicts, table mode). Needs the treatment pages on as well; only the exact value "1" turns it on. */
+export const treatmentsWriteEnabled = (): boolean => treatmentsEnabled() && process.env.ADMIN_TREATMENTS_WRITE === '1';
+/** Uploading the default image of a treatment. Needs the treatment pages and editing on as well; only the exact value "1" turns it on. */
+export const treatmentsImagesEnabled = (): boolean => treatmentsWriteEnabled() && process.env.ADMIN_TREATMENTS_IMAGES === '1';
+
+/** With ADMIN_TREATMENTS_ENABLED off the treatment master routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class TreatmentsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !treatmentsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the write switch off the writing treatment master routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class TreatmentsWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !treatmentsWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the images switch off the default image upload route answers 404 as if it did not exist; nothing else is looked at. */
+@Injectable()
+export class TreatmentsImagesEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !treatmentsImagesEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 

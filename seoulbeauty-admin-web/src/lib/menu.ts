@@ -120,7 +120,8 @@ const MENU: MenuGroup[] = [
     icon: "heart",
     items: [
       legacy("treatment_units", "admin_treatment_units.php", "단위 관리", "Units", "tag"),
-      legacy("treatment_master", "admin_treatments.php", "시술 마스터 관리", "Treatment master list", "heart"),
+      // Becomes a page of this panel (super admin only) once the server has the treatment master switched on.
+      { ...legacy("treatment_master", "admin_treatments.php", "시술 마스터 관리", "Treatment master list", "heart"), superOnly: true },
       legacy("hospital_treatments", "admin_hospital_treatments.php", "병원별 시술 배정 · 이미지 검수", "Assign treatments to hospitals and review images", "image"),
       legacy("doctor_treatments", "admin_doctor_treatments.php", "의사별 시술 전문도", "Doctor treatment expertise", "people"),
       legacy("treatment_packages", "admin_treatment_packages.php", "시술 패키지 관리", "Treatment packages", "collection"),
@@ -238,8 +239,9 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<"hospitals", { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals" | "treatments", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
+  treatments: { key: "treatment_master", href: "/treatments" },
 };
 
 /**
