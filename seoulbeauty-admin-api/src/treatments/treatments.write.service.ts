@@ -6,7 +6,7 @@ import { TreatmentConflict, TreatmentItem, TreatmentsAnswer } from './treatments
 import {
   activeManyQuery, allActiveIdsQuery, activeQuery, categoryExistsQuery, createdByOf, deleteAliasesQuery, deleteAliasQuery, deleteConflictsOfQuery,
   deleteTreatmentsQuery, insertAliasQuery, insertQuery, isFieldError, parseActive, parseAlias, parseBulk, parseOrder, parseTreatmentBody,
-  replaceConflictsQueries, sortOrderQuery, splitDeletable, TreatmentDraft, updateQuery,
+  replaceConflictsQueries, sortOrderQuery, TreatmentDraft, updateQuery,
 } from './treatments.write.logic';
 
 export interface WriteActor {
@@ -120,7 +120,6 @@ export class TreatmentsWriteService {
     if (!('draft' in parsed)) this.fail(parsed);
     const d = parsed.draft;
     if (!(await this.categoryExists(d.categoryId as number))) throw new BadRequestException({ error: 'invalid_field', field: 'categoryId', reason: 'bad_format' });
-    if (d.hashtag === undefined) d.hashtag = `#${(d.name as string).replace(/ /g, '')}`;
     const q = insertQuery(d, createdByOf(actor.name));
     let newId = 0;
     await this.guarded(() =>
@@ -183,29 +182,19 @@ export class TreatmentsWriteService {
     return { ok: true, conflicts: (await this.reads.list()).conflicts };
   }
 
-  async bulk(actor: WriteActor, body: unknown): Promise<{ done: number; skipped: { id: number; reason: 'in_use' | 'not_found' }[]; conflicts: TreatmentConflict[] }> {
+  async bulk(actor: WriteActor, body: unknown): Promise<{ done: number; skipped: { id: number; reason: 'not_found' }[]; conflicts: TreatmentConflict[] }> {
     const parsed = parseBulk(body);
     if (!('ids' in parsed)) this.fail(parsed);
     const snap = await this.reads.list();
     const known = new Set(snap.items.map((i) => i.id));
-    let done = 0;
-    let skipped: { id: number; reason: 'in_use' | 'not_found' }[] = [];
-    if (parsed.action === 'delete') {
-      const split = splitDeletable(parsed.ids, snap.items);
-      skipped = split.skipped;
-      if (split.deletable.length > 0) await this.guarded(() => this.tx((conn) => this.deleteRows(conn, split.deletable, snap.schema.conflicts)));
-      done = split.deletable.length;
-    } else {
-      const ids = parsed.ids.filter((x) => known.has(x));
-      skipped = parsed.ids.filter((x) => !known.has(x)).map((id) => ({ id, reason: 'not_found' as const }));
-      if (ids.length > 0) {
-        const q = activeManyQuery(ids, parsed.action === 'activate');
-        await this.guarded(() => this.pool().query(q.sql, q.values));
-      }
-      done = ids.length;
+    const ids = parsed.ids.filter((x) => known.has(x));
+    const skipped = parsed.ids.filter((x) => !known.has(x)).map((id) => ({ id, reason: 'not_found' as const }));
+    if (ids.length > 0) {
+      const q = activeManyQuery(ids, parsed.action === 'activate');
+      await this.guarded(() => this.pool().query(q.sql, q.values));
     }
     this.audit(actor, `bulk_${parsed.action}`, parsed.ids);
-    return { done, skipped, conflicts: (await this.reads.list()).conflicts };
+    return { done: ids.length, skipped, conflicts: (await this.reads.list()).conflicts };
   }
 
   async reorder(actor: WriteActor, body: unknown): Promise<{ ok: true }> {

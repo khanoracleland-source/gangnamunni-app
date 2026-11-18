@@ -62,7 +62,6 @@ export default function TreatmentsTab({ data, query, canWrite, refresh }: { data
   // null = closed, "new" = add form, an item = edit form.
   const [editing, setEditing] = useState<TreatmentItem | "new" | null>(null);
   const [deleting, setDeleting] = useState<TreatmentItem | null>(null);
-  const [bulkDelete, setBulkDelete] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [busyId, setBusyId] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -115,7 +114,6 @@ export default function TreatmentsTab({ data, query, canWrite, refresh }: { data
       await refresh();
     } else fail(res);
     setBusy(false);
-    setBulkDelete(false);
   };
   const removeOne = async () => {
     if (!deleting) return;
@@ -145,9 +143,7 @@ export default function TreatmentsTab({ data, query, canWrite, refresh }: { data
     : undefined;
   const deleteSpec: ConfirmSpec | null = deleting
     ? { title: t("tmw.del.title"), name: deleting.name, body: t("tmw.del.body"), note: t("tmw.del.impact", { a: formatNumber(deleting.aliasCount), h: formatNumber(deleting.hospitalCount) }), confirmLabel: t("tmw.del.confirm"), cancelLabel: t("tmw.cancel"), focus: "cancel" }
-    : bulkDelete
-      ? { title: t("tmw.bulk.deleteTitle"), body: t("tmw.bulk.deleteBody", { n: formatNumber(picked.length) }), confirmLabel: t("tmw.del.confirm"), cancelLabel: t("tmw.cancel"), focus: "cancel" }
-      : null;
+    : null;
 
   const replace = (patch: Partial<TreatmentsQuery>) => router.replace(treatmentsHref({ ...query, ...patch }), { scroll: false });
   const reset = () => {
@@ -218,7 +214,6 @@ export default function TreatmentsTab({ data, query, canWrite, refresh }: { data
           <span className="tm__bulk-n" role="status">{t("tmw.bulk.selected", { n: formatNumber(picked.length) })}</span>
           <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => void runBulk("activate")}>{t("tmw.bulk.on")}</button>
           <button type="button" className="btn btn--ghost" disabled={busy} onClick={() => void runBulk("deactivate")}>{t("tmw.bulk.off")}</button>
-          <button type="button" className="btn btn--ghost btn--reject" disabled={busy} onClick={() => setBulkDelete(true)}>{t("tmw.bulk.delete")}</button>
           <button type="button" className="txtbtn" disabled={busy} onClick={() => setSelected(new Set())}>{t("tmw.bulk.clear")}</button>
         </div>
       ) : null}
@@ -251,11 +246,10 @@ export default function TreatmentsTab({ data, query, canWrite, refresh }: { data
       <ConfirmDialog
         spec={deleteSpec}
         busy={busy}
-        onConfirm={() => void (deleting ? removeOne() : runBulk("delete"))}
+        onConfirm={() => void removeOne()}
         onClose={() => {
           if (!busy) {
             setDeleting(null);
-            setBulkDelete(false);
           }
         }}
       />

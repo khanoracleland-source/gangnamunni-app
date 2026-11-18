@@ -1456,7 +1456,7 @@ export type TreatmentInput = Partial<{
 }>;
 
 export type TreatmentChange = { item: TreatmentItem; conflicts: TreatmentConflict[] };
-export type BulkAction = "activate" | "deactivate" | "delete";
+export type BulkAction = "activate" | "deactivate";
 export type BulkResult = { done: number; skipped: { id: number; reason: string }[]; conflicts: TreatmentConflict[] };
 
 const changed = (res: WriteResult<Json>): WriteResult<TreatmentChange> =>

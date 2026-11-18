@@ -13,7 +13,7 @@ export const REVISIT_MAX = 3650;
 export const BULK_MAX = 500;
 export const ORDER_MAX = 1000;
 export const CONFLICTS_MAX = 500;
-export const BULK_ACTIONS = ['activate', 'deactivate', 'delete'] as const;
+export const BULK_ACTIONS = ['activate', 'deactivate'] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 
 export type FieldReason = 'required' | 'too_long' | 'bad_format' | 'range';
@@ -292,18 +292,4 @@ export function parseAlias(body: unknown): { alias: string; lang: string } | Fie
 export const createdByOf = (name: unknown): string => {
   const s = typeof name === 'string' ? name.trim() : '';
   return (s === '' ? 'admin' : s).slice(0, CREATED_BY_MAX);
-};
-
-/** Which of the picked ids may be deleted: those not assigned to any hospital. */
-export const splitDeletable = (ids: number[], items: TreatmentItem[]): { deletable: number[]; skipped: { id: number; reason: 'in_use' | 'not_found' }[] } => {
-  const byId = new Map(items.map((i) => [i.id, i]));
-  const deletable: number[] = [];
-  const skipped: { id: number; reason: 'in_use' | 'not_found' }[] = [];
-  for (const id of ids) {
-    const it = byId.get(id);
-    if (!it) skipped.push({ id, reason: 'not_found' });
-    else if (it.hospitalCount > 0) skipped.push({ id, reason: 'in_use' });
-    else deletable.push(id);
-  }
-  return { deletable, skipped };
 };

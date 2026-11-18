@@ -174,11 +174,13 @@ describe('admin API: treatment master writes', () => {
       expect(del[1]).toContain('treatment_conflicts');
       expect(del[2]).toContain('treatment_master');
     });
-    it('bulk delete skips used and unknown ids and says why', async () => {
-      const r = await send('post', '/v1/treatments/bulk', { action: 'delete', ids: [10, 11, 77] });
+    it('bulk activate skips unknown ids; bulk delete is not offered', async () => {
+      const r = await send('post', '/v1/treatments/bulk', { action: 'deactivate', ids: [10, 77] });
       expect(r.status).toBe(200);
       expect(r.body.done).toBe(1);
-      expect(r.body.skipped).toEqual(expect.arrayContaining([{ id: 10, reason: 'in_use' }, { id: 77, reason: 'not_found' }]));
+      expect(r.body.skipped).toEqual([{ id: 77, reason: 'not_found' }]);
+      expect((await send('post', '/v1/treatments/bulk', { action: 'delete', ids: [11] })).status).toBe(400);
+      expect(rwCalls.filter((c) => c.sql.startsWith('DELETE'))).toHaveLength(0);
     });
     it('bulk with a bad action or empty ids -> 400', async () => {
       expect((await send('post', '/v1/treatments/bulk', { action: 'nuke', ids: [1] })).status).toBe(400);
