@@ -49,13 +49,13 @@ export const isImageUrl = (s: string): boolean => {
   }
 };
 
-const text = (v: unknown, field: string, max: number): string | FieldError => {
+export const text = (v: unknown, field: string, max: number): string | FieldError => {
   if (v === null || v === undefined) return '';
   if (typeof v !== 'string') return fieldError(field, 'bad_format');
   const s = v.trim();
   return s.length > max ? fieldError(field, 'too_long') : s;
 };
-const count = (v: unknown, field: string, max: number = NUMBER_MAX): number | FieldError => {
+export const count = (v: unknown, field: string, max: number = NUMBER_MAX): number | FieldError => {
   if (v === null || v === undefined || v === '') return 0;
   if (typeof v !== 'number' || !Number.isInteger(v)) return fieldError(field, 'bad_format');
   return v < 0 || v > max ? fieldError(field, 'range') : v;

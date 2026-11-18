@@ -987,7 +987,7 @@ Routes of this stage (reading only; nothing in this section writes):
   `gangnamunni_hospital_treatments` with that `treatment_id` (released assignments included). `defaultImageUrl` is `null` when blank; `revisitDays` `null` = no limit;
   `createdAt` is `YYYY-MM-DD HH:MM:SS` (KST) or `null`. Order: category sort, treatment sort, popularity (desc), id - the order of the PHP page. Nothing is cached.
 - `/v1/me` -> `"features":{"treatments","treatmentsWrite","treatmentsImages"}` (the switches only; hospital roles never reach the routes).
-Writing (section 13.2) comes with the next stage; with `ADMIN_TREATMENTS_WRITE=0` every writing route answers 404 and the page hides its editing controls.
+Writing is section 13.2; with `ADMIN_TREATMENTS_WRITE=0` every writing route answers 404 and the page hides its editing controls.
 
 The three optional parts come from PHP migrations that this API never runs (`hairwang_full/gangnamunni/sql/`): `treatment_master_default_image.sql` (column `default_image_url`),
 `treatment_master_revisit_20261021.sql` (columns `revisit_days`, `revisit_strict`) and `treatment_conflicts_20261023.sql` (table `gangnamunni_treatment_conflicts`). Each is read by
@@ -1030,12 +1030,12 @@ journalctl -u seoulbeauty-admin-api | grep -i 'unavailable'              # a sch
 ```
 Turning it off: `ADMIN_TREATMENTS_ENABLED=0` + restart (every route 404, the menu entry points back at the PHP page).
 
-### 13.2 Editing (`ADMIN_TREATMENTS_WRITE`, next stage - do not run yet)
-Will add create / edit / activate / delete / bulk / reorder of treatments, aliases, categories, conflict pairs and the home table mode, through the write user of 6.1.
-Keep `ADMIN_TREATMENTS_WRITE=0` until that stage is deployed. The grants it will need (for planning; the final list ships with that stage):
+### 13.2 Editing (`ADMIN_TREATMENTS_WRITE`)
+Adds create / edit / activate / delete / bulk show-hide / reorder of treatments, aliases, categories, conflict pairs and the home table mode, through the write user of 6.1.
+Keep `ADMIN_TREATMENTS_WRITE=0` until the grants below are in place and the dump (last paragraph) is taken; with it off every writing route answers 404 and the page hides its editing controls.
 ```sql
 -- treatments
-GRANT SELECT (category_id, name, default_image_url) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, category_id, name, is_active, default_image_url) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
 GRANT INSERT (category_id, sort_order, name, hashtag, description, default_image_url, duration_min, recovery_days, anesthesia_type, repeat_cycle_months, precautions, avg_price_min, avg_price_max, is_active, created_by)
   ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
 GRANT UPDATE (category_id, sort_order, name, hashtag, description, default_image_url, duration_min, recovery_days, anesthesia_type, repeat_cycle_months, precautions, avg_price_min, avg_price_max, is_active)
@@ -1043,7 +1043,7 @@ GRANT UPDATE (category_id, sort_order, name, hashtag, description, default_image
 GRANT DELETE ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
 -- aliases
 GRANT SELECT (id, treatment_id, alias, lang), INSERT (treatment_id, alias, lang), DELETE ON <DB_NAME>.gangnamunni_treatment_aliases TO 'sb_admin_rw'@'127.0.0.1';
--- categories
+-- categories (the delete statement checks the treatments of the category itself, hence SELECT on category_id above)
 GRANT SELECT (id, slug), INSERT (name, slug, icon, sort_order, is_active), UPDATE (name, slug, icon, sort_order, is_active), DELETE ON <DB_NAME>.gangnamunni_treatment_categories TO 'sb_admin_rw'@'127.0.0.1';
 -- home table mode: the row tc_table_mode. UPDATE cannot be limited to one row, so the write user may change any setting_value; the API only ever names tc_table_mode.
 GRANT SELECT (id, setting_key), INSERT (setting_key, setting_value, setting_group, description), UPDATE (setting_value) ON <DB_NAME>.gangnamunni_settings TO 'sb_admin_rw'@'127.0.0.1';
@@ -1052,8 +1052,10 @@ GRANT UPDATE (revisit_days, revisit_strict) ON <DB_NAME>.gangnamunni_treatment_m
 GRANT SELECT (id, tm_a_id, tm_b_id), INSERT (tm_a_id, tm_b_id), DELETE ON <DB_NAME>.gangnamunni_treatment_conflicts TO 'sb_admin_rw'@'127.0.0.1';
 -- and each statement again for 'sb_admin_rw'@'localhost'
 ```
+Then set `ADMIN_TREATMENTS_WRITE=1` next to the existing `DB_RW_*` keys and run `sudo systemctl restart seoulbeauty-admin-api`.
+A refused grant shows as `503 {"error":"write_unavailable"}` (reason in the journal).
 Deleting a treatment is a hard delete (as on the PHP page) and will be refused with `409 {"error":"in_use"}` while any hospital has it; a treatment that is part of a package
-(`gangnamunni_treatment_package_items`, foreign key `ON DELETE RESTRICT`) cannot be deleted by the database either. Take a dump of the five tables above before the first write.
+(`gangnamunni_treatment_package_items`, foreign key `ON DELETE RESTRICT`) cannot be deleted by the database either (answered `409 in_use`). Take a dump of the five tables above before the first write.
 
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
