@@ -53,7 +53,7 @@ export const SORT_LABELS: Record<TreatmentSortKey, MessageKey> = {
 };
 
 /** The treatments tab: count cards (they narrow the list), search and category chips, the sortable list. */
-export default function TreatmentsTab({ data, query, canWrite, refresh }: { data: TreatmentsData; query: TreatmentsQuery; canWrite: boolean; refresh: () => Promise<void> }) {
+export default function TreatmentsTab({ data, query, canWrite, canImages, refresh }: { data: TreatmentsData; query: TreatmentsQuery; canWrite: boolean; canImages: boolean; refresh: () => Promise<void> }) {
   const t = useT();
   const router = useRouter();
   // The count cards narrow the list without touching the address; the address keeps the rest.
@@ -235,6 +235,7 @@ export default function TreatmentsTab({ data, query, canWrite, refresh }: { data
         <TreatmentDialog
           item={editing === "new" ? null : editing}
           data={data}
+          canImages={canImages}
           onClose={() => setEditing(null)}
           onSaved={(_, created) => {
             setEditing(null);

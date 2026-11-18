@@ -19,3 +19,11 @@ export function reasonKey(reason: string | undefined): MessageKey {
   const found = REASONS.find((r) => r === reason);
   return found ? (`tmw.err.${found}` as MessageKey) : "tmw.err.bad_format";
 }
+
+const IMAGE_ERRORS = ["invalid_image", "too_large", "image_required", "uploads_unavailable", "default_image_unavailable", "upload_failed"] as const;
+
+/** The sentence for a refused image upload; anything it does not know falls back to the general one. */
+export function imageFailureKey(f: WriteFailure): MessageKey {
+  const found = IMAGE_ERRORS.find((e) => e === f.error);
+  return found ? (`tmi.err.${found}` as MessageKey) : failureKey(f);
+}

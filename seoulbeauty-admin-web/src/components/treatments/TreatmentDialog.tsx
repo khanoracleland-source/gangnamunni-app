@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { toast } from "sonner";
 import { createPortal } from "react-dom";
 import Icon from "../Icon";
-import { failureKey, reasonKey } from "./writeErrors";
+import { failureKey, imageFailureKey, reasonKey } from "./writeErrors";
 import {
   ANESTHESIA_TYPES,
   createTreatment,
   updateTreatment,
+  uploadTreatmentImage,
   type AnesthesiaType,
   type TreatmentChange,
   type TreatmentInput,
@@ -15,7 +17,11 @@ import {
   type TreatmentsData,
 } from "@/lib/api";
 import { useT } from "@/lib/locale";
-import { conflictIdsOf, fold } from "@/lib/treatments";
+import { conflictIdsOf, fold, imageUrl } from "@/lib/treatments";
+
+/** Types the server accepts; the server still checks the real type of the file. */
+const IMAGE_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp";
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 type Form = {
   name: string;
@@ -23,6 +29,8 @@ type Form = {
   hashtag: string;
   description: string;
   precautions: string;
+  /** The stored address (a path of the upload folder or an http(s) address); empty = no image. */
+  defaultImageUrl: string;
   durationMin: string;
   recoveryDays: string;
   repeatCycleMonths: string;
@@ -43,6 +51,7 @@ function initial(item: TreatmentItem | null, data: TreatmentsData): Form {
     hashtag: item?.hashtag ?? "",
     description: item?.description ?? "",
     precautions: item?.precautions ?? "",
+    defaultImageUrl: item?.defaultImageUrl ?? "",
     durationMin: item ? text(item.durationMin) : "",
     recoveryDays: item ? text(item.recoveryDays) : "",
     repeatCycleMonths: item ? text(item.repeatCycleMonths) : "",
@@ -77,6 +86,7 @@ function payload(form: Form, item: TreatmentItem | null, data: TreatmentsData): 
     next.revisitDays = revisit > 0 ? revisit : null;
     next.revisitStrict = revisit > 0 && form.revisitStrict;
   }
+  if (data.schema.defaultImage) next.defaultImageUrl = form.defaultImageUrl.trim();
   if (data.schema.conflicts) next.conflictIds = form.conflictIds;
   if (!item) return { body: next };
   const before = initial(item, data);
@@ -93,11 +103,14 @@ function payload(form: Form, item: TreatmentItem | null, data: TreatmentsData): 
 export default function TreatmentDialog({
   item,
   data,
+  canImages,
   onClose,
   onSaved,
 }: {
   item: TreatmentItem | null;
   data: TreatmentsData;
+  /** Files may be uploaded (the images switch is on). Without it only an address can be typed. */
+  canImages: boolean;
   onClose: () => void;
   onSaved: (change: TreatmentChange, created: boolean) => void;
 }) {
@@ -109,6 +122,9 @@ export default function TreatmentDialog({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [general, setGeneral] = useState<string | null>(null);
   const [pick, setPick] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+  const fileInput = useRef<HTMLInputElement>(null);
   const id = (name: string) => `${uid}-${name}`;
 
   useEffect(() => {
@@ -126,6 +142,25 @@ export default function TreatmentDialog({
   const set = <K extends keyof Form>(key: K, value: Form[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
     setErrors((e) => (key in e ? Object.fromEntries(Object.entries(e).filter(([k]) => k !== key)) : e));
+  };
+
+  // The local preview address is released when it is replaced and when the dialog goes away.
+  const previewRef = useRef("");
+  useEffect(() => () => {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+  }, []);
+
+  const chooseFile = (picked: File | null) => {
+    if (picked && picked.size > IMAGE_MAX_BYTES) {
+      setErrors((e) => ({ ...e, file: t("tmi.err.too_large") }));
+      if (fileInput.current) fileInput.current.value = "";
+      return;
+    }
+    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== "file")));
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = picked ? URL.createObjectURL(picked) : "";
+    setPreview(previewRef.current);
+    setFile(picked);
   };
 
   const candidates = useMemo(() => {
@@ -148,27 +183,46 @@ export default function TreatmentDialog({
       return;
     }
     if (!("body" in built)) return;
-    if (item && Object.keys(built.body).length === 0) {
+    const nothingToSave = item !== null && Object.keys(built.body).length === 0;
+    if (nothingToSave && !file) {
       onClose();
       return;
     }
     setBusy(true);
     setGeneral(null);
-    const res = item ? await updateTreatment(item.id, built.body) : await createTreatment(built.body);
+    let change: TreatmentChange | null = null;
+    if (!nothingToSave) {
+      const res = item ? await updateTreatment(item.id, built.body) : await createTreatment(built.body);
+      if (!res.ok) {
+        setBusy(false);
+        if (res.status === 400 && res.error === "invalid_field" && res.field) {
+          setErrors({ [res.field]: t(reasonKey(res.reason)) });
+          document.getElementById(id(res.field))?.focus();
+          return;
+        }
+        setGeneral(t(failureKey(res)));
+        return;
+      }
+      change = res.data;
+    }
+    // The file is sent after the treatment exists (a new treatment has no id before). When only the file was changed, the answer of the upload is the new state.
+    if (file && canImages) {
+      const targetId = change?.item.id ?? item?.id ?? 0;
+      const up = await uploadTreatmentImage(targetId, file);
+      if (up.ok) change = up.data;
+      else if (change) toast.error(t("tmi.err.afterSave", { reason: t(imageFailureKey(up)) }));
+      else {
+        setBusy(false);
+        setErrors({ file: t(imageFailureKey(up)) });
+        document.getElementById(id("file"))?.focus();
+        return;
+      }
+    }
     setBusy(false);
-    if (res.ok) {
-      onSaved(res.data, item === null);
-      return;
-    }
-    if (res.status === 400 && res.error === "invalid_field" && res.field) {
-      setErrors({ [res.field]: t(reasonKey(res.reason)) });
-      document.getElementById(id(res.field))?.focus();
-      return;
-    }
-    setGeneral(t(failureKey(res)));
+    if (change) onSaved(change, item === null);
   };
 
-  const field = (name: keyof Form | "avgPriceMax", label: string, control: ReactNode, hint?: string) => (
+  const field = (name: keyof Form | "avgPriceMax" | "file", label: string, control: ReactNode, hint?: string) => (
     <div className="field">
       <label className="field__label" htmlFor={id(name)}>{label}</label>
       {control}
@@ -257,6 +311,42 @@ export default function TreatmentDialog({
               </div>
             ) : null}
           </section>
+
+          {data.schema.defaultImage ? (
+            <section className="tm__sec" aria-labelledby={id("s4")}>
+              <h3 className="tm__sec-title" id={id("s4")}>{t("tmi.sec")}</h3>
+              <div className="tm__imgrow">
+                <figure className="tm__imgprev">
+                  {preview || imageUrl(form.defaultImageUrl.trim() === "" ? null : form.defaultImageUrl.trim()) ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- a local preview or an address stored by the old panel, no optimizer needed
+                    <img src={preview || imageUrl(form.defaultImageUrl.trim())} alt="" width={96} height={96} />
+                  ) : (
+                    <span className="tm__imgprev-empty"><Icon name="image" size={24} /></span>
+                  )}
+                  <figcaption>{t(preview ? "tmi.preview.new" : form.defaultImageUrl.trim() ? "tmi.preview.current" : "tmi.noImage")}</figcaption>
+                </figure>
+                <div className="tm__imgfields">
+                  {canImages
+                    ? field(
+                        "file",
+                        t("tmi.f.file"),
+                        <span className="tm__filerow">
+                          <input ref={fileInput} className="input" type="file" accept={IMAGE_ACCEPT} onChange={(e) => chooseFile(e.target.files?.[0] ?? null)} {...aria("file")} />
+                          {file ? (
+                            <button type="button" className="txtbtn" onClick={() => { chooseFile(null); if (fileInput.current) fileInput.current.value = ""; }}>{t("tmi.f.clearFile")}</button>
+                          ) : null}
+                        </span>,
+                        t("tmi.f.fileHint"),
+                      )
+                    : null}
+                  {field("defaultImageUrl", t("tmi.f.url"), <input className="input" maxLength={500} autoComplete="off" spellCheck={false} value={form.defaultImageUrl} onChange={(e) => set("defaultImageUrl", e.target.value)} {...aria("defaultImageUrl")} />, t("tmi.f.urlHint"))}
+                  {form.defaultImageUrl.trim() !== "" ? (
+                    <button type="button" className="txtbtn txtbtn--danger" onClick={() => set("defaultImageUrl", "")}>{t("tmi.f.remove")}</button>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           <section className="tm__sec" aria-labelledby={id("s3")}>
             <h3 className="tm__sec-title" id={id("s3")}>{t("tmw.sec.limits")}</h3>

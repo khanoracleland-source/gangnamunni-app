@@ -1054,6 +1054,11 @@ GRANT SELECT (id, tm_a_id, tm_b_id), INSERT (tm_a_id, tm_b_id), DELETE ON <DB_NA
 ```
 Then set `ADMIN_TREATMENTS_WRITE=1` next to the existing `DB_RW_*` keys and run `sudo systemctl restart seoulbeauty-admin-api`.
 A refused grant shows as `503 {"error":"write_unavailable"}` (reason in the journal).
+
+Uploading the default image (`POST /v1/treatments/:id/image`) is a second switch, `ADMIN_TREATMENTS_IMAGES=1` (needs `ADMIN_TREATMENTS_WRITE=1`). It needs no further GRANT (it only sets `default_image_url`, already
+granted above) but it writes files: `ADMIN_UPLOAD_ROOT` must be the absolute path of the PHP `gangnamunni` directory, and the service user must be able to write to `<ADMIN_UPLOAD_ROOT>/uploads/treatments/`
+(the folder of section 10.6; created when missing). A file is accepted as JPG / PNG / GIF / WebP up to 10 MB, only when its real type matches its extension; it is stored as `treat_<time>_<8 hex>.<ext>`.
+The previous image file of a treatment is not deleted when it is replaced (as on the PHP page). With the switch off the route answers 404 and the form only offers an image address.
 Deleting a treatment is a hard delete (as on the PHP page) and will be refused with `409 {"error":"in_use"}` while any hospital has it; a treatment that is part of a package
 (`gangnamunni_treatment_package_items`, foreign key `ON DELETE RESTRICT`) cannot be deleted by the database either (answered `409 in_use`). Take a dump of the five tables above before the first write.
 

@@ -1444,6 +1444,8 @@ export type TreatmentInput = Partial<{
   hashtag: string;
   description: string;
   precautions: string;
+  /** "" removes the image; an address of the upload folder or an http(s) address sets it. */
+  defaultImageUrl: string;
   durationMin: number;
   recoveryDays: number;
   repeatCycleMonths: number;
@@ -1555,4 +1557,30 @@ export async function addConflict(a: number, b: number): Promise<WriteResult<Con
 export async function removeConflict(id: number): Promise<WriteResult<ConflictChange>> {
   const res = await sendJson("DELETE", `/v1/treatment-conflicts/${encodeURIComponent(String(id))}`);
   return res.ok ? { ok: true, data: { conflicts: masterConflicts(obj(res.data).conflicts), existed: true } } : res;
+}
+
+/** Uploads the default image of a treatment (one file, multipart; the browser sets Content-Type itself). Answers like any other change of one treatment. */
+export async function uploadTreatmentImage(id: number, file: File): Promise<WriteResult<TreatmentChange>> {
+  const body = new FormData();
+  body.append("image", file);
+  try {
+    const res = await fetch(`${BASE_PATH}/api${treatmentPath(id)}/image`, {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "X-Requested-With": "admin-next" },
+      body,
+    });
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // An empty or non-JSON body: the status alone says what happened.
+    }
+    const d = obj(data);
+    if (!res.ok) return { ok: false, status: res.status, fields: {}, updatedAt: "", error: str(d.error), blockers: [], deletableAfter: "" };
+    return changed({ ok: true, data: d });
+  } catch {
+    return { ok: false, status: 0, fields: {}, updatedAt: "", error: "", blockers: [], deletableAfter: "" };
+  }
 }

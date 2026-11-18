@@ -2266,3 +2266,14 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
   .tm__pair:has(.tm__pair-del) { grid-template-columns: minmax(0, 1fr) 40px; }
   .tm__pair:has(.tm__pair-del) .tm__pair-del { grid-column: 2; grid-row: 1 / span 2; }
 }
+
+/* Treatment master: default image */
+.tm__imgrow { display: flex; flex-direction: column; gap: 12px; }
+@media (min-width: 640px) { .tm__imgrow { flex-direction: row; align-items: flex-start; } }
+.tm__imgprev { display: flex; flex: none; flex-direction: column; align-items: center; gap: 4px; margin: 0; width: 112px; }
+.tm__imgprev img, .tm__imgprev-empty { display: grid; place-items: center; width: 96px; height: 96px; object-fit: cover; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--muted); }
+.tm__imgprev figcaption { color: var(--muted); font-size: 12px; text-align: center; }
+.tm__imgfields { display: flex; flex: 1; flex-direction: column; gap: 12px; min-width: 0; }
+.tm__filerow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tm__filerow .input { flex: 1 1 220px; min-width: 0; height: auto; padding: 6px 8px; }
+.tm__imgfields .txtbtn--danger { align-self: flex-start; color: var(--down); }

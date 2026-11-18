@@ -301,3 +301,5 @@ export const createdByOf = (name: unknown): string => {
   const s = typeof name === 'string' ? name.trim() : '';
   return (s === '' ? 'admin' : s).slice(0, CREATED_BY_MAX);
 };
+
+export const defaultImageQuery = (id: number, url: string): Query => ({ sql: 'UPDATE gangnamunni_treatment_master SET default_image_url = ? WHERE id = ?', values: [url, id] });
