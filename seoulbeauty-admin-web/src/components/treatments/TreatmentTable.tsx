@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Icon from "../Icon";
 import { ActivePill, Pill } from "../hospitals/parts";
@@ -105,6 +106,14 @@ export default function TreatmentTable({ rows, sort, dir, onSort, onAliases, act
   );
 }
 
+/** The stored picture; a missing file shows the placeholder instead of the browser's broken-image mark. */
+function RowImage({ src }: { src: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (!src || broken) return <Icon name="image" size={16} />;
+  // eslint-disable-next-line @next/next/no-img-element -- stored under the old panel's folder, no optimizer needed
+  return <img src={src} alt="" width={44} height={44} loading="lazy" onError={() => setBroken(true)} />;
+}
+
 function Row({ item, position, onAliases, actions, first, last }: { item: TreatmentItem; position: number; onAliases: (item: TreatmentItem) => void; actions?: RowActions; first: boolean; last: boolean }) {
   const t = useT();
   const image = imageUrl(item.defaultImageUrl);
@@ -138,12 +147,7 @@ function Row({ item, position, onAliases, actions, first, last }: { item: Treatm
       <td role="cell" className="tbl__name tm__c-name">
         <span className="tm__namebox">
         <span className="tm__img">
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element -- stored under the old panel's folder, no optimizer needed
-            <img src={image} alt="" width={44} height={44} loading="lazy" />
-          ) : (
-            <Icon name="image" size={16} />
-          )}
+          <RowImage key={image} src={image} />
         </span>
         <span className="tm__name">
           <span className="tm__name-text" translate="no" title={item.name}>{item.name}</span>
@@ -161,7 +165,7 @@ function Row({ item, position, onAliases, actions, first, last }: { item: Treatm
       </td>
       <td role="cell" className="tm__c-num tm__c-duration" data-label={t("tm.col.durationRecovery")}>
         {item.durationMin > 0 ? t("tm.minutes", { n: formatNumber(item.durationMin) }) : <span className="muted">—</span>}
-        <span className="tm__card-only"> · {recovery}</span>
+        {item.recoveryDays > 0 ? <span className="tm__card-only"> · {recovery}</span> : null}
       </td>
       <td role="cell" className="tm__c-num tm__c-recovery tm__table-only" data-label={t("tm.col.recovery")}>
         {recovery}

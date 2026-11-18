@@ -2017,7 +2017,7 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 .tm__search-icon { position: absolute; top: 50%; left: 12px; margin-top: -8px; color: var(--muted); pointer-events: none; }
 .tm__filters-hint { flex: 1 1 200px; min-width: 0; }
 .tm__chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.tm__chip { display: inline-flex; flex: none; align-items: center; height: 32px; padding: 0 12px; background: var(--surface); border: 1px solid var(--control-line); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.tm__chip { display: inline-flex; flex: none; align-items: center; height: 36px; padding: 0 12px; background: var(--surface); border: 1px solid var(--control-line); border-radius: var(--r-pill); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .tm__chip { transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
 .tm__chip:hover { border-color: var(--muted); background: var(--surface-2); }
 .tm__chip[aria-pressed="true"], .tm__chip[aria-pressed="true"]:hover { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
@@ -2031,19 +2031,19 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 
 /* The table: 56px rows (a 44px image and its padding); the compact column set is the base, the full set from 1440px. */
 .tbl--tm td { height: 56px; }
-.tbl--tm .tm__c-order { width: 48px; }
+.tbl--tm .tm__c-order { width: 72px; }
 .tbl--tm .tm__c-hashtag { width: 96px; }
 .tbl--tm .tm__c-cat { width: 84px; }
-.tbl--tm .tm__c-duration { width: 52px; }
-.tbl--tm .tm__c-recovery { width: 52px; }
-.tbl--tm .tm__c-price { width: 96px; }
-.tbl--tm .tm__c-links { width: 76px; }
+.tbl--tm .tm__c-duration { width: 60px; }
+.tbl--tm .tm__c-recovery { width: 84px; }
+.tbl--tm .tm__c-price { width: 108px; }
+.tbl--tm .tm__c-links { width: 96px; }
 .tbl--tm .tm__c-active { width: 72px; }
 .tbl--tm .tm__c-num, .tbl--tm th.tm__c-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tbl--tm .tm__c-cat .pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: inline-block; line-height: 20px; }
 .tbl--tm tr.is-off, .tbl--tmcat tr.is-off { opacity: 0.72; }
-.tm__sort { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; padding: 0; background: none; border: 0; border-radius: var(--r-sm); color: inherit; font: inherit; cursor: pointer; }
-.tm__sort > span { overflow: hidden; text-overflow: ellipsis; }
+.tm__sort { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 32px; padding: 0; background: none; border: 0; border-radius: var(--r-sm); color: inherit; font: inherit; cursor: pointer; }
+.tm__sort > span { overflow-wrap: break-word; white-space: normal; line-height: 16px; }
 .tm__sort--num { flex-direction: row-reverse; }
 .tm__sort:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus); }
 .tm__sort-icon { flex: none; opacity: 0; transition: opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
@@ -2116,13 +2116,13 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 
 /* 1440px and up: the full column set (the content is at least 1120px wide). */
 @media (min-width: 1440px) {
-  .tbl--tm .tm__c-order { width: 56px; }
+  .tbl--tm .tm__c-order { width: 72px; }
   .tbl--tm .tm__c-hashtag { width: 108px; }
   .tbl--tm .tm__c-cat { width: 92px; }
-  .tbl--tm .tm__c-duration { width: 60px; }
-  .tbl--tm .tm__c-recovery { width: 60px; }
-  .tbl--tm .tm__c-price { width: 108px; }
-  .tbl--tm .tm__c-links { width: 88px; }
+  .tbl--tm .tm__c-duration { width: 64px; }
+  .tbl--tm .tm__c-recovery { width: 88px; }
+  .tbl--tm .tm__c-price { width: 116px; }
+  .tbl--tm .tm__c-links { width: 100px; }
 }
 /* 900-1279px: the hashtag column goes; the hashtag is written under the name instead. */
 @media (min-width: 900px) and (max-width: 1279px) {
@@ -2160,9 +2160,9 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
   .tbl--tmcat td.tbl__name { flex: 1 1 100%; flex-wrap: nowrap; align-items: center; gap: 8px; margin-bottom: 2px; }
   .tm__cc-pos { display: inline; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
   .tm__cc-title { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tbl--tmcat td.tm__cc-icon, .tbl--tmcat td.tm__cc-count { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+  .tbl--tmcat td.tm__cc-icon, .tbl--tmcat td.tm__cc-count { flex: 1 1 100%; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
   .tbl--tmcat td.tm__cc-icon::before { content: none; }
-  .tbl--tmcat td.tm__cc-count::before { content: "·"; width: auto; color: var(--muted); font-size: 12px; line-height: inherit; }
+  .tbl--tmcat td.tm__cc-count::before { content: none; }
   .tm__icobox { display: none; }
   .tbl--tmcat .tm__hosp-link, .tbl--tmcat .tm__link-zero { min-width: 0; height: auto; padding: 0; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 }
@@ -2193,11 +2193,11 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 .tm__bulk-n { margin-right: auto; font-weight: 600; font-size: 14px; }
 .tm__move-hint { margin: 0 0 8px; }
 .tm__c-sel { width: 40px; text-align: center; }
-.tm__c-sel input, .tm__check input { width: 18px; height: 18px; accent-color: var(--primary); }
+.tm__c-sel input, .tm__check input { width: 24px; height: 24px; accent-color: var(--primary); }
 .tm__c-act { width: 88px; }
 .tm__acts { display: inline-flex; gap: 2px; }
 .tm__move { display: inline-flex; flex-direction: column; margin-left: 4px; vertical-align: middle; }
-.tm__move-btn { display: grid; place-items: center; width: 24px; height: 18px; padding: 0; background: none; border: 0; border-radius: var(--r-sm); color: var(--muted); cursor: pointer; }
+.tm__move-btn { display: grid; place-items: center; width: 28px; height: 24px; padding: 0; background: none; border: 0; border-radius: var(--r-sm); color: var(--muted); cursor: pointer; }
 .tm__move-btn:hover:not(:disabled) { background: var(--accent-soft); color: var(--ink); }
 .tm__move-btn:disabled { opacity: 0.3; cursor: default; }
 .tm__move-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus); }
@@ -2213,16 +2213,21 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 
 @media (min-width: 640px) { .dialog--tm { width: min(960px, calc(100% - 32px)); } }
 .tm__form { display: flex; flex-direction: column; min-height: 0; max-height: inherit; }
-.tm__form-body { display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+.tm__form-body { display: flex; flex-direction: column; gap: 16px; padding-inline: max(20px, env(safe-area-inset-left)); overflow-y: auto; }
+/* .field carries flex: 1 1 220px for rows; in these column stacks that basis became a 220px height */
+.tm__form-body > .field, .tm__sec > .field, .tm__imgfields > .field { flex: 0 0 auto; }
 .tm__sec { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; border: 0; min-width: 0; }
-.tm__sec-title { margin: 0; font-size: 13px; font-weight: 700; letter-spacing: 0.02em; color: var(--muted); }
+.tm__sec + .tm__sec { padding-top: 20px; border-top: 1px solid var(--line); }
+.tm__sec-title { margin: 0; color: var(--ink); font-size: 14px; font-weight: 700; line-height: 20px; }
 .tm__row2, .tm__row3 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 @media (min-width: 640px) { .tm__row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tm__row3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.tm__textarea { height: auto; min-height: 72px; padding-top: 8px; resize: vertical; font-family: inherit; }
+.htp .tm__textarea { height: auto; min-height: 88px; padding: 10px 14px; line-height: 22px; resize: vertical; font-family: inherit; }
 .tm__check { display: flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; font-size: 14px; }
 .tm__pick { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.tm__pick > legend { float: left; width: 100%; padding: 0; }
+.tm__pick > legend + * { clear: both; }
 .tm__pick-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0 12px; max-height: 220px; margin: 0; padding: 4px 12px; overflow-y: auto; list-style: none; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
-.tm__form-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tm__form-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); background: var(--surface); border-top: 1px solid var(--line); }
 .tm__form-btns { display: inline-flex; gap: 8px; }
 .tm__form-error { margin: 0; }
 .tm__alias-add { display: flex; gap: 8px; padding: 0 24px 12px; }
@@ -2236,6 +2241,15 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
   .tbl--tm td.tm__c-act .tm__acts { margin-left: auto; }
   .tm__move-btn { width: 36px; height: 28px; }
   .tm__new { flex: 1 1 100%; margin-left: 0; }
+  /* The column widths and the 56px row height above are for the table; inside a card each cell sizes to its content. */
+  .tbl--tm td[class], .tbl--tmcat td[class] { width: auto; height: auto; }
+  /* Card header: the select box sits at the right of the order row, the arrows go side by side, and the footer repeats nothing. */
+  .tbl--tm tr { position: relative; }
+  .tbl--tm td.tm__c-sel { position: absolute; top: 10px; right: 6px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; }
+  .tbl--tm td.tm__c-sel input { width: 22px; height: 22px; }
+  .tm__move { flex-direction: row; margin-left: 4px; }
+  .tm__move-btn { width: 44px; height: 36px; }
+  .tbl--tm td.tm__c-foot { display: none; }
 }
 @media (max-width: 639px) {
   .tm__alias-add { padding: 0 16px 12px; }
