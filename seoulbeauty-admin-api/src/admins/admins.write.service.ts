@@ -1,9 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { DB, Db, DB_RW, RwConnection, RwDb, RwDbProvider } from '../db/db.module';
 import { AdminItem, DELETE_AFTER_DAYS, num, readNotifications, str, Viewer } from './admins.logic';
 import { AdminsService } from './admins.service';
-import { parseActive, parseConfirm, permissionsJson, planActive, planCreate, planDelete, planEdit } from './admins.write.logic';
+import { AttemptLimiter, parseActive, parseConfirm, permissionsJson, planActive, planCreate, planDelete, planEdit } from './admins.write.logic';
 
 type Row = Record<string, unknown>;
 export interface WriteActor {
@@ -20,7 +20,7 @@ const UNAVAILABLE_ERRNO = [1044, 1045, 1054, 1142, 1143, 1040];
 
 /** The row being changed and every active super admin, locked together: the last super admin can never be lost to two requests at once. */
 const LOCK_SQL =
-  "SELECT id, username, role, is_active, hospital_id, permissions, deactivated_at, " +
+  "SELECT id, username, email, role, is_active, hospital_id, permissions, deactivated_at, " +
   "(deactivated_at IS NOT NULL AND deactivated_at <= NOW() - INTERVAL ? DAY) AS ready, TIMESTAMPDIFF(DAY, deactivated_at, NOW()) AS inactive_days " +
   "FROM gangnamunni_admins WHERE id = ? OR (role = 'super_admin' AND is_active = 1) FOR UPDATE";
 
@@ -33,6 +33,8 @@ const ROLE_LABELS: Record<string, string> = { super_admin: '최고관리자', ho
 @Injectable()
 export class AdminsWriteService {
   private readonly log = new Logger('AdminsWrite');
+  /** Wrong "current password" answers, per account (in this process: the API runs as one instance). */
+  private readonly attempts = new AttemptLimiter();
 
   constructor(
     @Inject(DB) private readonly ro: Db,
@@ -114,11 +116,13 @@ export class AdminsWriteService {
   }
 
   /** Is this email already a login of another account, member or user? The old panel asks all three tables. */
-  private async emailTaken(email: string): Promise<boolean> {
+  private async emailTaken(email: string, exceptAdminId = 0): Promise<boolean> {
     const checks: [string, string][] = [['users', 'email'], ['g5_member', 'mb_email'], ['gangnamunni_admins', 'email']];
     for (const [table, column] of checks) {
+      // The account being edited may keep its own email.
+      const except = table === 'gangnamunni_admins' && exceptAdminId > 0;
       try {
-        const [rows] = (await this.ro.query(`SELECT 1 AS hit FROM ${table} WHERE LOWER(${column}) = LOWER(?) LIMIT 1`, [email])) as any;
+        const [rows] = (await this.ro.query(`SELECT 1 AS hit FROM ${table} WHERE LOWER(${column}) = LOWER(?)${except ? ' AND id <> ?' : ''} LIMIT 1`, except ? [email, exceptAdminId] : [email])) as any;
         if (Array.isArray(rows) && rows.length > 0) return true;
       } catch (e) {
         // A table this site does not have counts as "nobody there"; a refused grant is not guessed around.
@@ -175,11 +179,25 @@ export class AdminsWriteService {
     }
   }
 
-  /** Name, phone, notifications (any role) and role / hospital (super admin only). The caller has already checked that the actor may edit `id`. */
-  async edit(actor: WriteActor, viewer: Viewer, id: number, body: unknown): Promise<{ item: AdminItem }> {
+  /**
+   * Name, phone, notifications, email and password (any role, for its own account; a super admin for any) and role / hospital
+   * (super admin only). A password change ends every session of that account. Whoever is not a super admin proves the current
+   * password to change their own email or password; wrong answers are counted per account and lock the check for a while.
+   */
+  async edit(actor: WriteActor, viewer: Viewer, id: number, body: unknown): Promise<{ item: AdminItem; passwordChanged: boolean }> {
     const planned = planEdit(body, viewer.superAdmin);
     if (!planned.ok) throw new BadRequestException({ error: 'invalid', fields: planned.errors });
     const { plan } = planned;
+
+    // Whoever is not a super admin proves the current password first: before the email lookups and the slow hash.
+    if (!viewer.superAdmin && (plan.email !== undefined || plan.newPassword !== undefined)) {
+      await this.guarded(() => this.proveCurrentPassword(id, plan.email, plan.newPassword !== undefined, plan.currentPassword));
+    }
+    if (plan.email !== undefined && plan.email !== '' && (await this.guarded(() => this.emailTaken(plan.email as string, id)))) {
+      throw new ConflictException({ error: 'conflict', field: 'email' });
+    }
+    // $2y$ is the same algorithm as the $2b$ bcryptjs writes; it is the prefix PHP's password_hash uses. Done before the transaction: it is slow on purpose.
+    const newHash = plan.newPassword !== undefined ? (await bcrypt.hash(plan.newPassword, 10)).replace(/^\$2[ab]\$/, '$2y$') : null;
 
     await this.guarded(() =>
       this.transaction(async (conn) => {
@@ -191,6 +209,15 @@ export class AdminsWriteService {
         if (plan.name !== undefined) { sets.push('name = ?'); values.push(plan.name); names.push('name'); }
         if (plan.phone !== undefined) { sets.push('phone = ?'); values.push(plan.phone); names.push('phone'); }
         if (plan.notifications !== undefined) { sets.push('permissions = ?'); values.push(permissionsJson(plan.notifications)); names.push('permissions'); }
+
+        const emailChanged = plan.email !== undefined && plan.email !== str(target.email).toLowerCase();
+        if (emailChanged) { sets.push('email = ?'); values.push(plan.email); names.push('email'); }
+        if (newHash !== null) {
+          // The new password and the end of every session of the account go in the same statement.
+          sets.push('password = ?', 'cred_epoch = cred_epoch + 1');
+          values.push(newHash);
+          names.push('password', 'cred_epoch');
+        }
 
         if (plan.role !== undefined || plan.hospitalId !== undefined) {
           const currentRole = str(target.role);
@@ -216,11 +243,42 @@ export class AdminsWriteService {
           names.push('role', 'hospital_id', 'hospital_name');
         }
 
+        if (sets.length === 0) return; // only the email was sent and it is the one already stored
         await conn.query(`UPDATE gangnamunni_admins SET ${sets.join(', ')} WHERE id = ?`, [...values, id]);
         this.audit(actor, id, 'edit', names);
       }),
     );
-    return { item: await this.item(viewer, id) };
+    return { item: await this.item(viewer, id), passwordChanged: newHash !== null };
+  }
+
+  /**
+   * Checks the "current password" of the account being changed (its own hash, read here and nowhere else) when its email or
+   * password is really going to change. The wrong-answer counter is looked at before any database work. No row lock is held,
+   * so a locked-out account cannot slow other writes.
+   */
+  private async proveCurrentPassword(id: number, email: string | undefined, passwordChange: boolean, given: string | undefined): Promise<void> {
+    const wait = this.attempts.waitSeconds(id);
+    if (wait > 0) throw new HttpException({ error: 'too_many_attempts', retryAfterSeconds: wait }, 429);
+    const [rows] = (await this.pool().query('SELECT email, password FROM gangnamunni_admins WHERE id = ?', [id])) as any;
+    const row = (Array.isArray(rows) ? rows[0] : undefined) as Row | undefined;
+    if (!row) throw new NotFoundException({ error: 'not_found' });
+    const emailChanged = email !== undefined && email !== str(row.email).toLowerCase();
+    if (!passwordChange && !emailChanged) return;
+    if (given === undefined) throw new BadRequestException({ error: 'invalid', fields: { currentPassword: 'required' } });
+    // The attempt is counted before the slow compare, with no await between the last look and the count: parallel requests
+    // cannot all see "no misses yet". A right answer gives the attempt back.
+    const again = this.attempts.waitSeconds(id);
+    if (again > 0) throw new HttpException({ error: 'too_many_attempts', retryAfterSeconds: again }, 429);
+    this.attempts.miss(id);
+    const stored = str(row.password);
+    let ok = false;
+    try {
+      ok = stored !== '' && (await bcrypt.compare(given, stored));
+    } catch {
+      ok = false;
+    }
+    if (!ok) throw new ForbiddenException({ error: 'wrong_password' });
+    this.attempts.clear(id);
   }
 
   /** Super admin only (the controller checks). Sets the exact state asked for. */

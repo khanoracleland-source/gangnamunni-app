@@ -1131,7 +1131,7 @@ The hospital drop-down reads `id, name` of `gangnamunni_hospitals`, already gran
 
 ### 15.3 Editing accounts (`ADMIN_ADMINS_WRITE_ENABLED`, optional)
 - `POST /v1/admins` add an account (login name `[A-Za-z0-9_]{3,30}`, password of at least 8 characters, name, optional email / phone, role `super_admin` or `hospital_admin`, a hospital for a hospital admin, notifications). Super admin only. The email must not belong to another admin, member (`g5_member`) or user (`users`). The password is stored as a bcrypt hash with the `$2y$` prefix (what PHP `password_hash` writes, so the old login accepts it). Every active admin who receives "new admin" gets one notice row; no push.
-- `PATCH /v1/admins/:id` name, phone, notification choice (a super admin for any account, every other role for its own only); a super admin may also change role and hospital (nobody their own role; the last active super admin cannot be demoted). Email and password are not editable yet: such keys are refused with 400.
+- `PATCH /v1/admins/:id` name, phone, notification choice, email and password (`newPassword`, at least 8 characters) — a super admin for any account, every other role for its own only; a super admin may also change role and hospital (nobody their own role; the last active super admin cannot be demoted). A role that is not a super admin must send `currentPassword` to change its own email or password (checked before anything else: `400` missing, `403 wrong_password`; 5 wrong answers lock that account's check for 15 minutes: `429 too_many_attempts` with `retryAfterSeconds`; the counter lives in the process and resets on restart). A new password ends every session of that account (`cred_epoch + 1`, same statement; the old PHP login compares `cred_epoch` on each request, this API does not read it) and the answer says `passwordChanged`. The email follows the same uniqueness rule as add (the account's own email is not a clash). The audit log line names the fields, never their values.
 - `POST /v1/admins/:id/active` (`{"active":true|false}`, super admin only). Switching off records the moment (`deactivated_at`), switching on clears it; nobody changes their own state; the last active super admin cannot be switched off.
 - `DELETE /v1/admins/:id` (`{"confirm":"<login name>"}`, super admin only): only an account that has been inactive for 5 days (`409 still_active`, `no_inactive_record`, `not_inactive_long_enough`), never your own, and the login name must be typed exactly.
 Every write locks the account and the active super admins in one transaction. Needs `ADMIN_ADMINS_ENABLED=1` as well; anything but `1` = off (404).
@@ -1142,8 +1142,8 @@ Grants (run as the DB admin; the same two hosts as the read user, shown for `127
 GRANT SELECT (email) ON <DB_NAME>.users TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (mb_email) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'127.0.0.1';
 -- write user
-GRANT SELECT (id, username, role, is_active, hospital_id, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
-GRANT UPDATE (name, phone, permissions, role, hospital_id, hospital_name, is_active, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, username, email, password, cred_epoch, role, is_active, hospital_id, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (name, phone, email, password, cred_epoch, permissions, role, hospital_id, hospital_name, is_active, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
 GRANT INSERT (username, password, name, email, phone, role, hospital_id, hospital_name, parent_admin_id, permissions) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
 GRANT DELETE ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
 GRANT INSERT (admin_id, type, title, message, link, icon) ON <DB_NAME>.gangnamunni_notifications TO 'sb_admin_rw'@'127.0.0.1';

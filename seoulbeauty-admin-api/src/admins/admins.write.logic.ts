@@ -12,13 +12,42 @@ export interface EditPlan {
   role?: string;
   /** Super admin only; null clears it (a super admin has no hospital). */
   hospitalId?: number | null;
+  /** Lower-cased; an empty text clears it. */
+  email?: string;
+  newPassword?: string;
+  /** Not a change: proof asked from anybody who changes their own email or password (a super admin is not asked). */
+  currentPassword?: string;
 }
 export type EditResult = { ok: true; plan: EditPlan } | { ok: false; errors: Record<string, string> };
 
-const ALLOWED = ['name', 'phone', 'notifications'];
+const ALLOWED = ['name', 'phone', 'notifications', 'email', 'newPassword', 'currentPassword'];
 const ALLOWED_SUPER = [...ALLOWED, 'role', 'hospitalId'];
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f]/;
+
+export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,30}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** bcrypt only reads the first 72 bytes of a password; longer ones are refused instead of being silently cut. */
+export const MAX_PASSWORD_BYTES = 72;
+export const MAX_EMAIL_LENGTH = 254;
+
+/** Why a new password is refused, or null when it is fine. */
+export function passwordError(v: unknown): string | null {
+  if (typeof v !== 'string') return 'bad_format';
+  if (v === '') return 'required';
+  if (v.includes('\u0000')) return 'bad_format';
+  if ([...v].length < MIN_PASSWORD_LENGTH) return 'too_short';
+  if (Buffer.byteLength(v, 'utf8') > MAX_PASSWORD_BYTES) return 'too_long';
+  return null;
+}
+
+/** An email as stored: trimmed and lower-cased; '' (none) is allowed. null when it is not an email. */
+export function cleanEmail(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const e = v.trim().toLowerCase();
+  if (e === '') return '';
+  return e.length <= MAX_EMAIL_LENGTH && EMAIL_PATTERN.test(e) ? e : null;
+}
 
 /**
  * Validates an edit body. Only the whitelisted keys are accepted: anything else (role, hospital, password, ...) is refused
@@ -65,15 +94,27 @@ export function planEdit(body: unknown, superAdmin = false): EditResult {
     else errors.hospitalId = 'bad_format';
   }
 
-  if (Object.keys(errors).length === 0 && Object.keys(plan).length === 0) errors.body = 'empty';
+  if ('email' in b) {
+    const e = cleanEmail(b.email);
+    if (e === null) errors.email = 'bad_format';
+    else plan.email = e;
+  }
+  if ('newPassword' in b) {
+    const e = passwordError(b.newPassword);
+    if (e) errors.newPassword = e;
+    else plan.newPassword = b.newPassword as string;
+  }
+  if ('currentPassword' in b) {
+    const v = b.currentPassword;
+    if (typeof v !== 'string' || v === '' || Buffer.byteLength(v, 'utf8') > 1024) errors.currentPassword = v === '' ? 'required' : 'bad_format';
+    else plan.currentPassword = v;
+  }
+
+  // The proof alone is not a change.
+  const changes = Object.keys(plan).filter((k) => k !== 'currentPassword');
+  if (Object.keys(errors).length === 0 && changes.length === 0) errors.body = 'empty';
   return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, plan };
 }
-
-export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,30}$/;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** bcrypt only reads the first 72 bytes of a password; longer ones are refused instead of being silently cut. */
-export const MAX_PASSWORD_BYTES = 72;
-export const MAX_EMAIL_LENGTH = 254;
 
 export interface CreatePlan {
   username: string;
@@ -99,10 +140,8 @@ export function planCreate(body: unknown): CreateResult {
   else if (!USERNAME_PATTERN.test(username)) errors.username = 'bad_format';
 
   const password = typeof b.password === 'string' ? b.password : null;
-  if (password === null || password === '') errors.password = password === null && b.password !== undefined ? 'bad_format' : 'required';
-  else if (password.includes('\u0000')) errors.password = 'bad_format';
-  else if ([...password].length < MIN_PASSWORD_LENGTH) errors.password = 'too_short';
-  else if (Buffer.byteLength(password, 'utf8') > MAX_PASSWORD_BYTES) errors.password = 'too_long';
+  const passwordProblem = b.password === undefined ? 'required' : passwordError(b.password);
+  if (passwordProblem) errors.password = passwordProblem;
 
   const name = typeof b.name === 'string' ? b.name.trim() : null;
   if (name === null || name === '') errors.name = name === null && b.name !== undefined ? 'bad_format' : 'required';
@@ -111,10 +150,9 @@ export function planCreate(body: unknown): CreateResult {
 
   let email = '';
   if (b.email !== undefined && b.email !== null) {
-    const v = typeof b.email === 'string' ? b.email.trim().toLowerCase() : null;
-    if (v === null) errors.email = 'bad_format';
-    else if (v !== '' && (v.length > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.test(v))) errors.email = 'bad_format';
-    else email = v;
+    const e = cleanEmail(b.email);
+    if (e === null) errors.email = 'bad_format';
+    else email = e;
   }
   let phone = '';
   if (b.phone !== undefined && b.phone !== null) {
@@ -208,4 +246,31 @@ export function planActive(actorId: number, target: ActiveTarget | undefined, ac
     return { ok: false, error: 'last_super_admin' };
   }
   return { ok: true, noChange: target.isActive === active };
+}
+
+/** Wrong "current password" answers per account: after `max` misses within `windowMs` the account is locked out of the check until the window ends. */
+export class AttemptLimiter {
+  private readonly misses = new Map<number, { count: number; since: number }>();
+  constructor(private readonly max = 5, private readonly windowMs = 15 * 60 * 1000) {}
+
+  /** Seconds to wait, or 0 when a try is allowed. */
+  waitSeconds(id: number, now = Date.now()): number {
+    const m = this.misses.get(id);
+    if (!m) return 0;
+    if (now - m.since >= this.windowMs) {
+      this.misses.delete(id);
+      return 0;
+    }
+    return m.count >= this.max ? Math.ceil((m.since + this.windowMs - now) / 1000) : 0;
+  }
+  miss(id: number, now = Date.now()): void {
+    const m = this.misses.get(id);
+    if (!m || now - m.since >= this.windowMs) this.misses.set(id, { count: 1, since: now });
+    else m.count += 1;
+    // Keeps the map small: entries whose window has passed are dropped.
+    if (this.misses.size > 1000) for (const [k, v] of this.misses) if (now - v.since >= this.windowMs) this.misses.delete(k);
+  }
+  clear(id: number): void {
+    this.misses.delete(id);
+  }
 }

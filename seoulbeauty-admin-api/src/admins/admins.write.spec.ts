@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { Global, INestApplication, Logger, Module } from '@nestjs/common';
 import request from 'supertest';
+import * as bcrypt from 'bcryptjs';
 import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { DB, DB_RW } from '../db/db.module';
 import { AdminsModule } from './admins.module';
@@ -11,6 +12,7 @@ const HOSPITAL5 = 'PHPSESSID=hospital5';
 const PLAIN = 'PHPSESSID=plain';
 const admin = (id: number, role: string, hospitalId: number | null = null) => ({ id, username: `u${id}`, name: `관리자${id}`, role, hospitalId });
 const HEADERS = { 'Content-Type': 'application/json', 'X-Requested-With': 'admin-next' };
+const STORED_HASH = bcrypt.hashSync('old-password-1', 4).replace(/^\$2[ab]\$/, '$2y$');
 const PERMS5 = JSON.stringify({ notifications: ['review_new'] });
 
 const baseRow = (id: number, role: string, active: number, over: Record<string, unknown> = {}) => ({
@@ -56,6 +58,7 @@ describe('admin API: admin account writes (edit, active state)', () => {
     rwCalls.push({ sql, values });
     events.push(sql);
     if (rwError) throw rwError;
+    if (sql.startsWith('SELECT email, password FROM gangnamunni_admins')) return [rows[values[0] as number] ? [{ email: rows[values[0] as number].email, password: STORED_HASH }] : []];
     if (sql.startsWith('SELECT id FROM gangnamunni_admins WHERE username')) return [usernameTaken ? [{ id: 3 }] : []];
     if (sql.startsWith('INSERT INTO gangnamunni_admins')) {
       rows[10] = baseRow(10, values[5] as string, 1, { username: values[0], name: values[2], email: values[3], phone: values[4], hospital_id: values[6], hospital_name: values[7], permissions: values[9] });
@@ -178,7 +181,8 @@ describe('admin API: admin account writes (edit, active state)', () => {
       expect(events).toEqual(['BEGIN', expect.stringContaining('FOR UPDATE'), 'UPDATE gangnamunni_admins SET name = ?, phone = ? WHERE id = ?', 'COMMIT', 'RELEASE']);
       expect(rwCalls[1].values).toEqual(['새이름', '010-0000-1111', 6]);
       expect(res.body.item).toMatchObject({ id: 6 });
-      expect(JSON.stringify(res.body)).not.toMatch(/password|cred_epoch/i);
+      expect(res.body.passwordChanged).toBe(false);
+      expect(JSON.stringify(res.body)).not.toMatch(/\$2y\$|cred_epoch/i);
     });
     it('a hospital role edits itself', async () => {
       expect((await patch(5, { phone: '02-1' }, HOSPITAL5)).status).toBe(200);
@@ -190,13 +194,80 @@ describe('admin API: admin account writes (edit, active state)', () => {
       expect(rwCalls[1].sql).toBe('UPDATE gangnamunni_admins SET permissions = ? WHERE id = ?');
       expect(rwCalls[1].values).toEqual([JSON.stringify({ notifications: [NOTIFICATION_TYPES[0], NOTIFICATION_TYPES[1]] }), 5]);
     });
-    it('role, email, password, hospital and other keys are refused', async () => {
-      for (const body of [{ name: 'a', email: 'a@b.c' }, { password: 'x' }, { isActive: true }, { permissions: '{}' }, { id: 3 }]) {
+    it('keys that are not editable here are refused', async () => {
+      for (const body of [{ name: 'a', password: 'x' }, { isActive: true }, { permissions: '{}' }, { id: 3 }]) {
         const r = await patch(5, body);
         expect(r.status).toBe(400);
         expect(r.body.error).toBe('invalid');
       }
       noWrites();
+    });
+    describe('email and password', () => {
+      const sqlOf = () => rwCalls.find((c) => c.sql.startsWith('UPDATE gangnamunni_admins'))!;
+      it('super admin changes another account password without a current password; sessions end in the same statement', async () => {
+        const r = await patch(6, { newPassword: 'brand-new-pass' });
+        expect(r.status).toBe(200); expect(r.body.passwordChanged).toBe(true);
+        expect(sqlOf().sql).toBe('UPDATE gangnamunni_admins SET password = ?, cred_epoch = cred_epoch + 1 WHERE id = ?');
+        const [hash, id] = sqlOf().values as [string, number];
+        expect(id).toBe(6); expect(hash.startsWith('$2y$')).toBe(true); expect(bcrypt.compareSync('brand-new-pass', hash)).toBe(true);
+        expect(rwCalls.some((c) => c.sql.startsWith('SELECT email, password'))).toBe(false);
+        expect(JSON.stringify(r.body)).not.toMatch(/\$2y\$/);
+      });
+      it('a hospital role needs its current password for its own password (missing -> 400, wrong -> 403, right -> 200)', async () => {
+        let r = await patch(5, { newPassword: 'brand-new-pass' }, HOSPITAL5);
+        expect(r.status).toBe(400); expect(r.body.fields).toEqual({ currentPassword: 'required' });
+        r = await patch(5, { newPassword: 'brand-new-pass', currentPassword: 'wrong' }, HOSPITAL5);
+        expect(r.status).toBe(403); expect(r.body).toEqual({ error: 'wrong_password' });
+        noUpdates();
+        r = await patch(5, { newPassword: 'brand-new-pass', currentPassword: 'old-password-1' }, HOSPITAL5);
+        expect(r.status).toBe(200); expect(sqlOf().sql).toContain('cred_epoch = cred_epoch + 1');
+      });
+      it('the fifth wrong answer is followed by 429; a right one is refused until the wait ends', async () => {
+        for (let i = 0; i < 5; i++) expect((await patch(5, { newPassword: 'brand-new-pass', currentPassword: 'wrong' }, HOSPITAL5)).status).toBe(403);
+        const r = await patch(5, { newPassword: 'brand-new-pass', currentPassword: 'old-password-1' }, HOSPITAL5);
+        expect(r.status).toBe(429); expect(r.body.error).toBe('too_many_attempts'); expect(r.body.retryAfterSeconds).toBeGreaterThan(0);
+        noUpdates();
+      });
+      it('own email: needs the current password; an unchanged email needs nothing and writes nothing', async () => {
+        rows[5].email = 'me@x.kr';
+        let r = await patch(5, { email: 'New@X.kr' }, HOSPITAL5);
+        expect(r.status).toBe(400);
+        r = await patch(5, { email: 'New@X.kr', currentPassword: 'old-password-1' }, HOSPITAL5);
+        expect(r.status).toBe(200);
+        expect(sqlOf().sql).toBe('UPDATE gangnamunni_admins SET email = ? WHERE id = ?'); expect(sqlOf().values).toEqual(['new@x.kr', 5]);
+        rwCalls.length = 0;
+        r = await patch(5, { email: 'ME@x.kr' }, HOSPITAL5);
+        expect(r.status).toBe(200); noUpdates();
+      });
+      it('an email used by someone else -> 409; the check leaves the account itself out', async () => {
+        takenEmails = { users: ['used@x.kr'] };
+        const r = await patch(6, { email: 'Used@x.kr' });
+        expect(r.status).toBe(409); expect(r.body).toEqual({ error: 'conflict', field: 'email' });
+        noWrites();
+        await patch(6, { email: 'free@x.kr' });
+        const own = roCalls.find((c) => c.sql.includes('FROM gangnamunni_admins WHERE LOWER(email)'))!;
+        expect(own.sql).toContain('id <> ?'); expect(own.values).toEqual(['free@x.kr', 6]);
+      });
+      it('the current password is checked before the email lookups and the hash (no enumeration without it)', async () => {
+        takenEmails = { users: ['used@x.kr'] };
+        const r = await patch(5, { email: 'used@x.kr', currentPassword: 'wrong' }, HOSPITAL5);
+        expect(r.status).toBe(403); expect(r.body).toEqual({ error: 'wrong_password' });
+        expect(roCalls.some((c) => c.sql.startsWith('SELECT 1 AS hit'))).toBe(false);
+        for (let i = 0; i < 4; i++) await patch(5, { newPassword: 'brand-new-pass', currentPassword: 'wrong' }, HOSPITAL5);
+        rwCalls.length = 0;
+        expect((await patch(5, { newPassword: 'brand-new-pass', currentPassword: 'wrong' }, HOSPITAL5)).status).toBe(429);
+        expect(rwCalls).toHaveLength(0);
+      });
+      it('parallel wrong answers cannot get around the limit (5 answers, then 429)', async () => {
+        const rs = await Promise.all(Array.from({ length: 10 }, () => patch(5, { newPassword: 'brand-new-pass', currentPassword: 'wrong' }, HOSPITAL5)));
+        expect(rs.filter((r) => r.status === 403)).toHaveLength(5);
+        expect(rs.filter((r) => r.status === 429)).toHaveLength(5);
+        noUpdates();
+      });
+      it('a super admin editing own password is not asked for the current one', async () => {
+        const r = await patch(1, { newPassword: 'brand-new-pass' });
+        expect(r.status).toBe(200); expect(r.body.passwordChanged).toBe(true);
+      });
     });
     it('invalid values -> 400 with the field; nothing read or written', async () => {
       const r = await patch(5, { name: '' });

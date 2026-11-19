@@ -1,5 +1,5 @@
 import { NOTIFICATION_TYPES } from './admins.logic';
-import { parseActive, parseConfirm, permissionsJson, planActive, planCreate, planDelete, planEdit } from './admins.write.logic';
+import { AttemptLimiter, cleanEmail, passwordError, parseActive, parseConfirm, permissionsJson, planActive, planCreate, planDelete, planEdit } from './admins.write.logic';
 
 describe('admin accounts: edit plan', () => {
   it('accepts name, phone and notifications; trims; keeps known types in the fixed order', () => {
@@ -10,7 +10,7 @@ describe('admin accounts: edit plan', () => {
     expect(planEdit({ phone: '' })).toEqual({ ok: true, plan: { phone: '' } });
     expect(planEdit({ notifications: [] })).toEqual({ ok: true, plan: { notifications: [] } });
   });
-  it.each(['role', 'email', 'password', 'hospitalId', 'isActive', 'permissions', 'id'])('%s is refused, not ignored', (key) => {
+  it.each(['role', 'password', 'hospitalId', 'isActive', 'permissions', 'id'])('%s is refused, not ignored', (key) => {
     expect(planEdit({ name: 'a', [key]: 'x' })).toEqual({ ok: false, errors: { [key]: 'not_allowed' } });
   });
   it('refuses a body that is not an object, an empty body, and bad values', () => {
@@ -108,5 +108,39 @@ describe('admin accounts: delete plan', () => {
     expect(planDelete(1, t(), 5)).toEqual({ ok: true });
     expect(parseConfirm({ confirm: 'x' })).toBe('x');
     for (const b of [{}, { confirm: 1 }, null, 'x']) expect(parseConfirm(b)).toBeNull();
+  });
+});
+
+describe('admin accounts: email and password in an edit', () => {
+  it('lowercases and trims the email; an empty email is allowed; a bad one is refused', () => {
+    expect(planEdit({ email: '  Kim@Example.COM ' })).toEqual({ ok: true, plan: { email: 'kim@example.com' } });
+    expect(planEdit({ email: '' })).toEqual({ ok: true, plan: { email: '' } });
+    expect(planEdit({ email: 'nope' })).toEqual({ ok: false, errors: { email: 'bad_format' } });
+    expect(cleanEmail(5)).toBeNull();
+  });
+  it('the new password needs 8 to 72 bytes and no NUL; the current password alone is not a change', () => {
+    expect(passwordError('short')).toBe('too_short');
+    expect(passwordError('a'.repeat(73))).toBe('too_long');
+    expect(passwordError('abcdefg\0h')).toBe('bad_format');
+    expect(passwordError(7)).toBe('bad_format');
+    expect(passwordError('long-enough-1')).toBeNull();
+    expect(planEdit({ newPassword: 'long-enough-1', currentPassword: 'old' })).toEqual({ ok: true, plan: { newPassword: 'long-enough-1', currentPassword: 'old' } });
+    expect(planEdit({ currentPassword: 'old' })).toEqual({ ok: false, errors: { body: 'empty' } });
+    expect(planEdit({ newPassword: 'x' })).toEqual({ ok: false, errors: { newPassword: 'too_short' } });
+  });
+});
+
+describe('admin accounts: wrong-password limiter', () => {
+  it('locks after 5 misses for the window, per account, and clears on success', () => {
+    const l = new AttemptLimiter(5, 60_000);
+    for (let i = 0; i < 4; i++) l.miss(1, 1000);
+    expect(l.waitSeconds(1, 1000)).toBe(0);
+    l.miss(1, 1000);
+    expect(l.waitSeconds(1, 1000)).toBeGreaterThan(0);
+    expect(l.waitSeconds(2, 1000)).toBe(0);
+    expect(l.waitSeconds(1, 1000 + 61_000)).toBe(0);
+    l.miss(3, 0); l.clear(3);
+    for (let i = 0; i < 4; i++) l.miss(3, 0);
+    expect(l.waitSeconds(3, 0)).toBe(0);
   });
 });
