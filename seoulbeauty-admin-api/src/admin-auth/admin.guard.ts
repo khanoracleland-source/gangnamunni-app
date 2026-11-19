@@ -270,6 +270,36 @@ export class HospitalApplyEnabledGuard implements CanActivate {
   }
 }
 
+/** Admin accounts page (/v1/admins*). Independent of the hospital switches. Only the exact value "1" turns it on. */
+export const adminsEnabled = (): boolean => process.env.ADMIN_ADMINS_ENABLED === '1';
+
+/** With ADMIN_ADMINS_ENABLED off every /v1/admins route answers 404 as if it did not exist; PHP is not asked. */
+@Injectable()
+export class AdminsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !adminsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/**
+ * A signed-in super admin or hospital role; attaches req.admin. The routes narrow it further: only a super admin sees other
+ * accounts, every other role sees and edits itself only. 401 not signed in, 403 any other role, 503 when PHP cannot be asked.
+ */
+@Injectable()
+export class AdminsAccessGuard implements CanActivate {
+  constructor(private readonly sessions: AdminSessionService) {}
+  async canActivate(ctx: ExecutionContext): Promise<boolean> {
+    if (!adminPanelEnabled() || !adminsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    const req = ctx.switchToHttp().getRequest<AdminRequest>();
+    const s = await this.sessions.fromCookie(req.headers.cookie);
+    if (!s.loggedIn || !s.admin) throw new UnauthorizedException({ error: 'not_logged_in' });
+    if (s.admin.role !== SUPER_ADMIN_ROLE && !HOSPITAL_ROLES.includes(s.admin.role)) throw new ForbiddenException({ error: 'forbidden' });
+    req.admin = s.admin;
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 

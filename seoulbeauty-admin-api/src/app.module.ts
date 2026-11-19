@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { DbModule } from './db/db.module';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { MeModule } from './me/me.module';
+import { AdminsModule } from './admins/admins.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HospitalsModule } from './hospitals/hospitals.module';
 import { HospitalApplyModule } from './hospital-apply/hospital-apply.module';
@@ -20,6 +21,7 @@ import { HealthController } from './health/health.controller';
     AdminAuthModule,
     MeModule,
     DashboardModule,
+    AdminsModule,
     HospitalsModule,
     HospitalApplyModule,
     HospitalArchiveModule,

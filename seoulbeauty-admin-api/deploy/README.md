@@ -1105,6 +1105,30 @@ One request can carry up to about 130 files of up to 10 MB: allow a large enough
 `ADMIN_PANEL_ENABLED=1`, `ADMIN_HOSPITAL_APPLY_ENABLED=1`, `DB_RW_USER` / `DB_RW_PASSWORD`, `ADMIN_UPLOAD_ROOT`; restart the service. Take a dump of the tables above before the first
 real registration. Turning it off again: set the switch to `0` (the rows and files made so far stay).
 
+## 15. Admin accounts (`ADMIN_ADMINS_ENABLED`, optional)
+
+`GET /v1/admins`, `/v1/admins/options`, `/v1/admins/:id` (read-only in this step). A super admin sees every account; a hospital
+role sees and opens only its own (another id answers 403). The password hash and the session counter are never selected or returned.
+Independent of the hospital switches. Anything but `1` = off: the routes answer 404 and `/v1/me` reports `admins=false`.
+
+### 15.1 Database (run as the DB admin; `<DB_NAME>` = schema from section 1)
+First the column that records when an account was switched off (an account may be deleted only after 5 days of being inactive). Run once; safe to run again. The old PHP page does not write this column: an account it switches off keeps `deactivated_at` NULL, which the panel reads as "the 5 days have not started":
+```sql
+ALTER TABLE gangnamunni_admins ADD COLUMN IF NOT EXISTS deactivated_at DATETIME NULL DEFAULT NULL;
+-- accounts that are off right now start their 5 days today
+UPDATE gangnamunni_admins SET deactivated_at = NOW() WHERE is_active = 0 AND deactivated_at IS NULL;
+```
+Then the read grants. They add up to the ones of section 1 (same read-only user). No password, session counter or other secret column is granted:
+```sql
+GRANT SELECT (username, name, email, phone, role, hospital_id, hospital_name, last_login_at, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (username, name, email, phone, role, hospital_id, hospital_name, last_login_at, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_ro'@'localhost';
+```
+Also needed, and normally given by section 1: `GRANT SELECT (id, is_active) ON <DB_NAME>.gangnamunni_admins` (and `g5_mb_id` once the SSO migration has added that column). Without `g5_mb_id` the page works, it just shows no member links.
+The hospital drop-down reads `id, name` of `gangnamunni_hospitals`, already granted in section 1 (hospital pages).
+
+### 15.2 Env and turning it on
+`ADMIN_ADMINS_ENABLED=1` in `.env`, then `systemctl restart seoulbeauty-admin-api`. Without the migration the page still works, but no account counts as "inactive long enough" to delete.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
