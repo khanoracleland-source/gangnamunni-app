@@ -4,6 +4,7 @@ import request from 'supertest';
 import * as bcrypt from 'bcryptjs';
 import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { DB, DB_RW } from '../db/db.module';
+import { adminsWriteEnabled } from '../admin-auth/admin.guard';
 import { AdminsModule } from './admins.module';
 import { NOTIFICATION_TYPES } from './admins.logic';
 
@@ -171,6 +172,16 @@ describe('admin API: admin account writes (edit, active state)', () => {
       for (const id of ['0', 'abc', '-1', '1e3']) expect((await patch(id, { name: 'x' })).status).toBe(404);
       expect((await active('abc', { active: true })).status).toBe(404);
       expect(roCalls).toHaveLength(0); noWrites();
+    });
+  });
+
+  describe('/v1/me flag', () => {
+    it('adminsWriteEnabled (reported as features.adminsWrite) needs both admin switches', () => {
+      expect(adminsWriteEnabled()).toBe(true);
+      process.env.ADMIN_ADMINS_WRITE_ENABLED = '0';
+      expect(adminsWriteEnabled()).toBe(false);
+      process.env.ADMIN_ADMINS_WRITE_ENABLED = '1'; process.env.ADMIN_ADMINS_ENABLED = '0';
+      expect(adminsWriteEnabled()).toBe(false);
     });
   });
 

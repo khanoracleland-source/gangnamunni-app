@@ -18,7 +18,7 @@ export type Admin = {
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; hospitalApply: boolean; admins: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -134,6 +134,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         treatmentsImages: obj(d.features).treatmentsImages === true,
         hospitalApply: obj(d.features).hospitalApply === true,
         admins: obj(d.features).admins === true,
+        adminsWrite: obj(d.features).adminsWrite === true,
       },
     },
   };
@@ -476,6 +477,8 @@ export type WriteFailure = {
   reason?: string;
   /** Treatment master: on a 409 "in_use", how many hospital assignments still point at the treatment. */
   hospitalCount?: number;
+  /** Admin accounts: on a 429, how long the check stays locked. */
+  retryAfterSeconds?: number;
 };
 export type WriteResult<T> = { ok: true; data: T } | WriteFailure;
 
@@ -508,6 +511,7 @@ async function sendJson(method: "PATCH" | "POST" | "PUT" | "DELETE", path: strin
         ...(typeof d.index === "number" ? { index: d.index } : {}),
         ...(typeof d.field === "string" ? { field: d.field } : {}),
         ...(typeof d.reason === "string" ? { reason: d.reason } : {}),
+        ...(typeof d.retryAfterSeconds === "number" ? { retryAfterSeconds: d.retryAfterSeconds } : {}),
         ...(typeof d.hospitalCount === "number" ? { hospitalCount: d.hospitalCount } : typeof d.count === "number" ? { hospitalCount: d.count } : {}),
         blockers: blockers(d.blockers),
         deletableAfter: str(d.deletableAfter),
@@ -1614,6 +1618,31 @@ export type AdminAccount = {
 /** "all": a super admin sees every account. "self": anyone else sees only their own. */
 export type AdminListData = { scope: "all" | "self"; deleteAfterDays: number; total: number; items: AdminAccount[] };
 
+function adminAccount(raw: unknown): AdminAccount {
+  const a = obj(raw);
+  const hospitalId = num(a.hospitalId);
+  const days = numOrNull(a.inactiveDays);
+  return {
+    id: num(a.id),
+    username: str(a.username),
+    name: str(a.name),
+    email: str(a.email),
+    phone: text(a.phone),
+    role: str(a.role),
+    hospitalId: hospitalId > 0 ? hospitalId : null,
+    hospitalName: str(a.hospitalName),
+    isActive: bool(a.isActive),
+    isSelf: bool(a.isSelf),
+    lastLoginAt: str(a.lastLoginAt) || null,
+    ssoMemberId: str(a.ssoMemberId) || null,
+    notifications: names(a.notifications),
+    notificationsCustom: bool(a.notificationsCustom),
+    deactivatedAt: str(a.deactivatedAt) || null,
+    inactiveDays: days === null ? null : Math.max(0, Math.floor(days)),
+    deleteReady: bool(a.deleteReady),
+  };
+}
+
 export async function fetchAdmins(signal?: AbortSignal): Promise<ApiResult<AdminListData>> {
   const res = await getJson("/v1/admins", signal);
   if (!res.ok) return res;
@@ -1624,30 +1653,57 @@ export async function fetchAdmins(signal?: AbortSignal): Promise<ApiResult<Admin
       scope: d.scope === "all" ? "all" : "self",
       deleteAfterDays: num(d.deleteAfterDays) > 0 ? num(d.deleteAfterDays) : 5,
       total: num(d.total),
-      items: list(d.items).map((raw): AdminAccount => {
-        const a = obj(raw);
-        const hospitalId = num(a.hospitalId);
-        const days = numOrNull(a.inactiveDays);
-        return {
-          id: num(a.id),
-          username: str(a.username),
-          name: str(a.name),
-          email: str(a.email),
-          phone: text(a.phone),
-          role: str(a.role),
-          hospitalId: hospitalId > 0 ? hospitalId : null,
-          hospitalName: str(a.hospitalName),
-          isActive: bool(a.isActive),
-          isSelf: bool(a.isSelf),
-          lastLoginAt: str(a.lastLoginAt) || null,
-          ssoMemberId: str(a.ssoMemberId) || null,
-          notifications: names(a.notifications),
-          notificationsCustom: bool(a.notificationsCustom),
-          deactivatedAt: str(a.deactivatedAt) || null,
-          inactiveDays: days === null ? null : Math.max(0, Math.floor(days)),
-          deleteReady: bool(a.deleteReady),
-        };
-      }),
+      items: list(d.items).map(adminAccount),
     },
   };
+}
+
+/** What the add form sends. `hospitalId` only for a hospital role. */
+export type AdminCreateBody = {
+  username: string;
+  password: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  hospitalId: number | null;
+  notifications: string[];
+};
+
+/** What the edit form sends: only what changed. `currentPassword` is for a role that is not a super admin changing its own email or password. */
+export type AdminEditBody = Partial<{
+  name: string;
+  phone: string;
+  email: string;
+  notifications: string[];
+  newPassword: string;
+  currentPassword: string;
+  role: string;
+  hospitalId: number | null;
+}>;
+
+const adminPath = (id: number) => `/v1/admins/${encodeURIComponent(String(id))}`;
+
+/** Super admin only. 409 `conflict` (field `username` or `email`): already used. */
+export async function createAdmin(body: AdminCreateBody): Promise<WriteResult<{ item: AdminAccount }>> {
+  const res = await sendJson("POST", "/v1/admins", body);
+  return res.ok ? { ok: true, data: { item: adminAccount(res.data.item) } } : res;
+}
+
+/** A super admin may edit any account, every other role its own. 403 `wrong_password`, 429 `too_many_attempts`. */
+export async function editAdmin(id: number, body: AdminEditBody): Promise<WriteResult<{ item: AdminAccount; passwordChanged: boolean }>> {
+  const res = await sendJson("PATCH", adminPath(id), body);
+  return res.ok ? { ok: true, data: { item: adminAccount(res.data.item), passwordChanged: res.data.passwordChanged === true } } : res;
+}
+
+/** Super admin only. Sets the exact state asked for. 409 `last_super_admin`. */
+export async function setAdminActive(id: number, active: boolean): Promise<WriteResult<{ item: AdminAccount }>> {
+  const res = await sendJson("POST", `${adminPath(id)}/active`, { active });
+  return res.ok ? { ok: true, data: { item: adminAccount(res.data.item) } } : res;
+}
+
+/** Super admin only: only an account inactive for long enough, and the login name has to be typed. */
+export async function deleteAdmin(id: number, confirm: string): Promise<WriteResult<Record<string, never>>> {
+  const res = await sendJson("DELETE", adminPath(id), { confirm });
+  return res.ok ? { ok: true, data: {} } : res;
 }

@@ -2583,3 +2583,27 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
   .tbl--adm td.adm__account::before { content: none; }
   .tbl--adm .adm__login, .tbl--adm .adm__notif { display: none; }
 }
+
+/* Admins page: actions column, the add / edit form and the bottom-sheet dialogs on narrow screens. */
+.tbl--adm .adm__acts { width: 200px; }
+.adm__btns { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.tbl .adm__btns .txtbtn { min-height: 44px; }
+.txtbtn--danger { color: var(--down); }
+.adm-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.adm-form .field { flex: none; }
+.adm-form__wide, .adm-form__notif { grid-column: 1 / -1; }
+.adm-form__notif { margin: 0; padding: 0; border: 0; min-width: 0; }
+.adm-checks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; margin-top: 4px; }
+.dialog--sheet .dialog__box { max-height: calc(100dvh - 32px); }
+@media (max-width: 899px) {
+  .tbl--adm .adm__acts { width: auto; }
+  .tbl--adm td.adm__acts { display: flex; justify-content: flex-end; }
+  .tbl--adm td.adm__acts::before { content: none; }
+  .adm-form { grid-template-columns: 1fr; }
+  .adm-checks { grid-template-columns: 1fr; }
+  .dialog.dialog--sheet { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: var(--r-lg, 16px) var(--r-lg, 16px) 0 0; }
+  .dialog--sheet .dialog__box { padding: 20px 16px; }
+  .dialog--sheet .dialog__foot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dialog--sheet .dialog__foot .btn { width: 100%; min-height: 44px; }
+}
+.tbl--adm .switch::before { inset: -10px 0; }

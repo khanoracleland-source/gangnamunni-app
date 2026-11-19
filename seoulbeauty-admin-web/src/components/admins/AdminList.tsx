@@ -2,9 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import AdminShell from "../AdminShell";
+import { toast } from "sonner";
+import ConfirmDialog, { type ConfirmSpec } from "../hospitals/ConfirmDialog";
 import { Notice, Pill, Section, ActivePill } from "../hospitals/parts";
+import AdminFormDialog from "./AdminFormDialog";
+import DeleteAdminDialog from "./DeleteAdminDialog";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
-import { fetchAdmins, fetchMe, type AdminAccount, type AdminListData, type Me } from "@/lib/api";
+import { fetchAdmins, fetchMe, setAdminActive, type AdminAccount, type AdminListData, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL, PHP_BASE_URL } from "@/lib/config";
 import { formatDayTime } from "@/lib/format";
 import { groupAccounts, isKnownRole, passedDays } from "@/lib/admins";
@@ -67,15 +71,85 @@ export default function AdminList() {
 
   const groups = list ? groupAccounts(list.items) : null;
 
+  // Writing is on and the viewer may write: a super admin everywhere, every other role on its own account.
+  const canWrite = me?.features.adminsWrite === true && list !== null;
+  const superViewer = list?.scope === "all";
+  const [form, setForm] = useState<{ account: AdminAccount | null } | null>(null);
+  const [removing, setRemoving] = useState<AdminAccount | null>(null);
+  const [ask, setAsk] = useState<{ account: AdminAccount; next: boolean } | null>(null);
+  const [working, setWorking] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
+  const sendingActive = useRef(false);
+  const reload = () => setAttempt((n) => n + 1);
+  const replace = (item: AdminAccount) => {
+    setState((s) => (s.list ? { ...s, list: { ...s.list, items: s.list.items.map((a) => (a.id === item.id ? item : a)) } } : s));
+  };
+
+  const confirmActive = async () => {
+    if (!ask || working || sendingActive.current) return;
+    sendingActive.current = true;
+    setWorking(true);
+    setAskError(null);
+    const res = await setAdminActive(ask.account.id, ask.next);
+    sendingActive.current = false;
+    setWorking(false);
+    if (res.ok) {
+      replace(res.data.item);
+      toast.success(t(ask.next ? "ad.ok.activated" : "ad.ok.deactivated"));
+      setAsk(null);
+      return;
+    }
+    if (res.status === 401) {
+      halted.current = true;
+      window.location.assign(PHP_ADMIN_URL);
+      return;
+    }
+    setAskError(
+      res.status === 409 && res.error === "last_super_admin" ? t("ad.act.last")
+        : res.status === 403 && res.error === "self_forbidden" ? t("ad.act.self")
+        : res.status === 403 ? t("ad.err.forbidden")
+        : res.status === 404 ? t("ad.err.gone")
+        : res.status === 503 ? t("ad.err.unavailable")
+        : res.status === 0 ? t("ad.err.network")
+        : t("ad.act.fail"),
+    );
+  };
+  const askSpec: ConfirmSpec | null = ask
+    ? {
+        title: t(ask.next ? "ad.act.activate.title" : "ad.act.deactivate.title"),
+        name: ask.account.name || ask.account.username,
+        body: t(ask.next ? "ad.act.activate.body" : "ad.act.deactivate.body", { days: list?.deleteAfterDays ?? 5 }),
+        confirmLabel: t(ask.next ? "ad.act.activate" : "ad.act.deactivate"),
+        cancelLabel: t("h.c.cancel"),
+        focus: "cancel",
+      }
+    : null;
+  const ctl: Controls | null = canWrite
+    ? {
+        superViewer,
+        switching: working ? ask?.account.id ?? null : null,
+        onToggle: (account) => { setAskError(null); setAsk({ account, next: !account.isActive }); },
+        onEdit: (account) => setForm({ account }),
+        onDelete: setRemoving,
+      }
+    : null;
+
   return (
-    <AdminShell admin={me?.admin ?? null} features={me?.features ?? null} title={t("ad.title")} description={t("ad.desc")} screen={screen}>
+    <AdminShell
+      admin={me?.admin ?? null}
+      features={me?.features ?? null}
+      title={t("ad.title")}
+      description={t("ad.desc")}
+      screen={screen}
+      actions={canWrite && superViewer ? <button type="button" className="btn btn--primary" onClick={() => setForm({ account: null })}>{t("ad.add")}</button> : undefined}
+    >
       {list && groups ? (
         <>
-          <Notice
-            action={<a className="txtbtn" href={`${PHP_BASE_URL}admin_admins.php`}>{t("ad.readonlyLink")}</a>}
-          >
-            {t("ad.readonly")}
-          </Notice>
+          {!canWrite ? (
+            <Notice action={<a className="txtbtn" href={`${PHP_BASE_URL}admin_admins.php`}>{t("ad.readonlyLink")}</a>}>
+              {t("ad.readonly")}
+            </Notice>
+          ) : null}
           {list.scope === "self" ? <Notice>{t("ad.scope.self")}</Notice> : null}
           {groups.ready > 0 ? <Notice tone="warn" icon="alert">{t("ad.ready.notice", { n: groups.ready, days: list.deleteAfterDays })}</Notice> : null}
 
@@ -83,24 +157,46 @@ export default function AdminList() {
             <>
               <p className="adm-count" role="status">{t("ad.count", { total: list.total, active: groups.active.length, inactive: groups.inactive.length })}</p>
               <Section id="sec-ad-active" title={t("ad.sec.active")} desc={t("ad.sec.activeDesc")}>
-                <AccountTable items={groups.active} waiting={false} deleteAfterDays={list.deleteAfterDays} empty={t("ad.empty.active")} />
+                <AccountTable items={groups.active} waiting={false} deleteAfterDays={list.deleteAfterDays} empty={t("ad.empty.active")} ctl={ctl} />
               </Section>
               <Section id="sec-ad-inactive" title={t("ad.sec.inactive")} desc={t("ad.sec.inactiveDesc", { days: list.deleteAfterDays })}>
-                <AccountTable items={groups.inactive} waiting deleteAfterDays={list.deleteAfterDays} empty={t("ad.empty.inactive")} />
+                <AccountTable items={groups.inactive} waiting deleteAfterDays={list.deleteAfterDays} empty={t("ad.empty.inactive")} ctl={ctl} />
               </Section>
             </>
           ) : (
             <Section id="sec-ad-self" title={t("ad.sec.self")} desc={t("ad.sec.selfDesc")}>
-              <AccountTable items={list.items} waiting={false} deleteAfterDays={list.deleteAfterDays} empty={t("ad.empty.active")} />
+              <AccountTable items={list.items} waiting={false} deleteAfterDays={list.deleteAfterDays} empty={t("ad.empty.active")} ctl={ctl} />
             </Section>
           )}
+          <ConfirmDialog spec={askSpec} busy={working} error={askError} onConfirm={confirmActive} onClose={() => { if (!working) setAsk(null); }} />
+          {form ? (
+            <AdminFormDialog
+              account={form.account}
+              superViewer={superViewer}
+              onClose={() => setForm(null)}
+              onSaved={(item) => {
+                if (form.account) replace(item);
+                reload(); // a new account, or my own name in the header
+              }}
+            />
+          ) : null}
+          {removing ? <DeleteAdminDialog account={removing} deleteAfterDays={list.deleteAfterDays} onClose={() => setRemoving(null)} onDeleted={reload} onStale={reload} /> : null}
         </>
       ) : null}
     </AdminShell>
   );
 }
 
-function AccountTable({ items, waiting, deleteAfterDays, empty }: { items: AdminAccount[]; waiting: boolean; deleteAfterDays: number; empty: string }) {
+type Controls = {
+  superViewer: boolean;
+  /** The account whose state change is being sent. */
+  switching: number | null;
+  onToggle: (account: AdminAccount) => void;
+  onEdit: (account: AdminAccount) => void;
+  onDelete: (account: AdminAccount) => void;
+};
+
+function AccountTable({ items, waiting, deleteAfterDays, empty, ctl }: { items: AdminAccount[]; waiting: boolean; deleteAfterDays: number; empty: string; ctl: Controls | null }) {
   const t = useT();
   if (items.length === 0) {
     return (
@@ -125,18 +221,19 @@ function AccountTable({ items, waiting, deleteAfterDays, empty }: { items: Admin
           )}
           <th role="columnheader" scope="col" className="adm__notif">{t("ad.col.notifications")}</th>
           <th role="columnheader" scope="col" className="adm__status">{t("ad.col.status")}</th>
+          {ctl ? <th role="columnheader" scope="col" className="adm__acts">{t("ad.actions")}</th> : null}
         </tr>
       </thead>
       <tbody role="rowgroup">
         {items.map((a) => (
-          <Row key={a.id} account={a} waiting={waiting} deleteAfterDays={deleteAfterDays} />
+          <Row key={a.id} account={a} waiting={waiting} deleteAfterDays={deleteAfterDays} ctl={ctl} />
         ))}
       </tbody>
     </table>
   );
 }
 
-function Row({ account: a, waiting, deleteAfterDays }: { account: AdminAccount; waiting: boolean; deleteAfterDays: number }) {
+function Row({ account: a, waiting, deleteAfterDays, ctl }: { account: AdminAccount; waiting: boolean; deleteAfterDays: number; ctl: Controls | null }) {
   const t = useT();
   const name = a.name || a.username;
   return (
@@ -165,8 +262,38 @@ function Row({ account: a, waiting, deleteAfterDays }: { account: AdminAccount; 
         {t(a.notificationsCustom ? "ad.notif.custom" : "ad.notif.count", { n: a.notifications.length })}
       </td>
       <td role="cell" className="adm__status" data-label={t("ad.col.status")}>
-        <ActivePill active={a.isActive} />
+        {ctl && ctl.superViewer && !a.isSelf ? (
+          <span className="act">
+            <ActivePill active={a.isActive} />
+            <button
+              type="button"
+              role="switch"
+              className="switch"
+              aria-checked={a.isActive}
+              aria-label={t("ad.act.switch", { name })}
+              aria-disabled={ctl.switching === a.id || undefined}
+              aria-busy={ctl.switching === a.id || undefined}
+              onClick={() => {
+                if (ctl.switching !== a.id) ctl.onToggle(a);
+              }}
+            >
+              <span className="switch__thumb" aria-hidden="true" />
+            </button>
+          </span>
+        ) : (
+          <ActivePill active={a.isActive} />
+        )}
       </td>
+      {ctl ? (
+        <td role="cell" className="adm__acts">
+          <span className="adm__btns">
+            <button type="button" className="txtbtn" onClick={() => ctl.onEdit(a)}>{t(a.isSelf ? "ad.editMine" : "ad.edit")}</button>
+            {ctl.superViewer && !a.isSelf && !a.isActive ? (
+              <button type="button" className="txtbtn txtbtn--danger" onClick={() => ctl.onDelete(a)}>{t("ad.delete")}</button>
+            ) : null}
+          </span>
+        </td>
+      ) : null}
     </tr>
   );
 }
