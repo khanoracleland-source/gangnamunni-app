@@ -18,7 +18,7 @@ export type Admin = {
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; hospitalApply: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; hospitalApply: boolean; admins: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -133,6 +133,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         treatmentsWrite: obj(d.features).treatmentsWrite === true,
         treatmentsImages: obj(d.features).treatmentsImages === true,
         hospitalApply: obj(d.features).hospitalApply === true,
+        admins: obj(d.features).admins === true,
       },
     },
   };
@@ -1584,4 +1585,69 @@ export async function uploadTreatmentImage(id: number, file: File): Promise<Writ
   } catch {
     return { ok: false, status: 0, fields: {}, updatedAt: "", error: "", blockers: [], deletableAfter: "" };
   }
+}
+
+/** One account of the admins page. `ssoMemberId` is filled for a super admin only. */
+export type AdminAccount = {
+  id: number;
+  username: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  hospitalId: number | null;
+  hospitalName: string;
+  isActive: boolean;
+  isSelf: boolean;
+  lastLoginAt: string | null;
+  ssoMemberId: string | null;
+  /** The notification types the account receives. */
+  notifications: string[];
+  notificationsCustom: boolean;
+  /** When the account was switched off; null while active (and for accounts switched off before this was recorded). */
+  deactivatedAt: string | null;
+  inactiveDays: number | null;
+  /** Switched off long enough that it may be deleted. */
+  deleteReady: boolean;
+};
+
+/** "all": a super admin sees every account. "self": anyone else sees only their own. */
+export type AdminListData = { scope: "all" | "self"; deleteAfterDays: number; total: number; items: AdminAccount[] };
+
+export async function fetchAdmins(signal?: AbortSignal): Promise<ApiResult<AdminListData>> {
+  const res = await getJson("/v1/admins", signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: {
+      scope: d.scope === "all" ? "all" : "self",
+      deleteAfterDays: num(d.deleteAfterDays) > 0 ? num(d.deleteAfterDays) : 5,
+      total: num(d.total),
+      items: list(d.items).map((raw): AdminAccount => {
+        const a = obj(raw);
+        const hospitalId = num(a.hospitalId);
+        const days = numOrNull(a.inactiveDays);
+        return {
+          id: num(a.id),
+          username: str(a.username),
+          name: str(a.name),
+          email: str(a.email),
+          phone: text(a.phone),
+          role: str(a.role),
+          hospitalId: hospitalId > 0 ? hospitalId : null,
+          hospitalName: str(a.hospitalName),
+          isActive: bool(a.isActive),
+          isSelf: bool(a.isSelf),
+          lastLoginAt: str(a.lastLoginAt) || null,
+          ssoMemberId: str(a.ssoMemberId) || null,
+          notifications: names(a.notifications),
+          notificationsCustom: bool(a.notificationsCustom),
+          deactivatedAt: str(a.deactivatedAt) || null,
+          inactiveDays: days === null ? null : Math.max(0, Math.floor(days)),
+          deleteReady: bool(a.deleteReady),
+        };
+      }),
+    },
+  };
 }

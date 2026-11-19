@@ -2557,3 +2557,29 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 [data-sonner-toast][data-y-position="top"][data-mounted="false"] { --y: translateY(-180%); }
 [data-sonner-toast][data-y-position="top"] { transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease, height 0.3s ease, box-shadow 0.2s ease; }
 @media (prefers-reduced-motion: reduce) { [data-sonner-toast][data-y-position="top"] { transition: opacity 0.2s ease; } }
+
+/* Admins page: the account column carries name and login; waiting accounts show a pip countdown. */
+.adm-count { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
+.tbl--adm .adm__account { width: 26%; }
+.tbl--adm .adm__role { width: 140px; }
+.tbl--adm .adm__login, .tbl--adm .adm__wait { width: 22%; font-variant-numeric: tabular-nums; }
+.tbl--adm .adm__notif { width: 120px; }
+.tbl--adm .adm__status { width: 96px; }
+.tbl--adm .adm__account { overflow-wrap: anywhere; }
+.adm__name { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-weight: 600; }
+.adm__sub { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+.adm__count { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+.adm__pips { display: inline-flex; gap: 3px; }
+.adm__pip { width: 14px; height: 6px; border-radius: 3px; background: var(--line); }
+.adm__pip--on { background: var(--warn); }
+.adm__pip--ready { background: var(--down); }
+.adm__ready { background: var(--down); color: #fff; font-weight: 600; }
+.tbl tr.is-ready td { background: var(--down-bg); }
+.tbl tr.is-ready:hover td { background: var(--down-bg); }
+@media (max-width: 899px) {
+  .tbl tr.is-ready, .tbl tr.is-ready:hover { background: var(--down-bg); border-color: var(--down); }
+  .tbl tr.is-ready td, .tbl tr.is-ready:hover td { background: transparent; }
+  .tbl--adm td.adm__account { flex-direction: column; align-items: flex-start; gap: 2px; margin-bottom: 4px; font-size: 16px; }
+  .tbl--adm td.adm__account::before { content: none; }
+  .tbl--adm .adm__login, .tbl--adm .adm__notif { display: none; }
+}
