@@ -7,8 +7,10 @@ import { Toaster } from "sonner";
 export default function AppToaster() {
   return (
     <Toaster
-      position="bottom-center"
-      duration={4000}
+      position="top-center"
+      offset="calc(var(--topbar-h) + 12px)"
+      mobileOffset={{ top: "calc(var(--topbar-h) + 12px)", left: 16, right: 16 }}
+      duration={5000}
       closeButton
       style={
         {
@@ -16,6 +18,7 @@ export default function AppToaster() {
           "--normal-text": "var(--ink)",
           "--normal-border": "var(--line)",
           "--border-radius": "var(--r-md)",
+          "--width": "min(480px, calc(100vw - 32px))",
           fontFamily: "var(--font)",
         } as React.CSSProperties
       }
