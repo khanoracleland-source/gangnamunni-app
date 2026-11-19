@@ -86,7 +86,7 @@ describe('admin API: default image of a treatment (upload)', () => {
     }) as any;
   });
   beforeEach(async () => {
-    root = await fs.mkdtemp(path.join(os.tmpdir(), 'sb-tm-img-root-'));
+    root = await fs.mkdtemp(path.join(path.dirname(privateTmp), 'sb-tm-img-root-'));
     process.env.ADMIN_UPLOAD_ROOT = root;
     process.env.ADMIN_PANEL_ENABLED = '1';
     process.env.ADMIN_TREATMENTS_ENABLED = '1';

@@ -104,7 +104,7 @@ describe('admin API: hospital documents (upload, replace, delete)', () => {
     jest.spyOn(Logger.prototype, 'log').mockImplementation(sink as any);
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(sink as any);
     jest.spyOn(Logger.prototype, 'error').mockImplementation(sink as any);
-    root = await fs.mkdtemp(path.join(os.tmpdir(), 'sb-doc-test-'));
+    root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'sb-doc-test-')));
     outside = await fs.mkdtemp(path.join(os.tmpdir(), 'sb-doc-outside-'));
     process.env.ADMIN_UPLOAD_ROOT = root;
     process.env.ADMIN_PANEL_ENABLED = '1';
