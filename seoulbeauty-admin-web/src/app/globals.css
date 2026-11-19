@@ -2607,3 +2607,19 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
   .dialog--sheet .dialog__foot .btn { width: 100%; min-height: 44px; }
 }
 .tbl--adm .switch::before { inset: -10px 0; }
+
+/* Admins table with the actions column: the status cell holds the pill and the switch side by side, so it needs room. */
+.tbl--adm .adm__account { width: 20%; }
+.tbl--adm .adm__role { width: 130px; }
+.tbl--adm .adm__hospital { width: 18%; min-width: 150px; overflow-wrap: anywhere; }
+.tbl--adm .adm__login, .tbl--adm .adm__wait { width: 150px; }
+.tbl--adm .adm__notif { width: 100px; }
+.tbl--adm .adm__status { width: 150px; }
+.tbl--adm .adm__acts { width: 210px; }
+.tbl--adm .adm__status .act { flex-wrap: nowrap; white-space: nowrap; }
+.tbl--adm .adm__wait { width: 220px; }
+@media (min-width: 900px) and (max-width: 1199px) {
+  .tbl--adm .adm__notif { display: none; }
+  .tbl--adm .adm__account { width: 22%; }
+  .tbl--adm .adm__acts { width: 180px; }
+}
