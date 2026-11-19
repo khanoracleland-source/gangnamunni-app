@@ -355,7 +355,7 @@ button, select { font: inherit; color: inherit; }
 }
 .sidebar:focus { outline: none; }
 
-.nav-group { margin: 0 0 2px; }
+.nav-group { margin: 0 0 2px; user-select: none; -webkit-user-select: none; }
 .nav-group summary {
   display: flex;
   align-items: center;
