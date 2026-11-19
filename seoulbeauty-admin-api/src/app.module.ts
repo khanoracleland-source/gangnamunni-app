@@ -6,6 +6,7 @@ import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { MeModule } from './me/me.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HospitalsModule } from './hospitals/hospitals.module';
+import { HospitalApplyModule } from './hospital-apply/hospital-apply.module';
 import { HospitalArchiveModule } from './hospital-archive/hospital-archive.module';
 import { MapConfigModule } from './map-config/map-config.module';
 import { TreatmentsModule } from './treatments/treatments.module';
@@ -20,6 +21,7 @@ import { HealthController } from './health/health.controller';
     MeModule,
     DashboardModule,
     HospitalsModule,
+    HospitalApplyModule,
     HospitalArchiveModule,
     MapConfigModule,
     TreatmentsModule,

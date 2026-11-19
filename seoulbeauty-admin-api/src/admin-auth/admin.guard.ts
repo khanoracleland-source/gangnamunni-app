@@ -258,6 +258,18 @@ export class TreatmentsImagesEnabledGuard implements CanActivate {
   }
 }
 
+/** Registering a hospital by a super admin (/v1/hospital-apply*). Independent of the hospital switches; needs the write user and the upload folder. Only the exact value "1" turns it on. */
+export const hospitalApplyEnabled = (): boolean => process.env.ADMIN_HOSPITAL_APPLY_ENABLED === '1';
+
+/** With ADMIN_HOSPITAL_APPLY_ENABLED off every /v1/hospital-apply route answers 404 as if it did not exist; PHP is not asked. */
+@Injectable()
+export class HospitalApplyEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalApplyEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 

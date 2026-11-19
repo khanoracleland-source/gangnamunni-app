@@ -1062,6 +1062,49 @@ The previous image file of a treatment is not deleted when it is replaced (as on
 Deleting a treatment is a hard delete (as on the PHP page) and will be refused with `409 {"error":"in_use"}` while any hospital has it; a treatment that is part of a package
 (`gangnamunni_treatment_package_items`, foreign key `ON DELETE RESTRICT`) cannot be deleted by the database either (answered `409 in_use`). Take a dump of the five tables above before the first write.
 
+## 14. Registering a hospital (`ADMIN_HOSPITAL_APPLY_ENABLED`, optional; super admin only)
+The PHP page `hospital_apply.php` without its application workflow: a super admin fills in a hospital and it is stored at once as `status='approved'`, `is_active=0`
+(inactive; it is switched on from the hospital page). Independent of the hospital switches (sections 6-12). Hospital roles and anyone not signed in get 403 / 401; with the switch
+off every route answers `404 {"error":"not_found"}` and `/v1/me` reports `"hospitalApply":false`.
+
+Routes (guard order: switch -> CSRF for POST -> signed in -> super admin):
+- `GET /v1/hospital-apply/options` -> `{"categories":[{"id","name"}],"treatments":[{"id","name","categoryId"}],"units":[...],"devMode":bool,"limits":{...}}` (active master treatments;
+  only categories that have one; units from `gangnamunni_treatment_units`, the standard list without it).
+- `GET /v1/hospital-apply/phone-check?phone=` -> `{"duplicate":bool,"hospitalName"?}`; empty or without digits -> `400 invalid_field phone`.
+- `POST /v1/hospital-apply` (`multipart/form-data`, marker header `X-Requested-With: admin-next`). Text field `payload` = JSON
+  `{name*, ownerName, businessNumber, phone, email, contactName, contactPhone, address, lat, lng, businessHours{월..일,점심|no_lunch_break,special_closed_dates}, introduction, website, snsUrl,
+  treatments:[{treatmentId, prices:[{optionName,dosageValue,dosageUnit,price}]}], doctors:[{name,specialty,experienceYears,qualification,bio}]}`.
+  Files: `certBusiness`, `certMedical`, `profileImage`, `interiorImages` (up to 10), `doctorPhoto_<position in doctors>`, `treatmentImages_<treatment id>` (up to 20 each).
+  Only `name` is required. A price row is stored only when dosage > 0, a unit and price > 0 are all there, otherwise it is left out and counted in `warnings`
+  (`[{"code":"price_rows_skipped","count":n}]`); a doctor row only when it has a name. Answer: `200 {"id":123,"warnings":[]}`.
+  Errors: `400 invalid_body | invalid_field {field,index?} | too_many {field}`, `409 duplicate_phone {hospitalName}`, `413 file_too_large {field}`, `415 bad_file_type {field}`,
+  `503 write_unavailable | uploads_unavailable`. Order of the checks (as on the PHP page): name, phone duplicate, e-mail, the rest of the form, treatments, files. The SNS field is free text (length only); extra closed days that are not after today (KST) are left out. Any error stores nothing:
+  one transaction, and every file this request wrote is removed again.
+- Stored: hospital (`status='approved'`, `is_active=0`, `ad_grade='none'`, `applied_by` and `reviewed_by` = the admin's username, `is_demo` = the PHP "dev mode" setting),
+  `hospital_images` (main + interior), `gangnamunni_doctors` (active), `gangnamunni_hospital_treatments` (`registered_by='hospital'`), their price options and detail images
+  (`approval_status='pending'`, `uploaded_by='hospital'`). Files: hospital files in `<ADMIN_UPLOAD_ROOT>/uploads/hospital_apply/admin_<admin id>/` (the PHP folder; certificates are
+  named `cert_business_<hex>.<ext>` / `cert_medical_<hex>.<ext>`), doctor photos in `uploads/hospitals/<hospital id>/`, treatment images in `uploads/treatments/`.
+
+### 14.1 Database (run as the DB admin; `<DB_NAME>` = schema from step 1)
+Needs sections 6.1 (write user), 8 (`hospital_images` INSERT), 9 (doctors), 10.1 (treatment assignments, master `id, is_active`), 10.4 (price options) and 10.6 (detail images)
+first, and the read-only grants of section 1 (`gangnamunni_hospitals` name/phone, treatment master, categories, units, settings). New for this section: INSERT of a whole hospital row.
+```sql
+GRANT INSERT (name, owner_name, business_number, phone, email, contact_name, contact_phone, address, latitude, longitude, categories, treatment_tags, business_hours,
+  introduction, website, sns_url, profile_image_url, main_image_url, cert_business, cert_medical, applied_by, applied_at, status, is_active, ad_grade, reviewed_by,
+  reviewed_at, is_demo, created_at) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'127.0.0.1';
+-- and the same for 'sb_admin_rw'@'localhost'
+SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: the new INSERT line names only the columns above
+```
+Undo: `REVOKE INSERT ON <DB_NAME>.gangnamunni_hospitals FROM 'sb_admin_rw'@'127.0.0.1';` (and `'localhost'`).
+
+### 14.2 Upload folders and Apache limits
+The service must be able to write below `<ADMIN_UPLOAD_ROOT>/uploads/` into `hospital_apply`, `hospitals` and `treatments` (sections 8, 9, 10.6, 11; `ReadWritePaths` of the unit).
+One request can carry up to about 130 files of up to 10 MB: allow a large enough body in the proxy in front of the admin web app (`/admin-next/api/*`).
+
+### 14.3 Env and turning it on
+`ADMIN_PANEL_ENABLED=1`, `ADMIN_HOSPITAL_APPLY_ENABLED=1`, `DB_RW_USER` / `DB_RW_PASSWORD`, `ADMIN_UPLOAD_ROOT`; restart the service. Take a dump of the tables above before the first
+real registration. Turning it off again: set the switch to `0` (the rows and files made so far stay).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
