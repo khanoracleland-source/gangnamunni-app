@@ -1130,18 +1130,28 @@ The hospital drop-down reads `id, name` of `gangnamunni_hospitals`, already gran
 `ADMIN_ADMINS_ENABLED=1` in `.env`, then `systemctl restart seoulbeauty-admin-api`. Without the migration the page still works, but no account counts as "inactive long enough" to delete.
 
 ### 15.3 Editing accounts (`ADMIN_ADMINS_WRITE_ENABLED`, optional)
-`PATCH /v1/admins/:id` (name, phone, notification choice; a super admin for any account, every other role for its own only) and
-`POST /v1/admins/:id/active` (`{"active":true|false}`, super admin only). Email, role, hospital and password are not editable yet: such keys are refused with 400.
-Switching an account off records the moment (`deactivated_at`); switching it on clears it. A super admin cannot change their own state, and the last active super admin cannot be switched off (the check runs in one transaction that locks the active super admins). Needs `ADMIN_ADMINS_ENABLED=1` as well; anything but `1` = off (404).
-Grants of the write user (run as the DB admin; the same two hosts as the read user):
+- `POST /v1/admins` add an account (login name `[A-Za-z0-9_]{3,30}`, password of at least 8 characters, name, optional email / phone, role `super_admin` or `hospital_admin`, a hospital for a hospital admin, notifications). Super admin only. The email must not belong to another admin, member (`g5_member`) or user (`users`). The password is stored as a bcrypt hash with the `$2y$` prefix (what PHP `password_hash` writes, so the old login accepts it). Every active admin who receives "new admin" gets one notice row; no push.
+- `PATCH /v1/admins/:id` name, phone, notification choice (a super admin for any account, every other role for its own only); a super admin may also change role and hospital (nobody their own role; the last active super admin cannot be demoted). Email and password are not editable yet: such keys are refused with 400.
+- `POST /v1/admins/:id/active` (`{"active":true|false}`, super admin only). Switching off records the moment (`deactivated_at`), switching on clears it; nobody changes their own state; the last active super admin cannot be switched off.
+- `DELETE /v1/admins/:id` (`{"confirm":"<login name>"}`, super admin only): only an account that has been inactive for 5 days (`409 still_active`, `no_inactive_record`, `not_inactive_long_enough`), never your own, and the login name must be typed exactly.
+Every write locks the account and the active super admins in one transaction. Needs `ADMIN_ADMINS_ENABLED=1` as well; anything but `1` = off (404).
+
+Grants (run as the DB admin; the same two hosts as the read user, shown for `127.0.0.1`: repeat each line for `'localhost'`):
 ```sql
-GRANT SELECT (id, role, is_active, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
-GRANT UPDATE (name, phone, permissions, is_active, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
-GRANT SELECT (id, role, is_active, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'localhost';
-GRANT UPDATE (name, phone, permissions, is_active, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'localhost';
+-- read user: the three places an email can already be used (add checks them)
+GRANT SELECT (email) ON <DB_NAME>.users TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (mb_email) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'127.0.0.1';
+-- write user
+GRANT SELECT (id, username, role, is_active, hospital_id, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (name, phone, permissions, role, hospital_id, hospital_name, is_active, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (username, password, name, email, phone, role, hospital_id, hospital_name, parent_admin_id, permissions) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
+GRANT DELETE ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (admin_id, type, title, message, link, icon) ON <DB_NAME>.gangnamunni_notifications TO 'sb_admin_rw'@'127.0.0.1';
 ```
+`DELETE` cannot be limited to columns: it is the only table-wide right of this user. If the site has no `users` or `g5_member` table, skip that grant (a missing table counts as "nobody there"; a refused grant answers `503 write_unavailable`).
 `ADMIN_ADMINS_WRITE_ENABLED=1` in `.env`, then `systemctl restart seoulbeauty-admin-api`. Without the grants the routes answer `503 write_unavailable`.
 Note: the old PHP page flips `is_active` without touching `deactivated_at`. An account it switches off keeps an older mark (or none), so switch accounts off in the new panel only.
+SSO (`g5_mb_id`) is not editable here: the column does not exist on this site yet.
 
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app

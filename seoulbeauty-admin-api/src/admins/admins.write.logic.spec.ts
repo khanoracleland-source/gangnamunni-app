@@ -1,5 +1,5 @@
 import { NOTIFICATION_TYPES } from './admins.logic';
-import { parseActive, permissionsJson, planActive, planEdit } from './admins.write.logic';
+import { parseActive, parseConfirm, permissionsJson, planActive, planCreate, planDelete, planEdit } from './admins.write.logic';
 
 describe('admin accounts: edit plan', () => {
   it('accepts name, phone and notifications; trims; keeps known types in the fixed order', () => {
@@ -57,5 +57,56 @@ describe('admin accounts: active state plan', () => {
     expect(planActive(1, t(), [1], false)).toEqual({ ok: true, noChange: false });
     expect(planActive(1, t({ isActive: false }), [1], true)).toEqual({ ok: true, noChange: false });
     expect(planActive(1, t(), [1], true)).toEqual({ ok: true, noChange: true });
+  });
+});
+
+describe('admin accounts: role and hospital in an edit', () => {
+  it('only a super admin may send them; values are checked', () => {
+    expect(planEdit({ role: 'hospital_admin', hospitalId: 3 }, true)).toEqual({ ok: true, plan: { role: 'hospital_admin', hospitalId: 3 } });
+    expect(planEdit({ hospitalId: null }, true)).toEqual({ ok: true, plan: { hospitalId: null } });
+    expect(planEdit({ role: 'hospital_admin' })).toEqual({ ok: false, errors: { role: 'not_allowed' } });
+    expect(planEdit({ hospitalId: 3 })).toEqual({ ok: false, errors: { hospitalId: 'not_allowed' } });
+    expect(planEdit({ role: 'admin' }, true)).toEqual({ ok: false, errors: { role: 'unknown_role' } });
+    expect(planEdit({ role: 5 }, true)).toEqual({ ok: false, errors: { role: 'bad_format' } });
+    for (const v of ['3', 0, -1, 1.5, true]) expect(planEdit({ hospitalId: v }, true)).toEqual({ ok: false, errors: { hospitalId: 'bad_format' } });
+  });
+});
+
+describe('admin accounts: add plan', () => {
+  const ok = { username: 'new_user', password: 'longenough1', name: '이름' };
+  it('defaults: hospital admin needs a hospital; email and phone optional; notifications default', () => {
+    expect(planCreate(ok)).toEqual({ ok: false, errors: { hospitalId: 'required' } });
+    const r = planCreate({ ...ok, hospitalId: 4 });
+    expect(r).toMatchObject({ ok: true, plan: { role: 'hospital_admin', hospitalId: 4, email: '', phone: '' } });
+  });
+  it('a super admin ignores a hospital', () => {
+    expect(planCreate({ ...ok, role: 'super_admin', hospitalId: 4 })).toMatchObject({ ok: true, plan: { role: 'super_admin', hospitalId: null } });
+  });
+  it('trims, lower-cases the email, counts password characters (8) and bytes (72)', () => {
+    expect(planCreate({ ...ok, role: 'super_admin', email: ' A@B.CO ', name: ' 이름 ' })).toMatchObject({ ok: true, plan: { email: 'a@b.co', name: '이름' } });
+    expect(planCreate({ ...ok, role: 'super_admin', password: '가나다라마바사아' }).ok).toBe(true);
+    expect(planCreate({ ...ok, role: 'super_admin', password: '가나다라마바사' })).toEqual({ ok: false, errors: { password: 'too_short' } });
+    expect(planCreate({ ...ok, role: 'super_admin', password: '가'.repeat(25) })).toEqual({ ok: false, errors: { password: 'too_long' } });
+  });
+  it('a password with a NUL byte is refused (bcrypt implementations disagree about it)', () => {
+    expect(planCreate({ ...ok, role: 'super_admin', password: 'longenough\u00001' })).toEqual({ ok: false, errors: { password: 'bad_format' } });
+  });
+  it('refuses a body that is not an object and unknown keys', () => {
+    expect(planCreate(null)).toEqual({ ok: false, errors: { body: 'bad_format' } });
+    expect(planCreate({ ...ok, role: 'super_admin', parentAdminId: 1 })).toEqual({ ok: false, errors: { parentAdminId: 'not_allowed' } });
+  });
+});
+
+describe('admin accounts: delete plan', () => {
+  const t = (over = {}) => ({ id: 6, isActive: false, deactivatedAt: '2026-11-01 10:00:00', ready: true, inactiveDays: 9, ...over });
+  it('needs a long enough inactive time, never your own, and reads the confirmation text', () => {
+    expect(planDelete(1, undefined, 5)).toEqual({ ok: false, error: 'not_found' });
+    expect(planDelete(6, t(), 5)).toEqual({ ok: false, error: 'self_forbidden' });
+    expect(planDelete(1, t({ isActive: true }), 5)).toEqual({ ok: false, error: 'still_active' });
+    expect(planDelete(1, t({ deactivatedAt: null }), 5)).toEqual({ ok: false, error: 'no_inactive_record' });
+    expect(planDelete(1, t({ ready: false, inactiveDays: 2 }), 5)).toEqual({ ok: false, error: 'not_inactive_long_enough', daysLeft: 3 });
+    expect(planDelete(1, t(), 5)).toEqual({ ok: true });
+    expect(parseConfirm({ confirm: 'x' })).toBe('x');
+    for (const b of [{}, { confirm: 1 }, null, 'x']) expect(parseConfirm(b)).toBeNull();
   });
 });
