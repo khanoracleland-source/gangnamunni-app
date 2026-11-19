@@ -282,6 +282,18 @@ export class AdminsEnabledGuard implements CanActivate {
   }
 }
 
+/** Writing admin accounts (edit, active state). Needs the admins page on as well; only the exact value "1" turns it on. */
+export const adminsWriteEnabled = (): boolean => adminsEnabled() && process.env.ADMIN_ADMINS_WRITE_ENABLED === '1';
+
+/** With the write switch off the writing /v1/admins routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class AdminsWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !adminsWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /**
  * A signed-in super admin or hospital role; attaches req.admin. The routes narrow it further: only a super admin sees other
  * accounts, every other role sees and edits itself only. 401 not signed in, 403 any other role, 503 when PHP cannot be asked.

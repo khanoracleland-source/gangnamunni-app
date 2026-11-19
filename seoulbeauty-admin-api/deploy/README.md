@@ -1129,6 +1129,20 @@ The hospital drop-down reads `id, name` of `gangnamunni_hospitals`, already gran
 ### 15.2 Env and turning it on
 `ADMIN_ADMINS_ENABLED=1` in `.env`, then `systemctl restart seoulbeauty-admin-api`. Without the migration the page still works, but no account counts as "inactive long enough" to delete.
 
+### 15.3 Editing accounts (`ADMIN_ADMINS_WRITE_ENABLED`, optional)
+`PATCH /v1/admins/:id` (name, phone, notification choice; a super admin for any account, every other role for its own only) and
+`POST /v1/admins/:id/active` (`{"active":true|false}`, super admin only). Email, role, hospital and password are not editable yet: such keys are refused with 400.
+Switching an account off records the moment (`deactivated_at`); switching it on clears it. A super admin cannot change their own state, and the last active super admin cannot be switched off (the check runs in one transaction that locks the active super admins). Needs `ADMIN_ADMINS_ENABLED=1` as well; anything but `1` = off (404).
+Grants of the write user (run as the DB admin; the same two hosts as the read user):
+```sql
+GRANT SELECT (id, role, is_active, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (name, phone, permissions, is_active, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, role, is_active, permissions, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'localhost';
+GRANT UPDATE (name, phone, permissions, is_active, deactivated_at) ON <DB_NAME>.gangnamunni_admins TO 'sb_admin_rw'@'localhost';
+```
+`ADMIN_ADMINS_WRITE_ENABLED=1` in `.env`, then `systemctl restart seoulbeauty-admin-api`. Without the grants the routes answer `503 write_unavailable`.
+Note: the old PHP page flips `is_active` without touching `deactivated_at`. An account it switches off keeps an older mark (or none), so switch accounts off in the new panel only.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
