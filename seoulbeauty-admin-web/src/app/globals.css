@@ -2296,11 +2296,11 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 .ha-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .pill--err { background: var(--down-bg); color: var(--down); }
 .ha { max-width: var(--content-max); }
-.ha__preview { margin-bottom: var(--s-4); }
-.ha__preview .notice { margin-bottom: 0; }
 .ha__grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(264px, 24vw, 296px); gap: var(--s-6); align-items: start; }
 .ha__main { min-width: 0; }
 .ha-ec { scroll-margin-top: 72px; }
+/* Hidden file inputs are absolutely positioned: without a positioned clip they escape it and stretch the page below the layout. */
+.ha-ec .ecard__clip { position: relative; }
 .ha-ec .ecard__btn { min-height: 64px; }
 .ha-ec__ico { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--r-md); background: var(--accent-soft); color: var(--accent-text); }
 .ha-ec__main { display: flex; flex: 1 1 0; flex-direction: column; gap: 2px; min-width: 0; }
@@ -2493,7 +2493,6 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 .ha-dlg__box p { margin: 0; }
 .ha-dlg__name { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
 .ha-dlg__sub { color: var(--muted); font-size: 14px; line-height: 22px; }
-.ha-dlg__preview { color: var(--warn); font-size: 13px; }
 .ha-cd { display: grid; gap: 6px; width: 100%; margin-top: var(--s-2); }
 .ha-cd__t { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 .ha-dlg__acts { display: grid; justify-items: center; gap: var(--s-2); width: 100%; }

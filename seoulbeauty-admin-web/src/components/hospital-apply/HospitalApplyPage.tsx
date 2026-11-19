@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import ConfirmDialog from "../hospitals/ConfirmDialog";
-import { Notice } from "../hospitals/parts";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import ApplySummary, { type SummaryItem } from "./ApplySummary";
 import BasicSection, { type PhoneState } from "./BasicSection";
@@ -21,9 +20,6 @@ import type { IconName } from "../Icon";
 import { fetchMe, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import {
-  PREVIEW_CATEGORIES,
-  PREVIEW_TREATMENTS,
-  PREVIEW_UNITS,
   SECTION_IDS,
   SECTION_TITLE_KEYS,
   applyCounts,
@@ -42,11 +38,12 @@ import {
   type FieldError,
   type SectionId,
 } from "@/lib/hospitalApply";
-import { LAYOUT_PREVIEW, checkPhone, submitApplication } from "@/lib/hospitalApplyApi";
+import { checkPhone, fetchApplyOptions, submitApplication, type ApplyOptions, type SubmitFailure } from "@/lib/hospitalApplyApi";
+import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "error";
-type State = { phase: Phase; errorKind: ErrorKind; me: Me | null };
+type State = { phase: Phase; errorKind: ErrorKind; me: Me | null; options: ApplyOptions | null };
 
 const ICONS: Record<SectionId, IconName> = { basic: "people", info: "hospital", treat: "card", img: "grid", doc: "people", file: "edit" };
 
@@ -56,7 +53,7 @@ const reducedMotion = (): boolean => window.matchMedia("(prefers-reduced-motion:
 export default function HospitalApplyPage() {
   const t = useT();
   const router = useRouter();
-  const [state, setState] = useState<State>({ phase: "loading", errorKind: "load", me: null });
+  const [state, setState] = useState<State>({ phase: "loading", errorKind: "load", me: null, options: null });
   const [attempt, setAttempt] = useState(0);
   const [draft, setDraft] = useState<Draft>(() => emptyDraft());
   const [formErrors, setFormErrors] = useState<Errors>({});
@@ -82,11 +79,29 @@ export default function HospitalApplyPage() {
         if (me.status === 401) {
           setState((s) => ({ ...s, phase: "redirecting" }));
           window.location.assign(PHP_ADMIN_URL);
-        } else if (me.status === 403) setState({ phase: "forbidden", errorKind: "load", me: null });
-        else setState({ phase: "error", errorKind: me.status === 404 ? "disabled" : me.status === 503 ? "session" : "load", me: null });
+        } else if (me.status === 403) setState({ phase: "forbidden", errorKind: "load", me: null, options: null });
+        else setState({ phase: "error", errorKind: me.status === 404 ? "disabled" : me.status === 503 ? "session" : "load", me: null, options: null });
         return;
       }
-      setState({ phase: me.data.admin.role === "super_admin" ? "ready" : "forbidden", errorKind: "load", me: me.data });
+      if (me.data.admin.role !== "super_admin") {
+        setState({ phase: "forbidden", errorKind: "load", me: me.data, options: null });
+        return;
+      }
+      if (!me.data.features.hospitalApply) {
+        setState({ phase: "error", errorKind: "disabled", me: me.data, options: null });
+        return;
+      }
+      const options = await fetchApplyOptions(controller.signal);
+      if (controller.signal.aborted) return;
+      if (!options.ok) {
+        if (options.status === 401) {
+          setState((s) => ({ ...s, phase: "redirecting" }));
+          window.location.assign(PHP_ADMIN_URL);
+        } else if (options.status === 403) setState({ phase: "forbidden", errorKind: "load", me: me.data, options: null });
+        else setState({ phase: "error", errorKind: options.status === 404 ? "disabled" : options.status === 503 ? "session" : options.status === 0 ? "network" : "load", me: me.data, options: null });
+        return;
+      }
+      setState({ phase: "ready", errorKind: "load", me: me.data, options: options.data });
     })();
     return () => controller.abort();
   }, [attempt]);
@@ -260,7 +275,37 @@ export default function HospitalApplyPage() {
     const result = await submitApplication(draft);
     setBusy(false);
     if (result.ok) setDone({ name: draft.name.trim(), counts: applyCounts(draft) });
-    else showApplyError({ message: t("hap.toast.server"), goLabel: null, closeLabel: t("hap.toast.close"), onGo: null });
+    else failSubmit(result);
+  };
+
+  /** A refused registration: the phone number goes back to its field, everything else is told in the toast. What was typed stays. */
+  const failSubmit = (result: SubmitFailure) => {
+    if (result.status === 401) {
+      leaving.current = true;
+      window.location.assign(PHP_ADMIN_URL);
+      return;
+    }
+    if (result.error === "duplicate_phone") {
+      const value = draft.phone.trim();
+      const error: FieldError = { section: "basic", focusId: "f-phone", message: { key: "hap.f.phoneDup", vars: { name: result.hospitalName } }, label: "hap.fn.phone" };
+      setPhone({ status: "dup", phone: value, name: result.hospitalName });
+      setFormErrors((p) => ({ ...p, phone: error }));
+      reportErrors({ phone: error });
+      return;
+    }
+    const key: MessageKey =
+      result.error === "file_too_large" || result.status === 413
+        ? "hap.toast.fileLarge"
+        : result.error === "bad_file_type" || result.status === 415
+          ? "hap.toast.fileType"
+          : result.error === "too_many"
+            ? "hap.toast.tooMany"
+            : result.error === "write_unavailable" || result.error === "uploads_unavailable" || result.status === 503
+              ? "hap.toast.unavail"
+              : result.error === "invalid_field" || result.error === "invalid_body"
+                ? "hap.toast.field"
+                : "hap.toast.server";
+    showApplyError({ message: t(key), goLabel: null, closeLabel: t("hap.toast.close"), onGo: null });
   };
 
   const leave = useCallback(() => {
@@ -360,16 +405,11 @@ export default function HospitalApplyPage() {
     >
       {phase === "ready" ? (
         <div className="ha">
-          {LAYOUT_PREVIEW ? (
-            <div className="ha__preview">
-              <Notice tone="warn" icon="info">{t("hap.preview")}</Notice>
-            </div>
-          ) : null}
           <div className="ha__grid">
             <div className="ha__main">
               {section("basic", <BasicSection draft={draft} set={set} errors={errors} phone={phone} onCheckPhone={() => void runCheckPhone()} />)}
               {section("info", <InfoSection draft={draft} set={set} errors={errors} />)}
-              {section("treat", <TreatmentsSection draft={draft} set={set} errors={errors} setFileError={setFileError} categories={PREVIEW_CATEGORIES} options={PREVIEW_TREATMENTS} units={PREVIEW_UNITS} />)}
+              {section("treat", <TreatmentsSection draft={draft} set={set} errors={errors} setFileError={setFileError} categories={state.options?.categories ?? []} options={state.options?.treatments ?? []} units={state.options?.units ?? []} />)}
               {section("img", <ImagesSection draft={draft} set={set} errors={errors} setFileError={setFileError} />)}
               {section("doc", <DoctorsSection draft={draft} set={set} errors={errors} setFileError={setFileError} />)}
               {section("file", <DocumentsSection draft={draft} set={set} errors={errors} setFileError={setFileError} />)}

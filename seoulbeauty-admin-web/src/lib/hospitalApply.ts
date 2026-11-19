@@ -247,34 +247,10 @@ export function applyCounts(draft: Draft): ApplyCounts {
   };
 }
 
-// ───────── Preview data ─────────
-// Stand-ins for the lists the server will provide (treatment master and price units) while the page is not connected.
+// ───────── Lists from the server ─────────
 
 export type CategoryOption = { id: number; name: string };
 export type TreatmentOption = { id: number; name: string; categoryId: number };
-
-export const PREVIEW_CATEGORIES: CategoryOption[] = [
-  { id: 1, name: "눈" },
-  { id: 2, name: "코" },
-  { id: 3, name: "리프팅" },
-  { id: 4, name: "주름·보톡스" },
-  { id: 5, name: "필러" },
-  { id: 6, name: "피부" },
-  { id: 7, name: "체형" },
-];
-
-const T = (id: number, categoryId: number, name: string): TreatmentOption => ({ id, name, categoryId });
-export const PREVIEW_TREATMENTS: TreatmentOption[] = [
-  T(101, 1, "쌍꺼풀 수술"), T(102, 1, "눈매교정"), T(103, 1, "눈밑지방 재배치"), T(104, 1, "앞트임·뒤트임"),
-  T(201, 2, "코 성형"), T(202, 2, "코끝 성형"), T(203, 2, "비중격 연골"),
-  T(301, 3, "울쎄라 리프팅"), T(302, 3, "써마지"), T(303, 3, "실 리프팅"), T(304, 3, "인모드"),
-  T(401, 4, "보톡스 주름"), T(402, 4, "사각턱 보톡스"), T(403, 4, "승모근 보톡스"),
-  T(501, 5, "입술 필러"), T(502, 5, "이마 필러"), T(503, 5, "턱끝 필러"),
-  T(601, 6, "여드름 흉터 치료"), T(602, 6, "피부 재생 레이저"), T(603, 6, "기미·잡티 토닝"), T(604, 6, "물광 주사"),
-  T(701, 7, "지방흡입"), T(702, 7, "체형 교정 주사"), T(703, 7, "하체 라인 관리"),
-];
-
-export const PREVIEW_UNITS: readonly string[] = ["회", "샷", "cc", "ml", "유닛", "개", "mg", "세션"];
 
 // ───────── Chosen files ─────────
 

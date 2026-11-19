@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LAYOUT_PREVIEW } from "@/lib/hospitalApplyApi";
 import type { ApplyCounts } from "@/lib/hospitalApply";
 import { useT } from "@/lib/locale";
 
@@ -62,7 +61,6 @@ export default function SuccessDialog({ name, counts, onGo }: { name: string; co
         <p className="ha-dlg__name">{name}</p>
         <p><span className="pill pill--off">{t("hap.ok.state")}</span></p>
         <p className="ha-dlg__sub">{t("hap.ok.note")}</p>
-        {LAYOUT_PREVIEW ? <p className="ha-dlg__preview">{t("hap.ok.preview")}</p> : null}
         {chips.length > 0 ? (
           <ul className="ha-chips ha-chips--center">
             {chips.map((c) => (

@@ -18,7 +18,7 @@ export type Admin = {
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; hospitalApply: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -132,6 +132,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         treatments: obj(d.features).treatments === true,
         treatmentsWrite: obj(d.features).treatmentsWrite === true,
         treatmentsImages: obj(d.features).treatmentsImages === true,
+        hospitalApply: obj(d.features).hospitalApply === true,
       },
     },
   };

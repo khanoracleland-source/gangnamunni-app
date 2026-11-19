@@ -56,7 +56,7 @@ const MENU: MenuGroup[] = [
     label: L("병원 등록", "Hospital registration"),
     icon: "hospital",
     items: [
-      legacy("hospital_apply", "hospital_apply.php", "병원 등록 신청", "Hospital registration request", "clipboard"),
+      { ...legacy("hospital_apply", "hospital_apply.php", "병원 등록 신청", "Hospital registration request", "clipboard"), superOnly: true },
       legacy("hospital_apply_status", "hospital_apply_status.php", "내 신청 현황", "My request status", "check"),
     ],
   },
@@ -239,8 +239,9 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<"hospitals" | "treatments", { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals" | "treatments" | "hospitalApply", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
+  hospitalApply: { key: "hospital_apply", href: "/hospital-apply" },
   treatments: { key: "treatment_master", href: "/treatments" },
 };
 
