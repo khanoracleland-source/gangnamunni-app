@@ -46,3 +46,20 @@ export function monthDay(v: string): string {
   const m = /^\d{4}-(\d{2}-\d{2})/.exec(v);
   return m ? m[1] : "—";
 }
+
+/** "2026-11-20" + 3 -> "2026-11-23" (calendar days, no time zone involved). */
+export function addDaysIso(iso: string, days: number): string {
+  const d = new Date(parseDay(iso) + days * 86400000);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** The top of a chart axis: the next 1, 2, 2.5, 5 or 10 times a power of ten above `max` (at least 1). */
+export function niceMax(max: number): number {
+  if (!(max > 0)) return 1;
+  const pow = 10 ** Math.floor(Math.log10(max));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * pow >= max) return m * pow;
+  return 10 * pow;
+}
+
+/** An axis label: millions from one million up ("12.5백만" is written by the screen), plain thousands below. */
+export const axisIsMillions = (top: number): boolean => top >= 1000000;

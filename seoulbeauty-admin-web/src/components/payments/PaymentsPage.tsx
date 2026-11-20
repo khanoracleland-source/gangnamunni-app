@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
+import CompareCharts from "./CompareCharts";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import { fetchMe, fetchPaymentHospitals, fetchPayments, type ApiResult, type Me, type PaymentList } from "@/lib/api";
 import { todayIso } from "@/lib/bookings";
@@ -185,6 +186,8 @@ function Board({ me }: { me: Me }) {
           {summary.stuck > 0 ? <Notice tone="warn" icon="alert">{t("pay.sum.stuck", { amount: won(summary.stuck) })}</Notice> : null}
         </section>
       ) : null}
+
+      <CompareCharts hospitalId={filters.hospitalId} />
     </div>
   );
 }
