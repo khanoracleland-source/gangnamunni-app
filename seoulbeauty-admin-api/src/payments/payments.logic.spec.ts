@@ -1,6 +1,6 @@
 import { isFail } from '../bookings/bookings.logic';
 import {
-  byHospitalQuery, countQuery, listQuery, maskPhone, monthCompare, parseCompareQuery, parsePaymentQuery, percentChange, periodsOf, seoulToday, seriesQuery, summaryQuery,
+  byHospitalQuery, byTreatmentQuery, capped, countQuery, listQuery, maskPhone, monthCompare, parseCompareQuery, parsePaymentQuery, percentChange, periodsOf, seoulToday, seriesQuery, summaryQuery,
   toItem, weekCompare, TEST_PROVIDERS, PaymentFilters,
 } from './payments.logic';
 
@@ -59,6 +59,28 @@ describe('payment queries', () => {
     expect(q.sql).not.toContain('DROP');
     expect(q.values).toContain("%x'; DROP TABLE a;-- 100\\%\\_%");
   });
+  it('a phone number is searchable only by its last four digits (it is masked in every answer)', () => {
+    const four = countQuery(ALL, filters({ q: '5678' }));
+    expect(four.sql).toContain('REGEXP_REPLACE(p.patient_phone');
+    expect(four.values).toContain('5678');
+    for (const q of ['01012345678', '010-1234', '12345']) {
+      const w = countQuery(ALL, filters({ q }));
+      expect(w.sql).not.toContain('patient_phone');
+    }
+  });
+  it('a range of a year or more is refused; just under a year is fine', () => {
+    expect(isFail(parsePaymentQuery({ from: '2000-01-01', to: '2026-11-20' }, '2026-11-20'))).toBe(true);
+    expect(isFail(parsePaymentQuery({ from: '2025-11-19', to: '2026-11-20' }, '2026-11-20'))).toBe(true);
+    expect(isFail(parsePaymentQuery({ from: '2025-11-20', to: '2026-11-20' }, '2026-11-20'))).toBe(false);
+    expect(parsePaymentQuery({ from: '2000-01-01', to: '2026-11-20' }, '2026-11-20')).toMatchObject({ error: 'range_too_long' });
+  });
+  it('the hospital and treatment tables read one row more than they show, to know they were cut', () => {
+    expect(byHospitalQuery(ALL, filters()).sql).toContain('LIMIT 501');
+    expect(byTreatmentQuery(ALL, filters()).sql).toContain('LIMIT 501');
+    expect(capped(Array.from({ length: 501 }, (_, i) => i))).toMatchObject({ truncated: true });
+    expect(capped(Array.from({ length: 501 }, (_, i) => i)).rows).toHaveLength(500);
+    expect(capped([1, 2, 3])).toEqual({ rows: [1, 2, 3], truncated: false });
+  });
   it('a hospital account is held to its hospitals in every query; one without a hospital sees nothing', () => {
     for (const q of [listQuery(OWN12, filters()), countQuery(OWN12, filters()), summaryQuery(OWN12, filters()), seriesQuery(OWN12, 0, 'held', '2026-10-01', '2026-11-20')]) {
       expect(q.sql).toContain('p.hospital_id IN (?)');
@@ -89,6 +111,13 @@ describe('payment rows', () => {
     expect(toItem({ ...row, booking_status: 'completed' }).stage).toBe('recognized');
     expect(toItem({ ...row, status: 'refunded', refunded_amount: '180000' }).stage).toBe('refunded');
     expect(toItem({ ...row, booking_status: null }).stage).toBe('held');
+  });
+  it('money held for a cancelled, refunded or no-show booking is flagged: no treatment will release it', () => {
+    expect(toItem(row).needsAttention).toBe(false);
+    expect(toItem({ ...row, booking_status: 'cancelled' })).toMatchObject({ stage: 'held', needsAttention: true });
+    expect(toItem({ ...row, booking_status: 'no_show' }).needsAttention).toBe(true);
+    expect(toItem({ ...row, booking_status: 'completed' }).needsAttention).toBe(false);
+    expect(toItem({ ...row, status: 'refunded', booking_status: 'cancelled' }).needsAttention).toBe(false);
   });
   it('the phone is masked and money is a number', () => {
     const it = toItem(row);

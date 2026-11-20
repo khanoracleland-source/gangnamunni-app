@@ -1233,7 +1233,9 @@ A super admin sees every hospital, a hospital account only its own (the same sco
 Counted: booking payments to hospitals with status `paid`, `partially_refunded`, `refunded`, never the sandbox providers (`mock_booking_payment`, `inicis_test`).
 Dates are the payment day (`paid_at`, KST); a week runs Monday to Sunday.
 Money is split by the booking: received (what was paid) - refunded = recognized (booking `completed`) + held (treatment not done yet, the hospital may not take it out).
-The phone number of a patient is masked in every answer.
+The phone number of a patient is masked in every answer, so a phone can be searched only by its last four digits.
+A date range of a year or more is refused (400 `range_too_long`). The hospital and treatment tables show at most 500 rows and answer `truncated: true` when more existed.
+`held` money whose booking is cancelled, refunded or a no-show is also reported as `stuck` (per payment: `needsAttention`): no treatment will release it, it needs a refund or a decision in the PHP admin.
 
 18.1 GRANTs (run as the DB admin; repeat each line for `'127.0.0.1'` and `'localhost'`). The read-only user already reads the booking columns of 17.2 (`id`, `status`, `booking_date`, `booking_time`):
 ```sql

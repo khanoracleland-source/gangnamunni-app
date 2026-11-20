@@ -4,7 +4,7 @@ import { isFail } from '../bookings/bookings.logic';
 import { DB, Db } from '../db/db.module';
 import { isMissingObject } from '../hospitals/hospitals.treatments.logic';
 import {
-  byHospitalQuery, byTreatmentQuery, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
+  byHospitalQuery, byTreatmentQuery, capped, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
   seoulToday, seriesQuery, summaryQuery, Sums, toItem, toSums, weekCompare, PaymentItem,
 } from './payments.logic';
 
@@ -50,15 +50,15 @@ export class PaymentsService {
   async byHospital(scope: AdminScope, raw: Record<string, unknown>) {
     const f = parseRangeQuery(raw, seoulToday());
     if (isFail(f)) throw new BadRequestException(f);
-    const rows = await this.run(byHospitalQuery(scope, f));
-    return { from: f.from, to: f.to, items: rows.map((r) => ({ hospitalId: Number(r.hospital_id), hospitalName: String(r.hospital_name ?? ''), ...toSums(r) })) };
+    const { rows, truncated } = capped(await this.run(byHospitalQuery(scope, f)));
+    return { from: f.from, to: f.to, truncated, items: rows.map((r) => ({ hospitalId: Number(r.hospital_id), hospitalName: String(r.hospital_name ?? ''), ...toSums(r) })) };
   }
 
   async byTreatment(scope: AdminScope, raw: Record<string, unknown>) {
     const f = parseRangeQuery(raw, seoulToday());
     if (isFail(f)) throw new BadRequestException(f);
-    const rows = await this.run(byTreatmentQuery(scope, f));
-    return { from: f.from, to: f.to, items: rows.map((r) => ({ treatmentName: String(r.treatment_name ?? ''), ...toSums(r) })) };
+    const { rows, truncated } = capped(await this.run(byTreatmentQuery(scope, f)));
+    return { from: f.from, to: f.to, truncated, items: rows.map((r) => ({ treatmentName: String(r.treatment_name ?? ''), ...toSums(r) })) };
   }
 
   /** This week against last week (day by day) and this month against last month (running total), for one money measure. */

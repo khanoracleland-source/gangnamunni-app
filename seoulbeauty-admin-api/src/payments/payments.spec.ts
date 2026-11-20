@@ -5,6 +5,7 @@ import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { PaymentsModule } from './payments.module';
 import { DB } from '../db/db.module';
+import { periodsOf, seoulToday } from './payments.logic';
 
 const SUPER = 'PHPSESSID=super';
 const HOSPITAL = 'PHPSESSID=hospital12';
@@ -18,12 +19,14 @@ describe('admin API: payments (read only)', () => {
   const realFetch = global.fetch;
   const calls: Call[] = [];
   let missing = false;
+  let treatmentRows = 1;
   const roStub = {
     query: jest.fn(async (sql: string, values: unknown[] = []) => {
       calls.push({ sql, values });
       if (missing) throw Object.assign(new Error('no table'), { code: 'ER_NO_SUCH_TABLE', errno: 1146 });
       if (sql.includes('COUNT(*) AS cnt')) return [[{ cnt: 1 }]];
-      if (sql.includes('AS payments')) return [[{ payments: 1, received: '180000', refunded: '0', recognized: '0', held: '180000' }]];
+      if (sql.includes('GROUP BY p.treatment_name')) return [Array.from({ length: treatmentRows }, (_, i) => ({ treatment_name: `t${i}`, payments: 1, received: '10', refunded: '0', recognized: '0', held: '10', stuck: '0' }))];
+      if (sql.includes('AS payments')) return [[{ payments: 1, received: '180000', refunded: '0', recognized: '0', held: '180000', stuck: '0' }]];
       if (sql.includes('AS pay_day')) return [[{ pay_day: '2026-11-20', value: '180000' }]];
       if (sql.includes('p.booking_id')) return [[{ id: 9, booking_id: 4, hospital_id: 12, hospital_name: 'H', patient_name: '김', patient_phone: '010-1234-5678', treatment_name: 't', amount: '180000', refunded_amount: '0', status: 'paid', paid_at: '2026-11-20 14:02:00', booking_status: 'confirmed', booking_date: '2026-11-23', booking_time: '10:00:00' }]];
       return [[]];
@@ -45,7 +48,7 @@ describe('admin API: payments (read only)', () => {
     process.env.ADMIN_PANEL_ENABLED = '1';
     process.env.ADMIN_HOSPITALS_ENABLED = '1';
     process.env.ADMIN_PAYMENTS_ENABLED = '1';
-    calls.length = 0; missing = false;
+    calls.length = 0; missing = false; treatmentRows = 1;
     @Global() @Module({ providers: [{ provide: DB, useValue: roStub }], exports: [DB] }) class TestDbModule {}
     const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, MeModule, PaymentsModule] }).compile();
     app = mod.createNestApplication();
@@ -70,7 +73,7 @@ describe('admin API: payments (read only)', () => {
     const r = await get('/v1/payments?from=2026-11-01&to=2026-11-20');
     expect(r.status).toBe(200);
     expect(r.body.items[0]).toMatchObject({ id: 9, stage: 'held', patientPhone: '010-****-5678', amount: 180000, visitDate: '2026-11-23' });
-    expect(r.body.summary).toEqual({ payments: 1, received: 180000, refunded: 0, recognized: 0, held: 180000 });
+    expect(r.body.summary).toEqual({ payments: 1, received: 180000, refunded: 0, recognized: 0, held: 180000, stuck: 0 });
     expect(r.body.total).toBe(1);
   });
   it('a hospital account is held to its own hospital in every query, whatever hospital_id it asks for', async () => {
@@ -92,13 +95,34 @@ describe('admin API: payments (read only)', () => {
     expect((await get('/v1/payments/compare?metric=net')).status).toBe(400);
     expect((await get('/v1/payments/by-hospital?from=2026-11-21&to=2026-11-20')).status).toBe(400);
   });
-  it('compare answers both weeks and both months for the chosen measure', async () => {
+  it('compare reads this week and last week from last Monday, and this month and last month from the 1st of last month', async () => {
     const r = await get('/v1/payments/compare?metric=held');
     expect(r.status).toBe(200);
     expect(r.body.metric).toBe('held');
     expect(r.body.week.lastWeek.days).toHaveLength(7);
     expect(r.body.month.lastMonth.cumulative.length).toBeGreaterThanOrEqual(28);
     expect(calls).toHaveLength(2);
+    const p = periodsOf(seoulToday());
+    expect(calls[0].values.slice(-2)).toEqual([p.week.lastStart, p.today]);
+    expect(calls[1].values.slice(-2)).toEqual([p.month.lastStart, p.today]);
+    expect(calls[0].sql).toContain("COALESCE(b.status, '') <> 'completed'");
+  });
+  it('the hospital and treatment tables say when they were cut', async () => {
+    treatmentRows = 501;
+    const cut = await get('/v1/payments/by-treatment');
+    expect(cut.body.truncated).toBe(true);
+    expect(cut.body.items).toHaveLength(500);
+    treatmentRows = 3;
+    const whole = await get('/v1/payments/by-treatment');
+    expect(whole.body.truncated).toBe(false);
+    expect(whole.body.items).toHaveLength(3);
+  });
+  it('a range of a year or more is a 400 on every route that takes dates', async () => {
+    for (const p of ['', '/by-hospital', '/by-treatment']) {
+      const r = await get(`/v1/payments${p}?from=2000-01-01&to=2026-11-20`);
+      expect(r.status).toBe(400);
+      expect(r.body).toMatchObject({ error: 'range_too_long' });
+    }
   });
   it('missing ledger tables are a clear 503, not a crash', async () => {
     missing = true;

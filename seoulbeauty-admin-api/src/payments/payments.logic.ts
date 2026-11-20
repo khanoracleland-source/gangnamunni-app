@@ -4,6 +4,12 @@ import { Fail, parseDay, parsePositiveInt, Query, scopeClause } from '../booking
 export const PAY_PER_PAGE = 20;
 export const MAX_PAGE = 100000;
 export const SEARCH_MAX = 60;
+/** One request never reads more than about a year of payments; a wider range is a 400 instead of a heavy query. */
+export const MAX_RANGE_DAYS = 366;
+/** Hospital and treatment tables show at most this many rows; one more is read to tell the caller the table was cut. */
+export const TABLE_CAP = 500;
+/** Bookings in these states have no treatment to wait for: money still held for them needs a refund or a decision, not more waiting. */
+export const DEAD_BOOKING_STATUSES = ['cancelled', 'refunded', 'no_show'] as const;
 /** Sandbox / mock payments never count as revenue. */
 export const TEST_PROVIDERS = ['mock_booking_payment', 'inicis_test'] as const;
 export const COUNTED_STATUSES = ['paid', 'partially_refunded', 'refunded'] as const;
@@ -28,8 +34,9 @@ export const METRIC_SQL: Record<Metric, string> = { received: 'p.amount', recogn
 const BASE_SQL = `p.payment_type = 'booking' AND p.funds_recipient = 'hospital' AND p.provider NOT IN (${TEST_PROVIDERS.map(() => '?').join(', ')}) AND p.status IN (${COUNTED_STATUSES.map(() => '?').join(', ')})`;
 const baseValues = (): unknown[] => [...TEST_PROVIDERS, ...COUNTED_STATUSES];
 const FROM_SQL = 'FROM gangnamunni_platform_payments p LEFT JOIN gangnamunni_bookings b ON b.id = p.booking_id';
+const STUCK_SQL = `CASE WHEN b.status IN (${DEAD_BOOKING_STATUSES.map((x) => `'${x}'`).join(', ')}) THEN ${NET} ELSE 0 END`;
 const SUMS_SQL = `COUNT(*) AS payments, COALESCE(SUM(p.amount), 0) AS received, COALESCE(SUM(p.refunded_amount), 0) AS refunded,
-  COALESCE(SUM(${RECOGNIZED_SQL}), 0) AS recognized, COALESCE(SUM(${HELD_SQL}), 0) AS held`;
+  COALESCE(SUM(${RECOGNIZED_SQL}), 0) AS recognized, COALESCE(SUM(${HELD_SQL}), 0) AS held, COALESCE(SUM(${STUCK_SQL}), 0) AS stuck`;
 
 // ───────── Seoul calendar ─────────
 export const seoulToday = (now: Date = new Date()): string => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
@@ -79,9 +86,12 @@ function parseRange(raw: Record<string, unknown>, today: string): RangeFilters |
   if (s(raw.from).trim() !== '') { const d = parseDay(raw.from); if (!d) return { error: 'invalid', field: 'from' }; out.from = d; }
   if (s(raw.to).trim() !== '') { const d = parseDay(raw.to); if (!d) return { error: 'invalid', field: 'to' }; out.to = d; }
   if (out.from > out.to) return { error: 'invalid', field: 'to' };
+  if ((utc(out.to).getTime() - utc(out.from).getTime()) / 86400000 >= MAX_RANGE_DAYS) return { error: 'range_too_long', field: 'to' };
   return out;
 }
 export const parseRangeQuery = parseRange;
+/** The first TABLE_CAP rows and whether more existed. */
+export const capped = <T>(rows: T[]): { rows: T[]; truncated: boolean } => ({ rows: rows.slice(0, TABLE_CAP), truncated: rows.length > TABLE_CAP });
 
 /** Payment date range defaults to this month so far. An unknown status or a malformed date is a 400, never silently ignored. */
 export function parsePaymentQuery(raw: Record<string, unknown>, today: string = seoulToday()): PaymentFilters | Fail {
@@ -125,9 +135,15 @@ function whereOf(scope: AdminScope, f: PaymentFilters): Query {
   else if (f.status === 'partial') parts.push(`p.status = 'partially_refunded'`);
   else if (f.status === 'refunded') parts.push(`p.status = 'refunded'`);
   if (f.q) {
-    const like = `%${escapeLike(f.q)}%`;
-    parts.push("(p.patient_name LIKE ? ESCAPE '\\\\' OR p.patient_phone LIKE ? ESCAPE '\\\\' OR p.treatment_name LIKE ? ESCAPE '\\\\' OR p.hospital_name LIKE ? ESCAPE '\\\\')");
-    values.push(like, like, like, like);
+    if (/^\d{4}$/.test(f.q)) {
+      // Phone numbers are masked in every answer, so they are searchable only by their last four digits.
+      parts.push("RIGHT(REGEXP_REPLACE(p.patient_phone, '[^0-9]', ''), 4) = ?");
+      values.push(f.q);
+    } else {
+      const like = `%${escapeLike(f.q)}%`;
+      parts.push("(p.patient_name LIKE ? ESCAPE '\\\\' OR p.treatment_name LIKE ? ESCAPE '\\\\' OR p.hospital_name LIKE ? ESCAPE '\\\\')");
+      values.push(like, like, like);
+    }
   }
   return { sql: parts.join(' AND '), values };
 }
@@ -154,11 +170,11 @@ export function byHospitalQuery(scope: AdminScope, f: RangeFilters): Query {
   const sc = scopeClause(scope, f.hospitalId, 'h.id');
   return {
     sql: `SELECT h.id AS hospital_id, h.name AS hospital_name, COALESCE(a.payments, 0) AS payments, COALESCE(a.received, 0) AS received, COALESCE(a.refunded, 0) AS refunded,
-                 COALESCE(a.recognized, 0) AS recognized, COALESCE(a.held, 0) AS held
+                 COALESCE(a.recognized, 0) AS recognized, COALESCE(a.held, 0) AS held, COALESCE(a.stuck, 0) AS stuck
           FROM gangnamunni_hospitals h
           LEFT JOIN (SELECT p.hospital_id, ${SUMS_SQL} ${FROM_SQL} WHERE ${BASE_SQL} AND ${PAID_RANGE_SQL} GROUP BY p.hospital_id) a ON a.hospital_id = h.id
           WHERE ${sc.sql}
-          ORDER BY (COALESCE(a.received, 0) - COALESCE(a.refunded, 0)) DESC, h.name ASC LIMIT 500`,
+          ORDER BY (COALESCE(a.received, 0) - COALESCE(a.refunded, 0)) DESC, h.name ASC LIMIT ${TABLE_CAP + 1}`,
     values: [...baseValues(), f.from, f.to, ...sc.values],
   };
 }
@@ -166,7 +182,7 @@ export function byTreatmentQuery(scope: AdminScope, f: RangeFilters): Query {
   const sc = scopeClause(scope, f.hospitalId, 'p.hospital_id');
   return {
     sql: `SELECT p.treatment_name AS treatment_name, ${SUMS_SQL} ${FROM_SQL} WHERE ${BASE_SQL} AND ${sc.sql} AND ${PAID_RANGE_SQL}
-          GROUP BY p.treatment_name ORDER BY (SUM(p.amount) - SUM(p.refunded_amount)) DESC, p.treatment_name ASC LIMIT 200`,
+          GROUP BY p.treatment_name ORDER BY (SUM(p.amount) - SUM(p.refunded_amount)) DESC, p.treatment_name ASC LIMIT ${TABLE_CAP + 1}`,
     values: [...baseValues(), ...sc.values, f.from, f.to],
   };
 }
@@ -185,15 +201,18 @@ export function seriesQuery(scope: AdminScope, hospitalId: number, metric: Metri
 }
 
 // ───────── answers ─────────
-export interface Sums { payments: number; received: number; refunded: number; recognized: number; held: number }
+/** `stuck` is the part of `held` whose booking is cancelled / refunded / no-show: it will not be released by a treatment. */
+export interface Sums { payments: number; received: number; refunded: number; recognized: number; held: number; stuck: number }
 export const toSums = (r: Record<string, unknown> | undefined): Sums => ({
-  payments: Number(r?.payments) || 0, received: Number(r?.received) || 0, refunded: Number(r?.refunded) || 0, recognized: Number(r?.recognized) || 0, held: Number(r?.held) || 0,
+  payments: Number(r?.payments) || 0, received: Number(r?.received) || 0, refunded: Number(r?.refunded) || 0, recognized: Number(r?.recognized) || 0, held: Number(r?.held) || 0, stuck: Number(r?.stuck) || 0,
 });
 export interface PaymentItem {
   id: number; bookingId: number; hospitalId: number; hospitalName: string; patientName: string; patientPhone: string; treatmentName: string;
   amount: number; refundedAmount: number; status: string; paidAt: string; refundedAt: string; bookingStatus: string; visitDate: string; visitTime: string;
   /** held = real money, treatment not done yet; recognized = treatment done; refunded = fully returned. */
   stage: 'held' | 'recognized' | 'refunded';
+  /** Held, but the booking is cancelled / refunded / no-show: the money will not be released by a treatment. */
+  needsAttention: boolean;
 }
 /** 010-1234-5678 -> 010-****-5678; anything else keeps only its last four characters. */
 export function maskPhone(v: string): string {
@@ -210,6 +229,7 @@ export function toItem(r: Record<string, unknown>): PaymentItem {
     patientPhone: maskPhone(s(r.patient_phone)), treatmentName: s(r.treatment_name), amount: Number(r.amount) || 0, refundedAmount: Number(r.refunded_amount) || 0, status,
     paidAt: s(r.paid_at), refundedAt: s(r.refunded_at), bookingStatus: booking, visitDate: s(r.booking_date).slice(0, 10), visitTime: s(r.booking_time).slice(0, 5),
     stage: status === 'refunded' ? 'refunded' : booking === 'completed' ? 'recognized' : 'held',
+    needsAttention: status !== 'refunded' && (DEAD_BOOKING_STATUSES as readonly string[]).includes(booking),
   };
 }
 
