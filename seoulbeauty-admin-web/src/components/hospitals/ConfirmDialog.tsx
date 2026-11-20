@@ -16,6 +16,10 @@ export type ConfirmSpec = {
   cancelLabel: string;
   /** Which button takes focus first: "cancel" for choices that are hard to take back. */
   focus?: "confirm" | "cancel";
+  /** "reject" draws the confirm button as the outlined red one (a removal); default is the primary one. */
+  confirmTone?: "primary" | "reject";
+  /** Replaces the working text of the confirm button while `busy`. */
+  busyLabel?: string;
 };
 
 /** Asks before something happens. Native <dialog>: Esc, focus trap and return of focus come with it; while `busy` it cannot be dismissed. */
@@ -23,12 +27,15 @@ export default function ConfirmDialog({
   spec,
   busy = false,
   error = null,
+  className,
   onConfirm,
   onClose,
 }: {
   spec: ConfirmSpec | null;
   busy?: boolean;
   error?: string | null;
+  /** Extra class of the <dialog> (a page's own sizes). */
+  className?: string;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -51,7 +58,7 @@ export default function ConfirmDialog({
   return (
     <dialog
       ref={ref}
-      className="dialog"
+      className={className ? `dialog ${className}` : "dialog"}
       aria-labelledby={titleId}
       onCancel={(e) => {
         if (busy) e.preventDefault();
@@ -82,8 +89,8 @@ export default function ConfirmDialog({
             <button type="button" className="btn btn--ghost" onClick={onClose} disabled={busy} data-autofocus={focusConfirm ? undefined : ""}>
               {spec.cancelLabel}
             </button>
-            <button type="button" className="btn btn--primary" onClick={onConfirm} disabled={busy} data-autofocus={focusConfirm ? "" : undefined}>
-              {busy ? t("h.act.working") : spec.confirmLabel}
+            <button type="button" className={spec.confirmTone === "reject" ? "btn btn--ghost btn--reject" : "btn btn--primary"} onClick={onConfirm} disabled={busy} data-autofocus={focusConfirm ? "" : undefined}>
+              {busy ? (spec.busyLabel ?? t("h.act.working")) : spec.confirmLabel}
             </button>
           </div>
         </div>

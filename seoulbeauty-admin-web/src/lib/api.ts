@@ -16,9 +16,10 @@ export type Admin = {
 /**
  * Which pages of this panel the server has switched on. `hospitalsWrite`: hospital data may be changed here (needs `hospitals` on as well).
  * `hospitalsDelete`: a super admin may delete a hospital for good; `archive`: the archive of deleted hospitals is open (the same switch).
+ * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -132,6 +133,8 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         treatments: obj(d.features).treatments === true,
         treatmentsWrite: obj(d.features).treatmentsWrite === true,
         treatmentsImages: obj(d.features).treatmentsImages === true,
+        treatmentUnits: obj(d.features).treatmentUnits === true,
+        treatmentUnitsWrite: obj(d.features).treatmentUnitsWrite === true,
         hospitalApply: obj(d.features).hospitalApply === true,
         admins: obj(d.features).admins === true,
         adminsWrite: obj(d.features).adminsWrite === true,
@@ -1706,4 +1709,36 @@ export async function setAdminActive(id: number, active: boolean): Promise<Write
 export async function deleteAdmin(id: number, confirm: string): Promise<WriteResult<Record<string, never>>> {
   const res = await sendJson("DELETE", adminPath(id), { confirm });
   return res.ok ? { ok: true, data: {} } : res;
+}
+
+// ---- Price units (the units of the treatment price forms) ----
+
+export type TreatmentUnit = { id: number; name: string };
+/** `tableReady` false = the units table is missing or not readable on the server (the page says how to create it). */
+export type TreatmentUnitsData = { tableReady: boolean; items: TreatmentUnit[] };
+export type UnitAddStatus = "created" | "restored" | "exists";
+export type UnitAddResult = { unit: TreatmentUnit; status: UnitAddStatus };
+
+const treatmentUnit = (v: unknown): TreatmentUnit => ({ id: num(obj(v).id), name: str(obj(v).name) });
+
+/** The active units in the order the server sends (Latin first, then Korean). Super admin only. */
+export async function fetchTreatmentUnits(signal?: AbortSignal): Promise<ApiResult<TreatmentUnitsData>> {
+  const res = await getJson("/v1/treatment-units", signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return { ok: true, data: { tableReady: d.tableReady !== false, items: list(d.items).map(treatmentUnit).filter((u) => u.id > 0 && u.name !== "") } };
+}
+
+/** Adds a unit; a removed one of the same name is switched on again ("restored"), an active one answers "exists". */
+export async function addTreatmentUnit(name: string): Promise<WriteResult<UnitAddResult>> {
+  const res = await sendJson("POST", "/v1/treatment-units", { name });
+  if (!res.ok) return res;
+  const status = obj(res.data).status;
+  return { ok: true, data: { unit: treatmentUnit(obj(res.data).unit), status: status === "restored" || status === "exists" ? status : "created" } };
+}
+
+/** Removes a unit from the lists of new price forms; prices that already carry it keep it. */
+export async function removeTreatmentUnit(id: number): Promise<WriteResult<null>> {
+  const res = await sendJson("DELETE", `/v1/treatment-units/${encodeURIComponent(String(id))}`);
+  return res.ok ? { ok: true, data: null } : res;
 }

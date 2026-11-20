@@ -2559,6 +2559,10 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 [data-sonner-toast][data-y-position="top"][data-mounted="false"] { --y: translateY(-180%); }
 [data-sonner-toast][data-y-position="top"] { transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease, height 0.3s ease, box-shadow 0.2s ease; }
 @media (prefers-reduced-motion: reduce) { [data-sonner-toast][data-y-position="top"] { transition: opacity 0.2s ease; } }
+/* A custom notice has no width of its own in sonner (it is absolutely placed), so it hugged the left edge of the stack. It is centred in the stack at the width of its content (never wider than the stack). */
+[data-sonner-toast][data-styled="false"] { left: 0; right: 0; width: fit-content; max-width: 100%; margin-inline: auto; }
+/* With the sidebar docked (1200px and wider) the stack is centred over the page area, not over the whole window. */
+@media (min-width: 1200px) { [data-sonner-toaster][data-x-position="center"] { left: calc(50% + var(--sidebar-w) / 2); } }
 
 /* Admins page: the account column carries name and login; waiting accounts show a pip countdown. */
 .adm-count { margin: 0 0 20px; color: var(--muted); font-size: 13px; }
@@ -2649,3 +2653,81 @@ body:has(dialog[open]) { overflow: hidden; }
 .hpick__name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
 .hpick__chosen .txtbtn { min-height: 44px; }
 @media (max-width: 899px) { .hpick__list { max-height: 40dvh; } }
+
+/* ───────── Price units (/treatment-units) ─────────
+   Everything that can be pressed is 44px on this page, on every screen; the shared .btn / .input (40px) are left alone.
+   Breakpoints are the existing ones: 899 (one column of the add panel, 3 columns), 576 (2 columns, tighter padding), 360 (the grid fills by width). */
+.units .input { height: 44px; }
+.units .btn { min-height: 44px; }
+.units .input[aria-invalid="true"] { border-color: var(--down); }
+.units__card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow-card); overflow: hidden; }
+.units__add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 1.25fr); gap: 24px; align-items: center; padding: 24px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.units__h2, .units__title { font-size: 16px; line-height: 24px; font-weight: 700; }
+.units__sub { margin-top: 2px; font-size: 13px; color: var(--muted); }
+.units__row { display: flex; gap: 8px; }
+.units__row .input { flex: 1; min-width: 0; }
+.units__row .btn { flex: none; }
+.units__hint { margin-top: 8px; font-size: 13px; color: var(--muted); }
+.units__err { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; font-size: 13px; color: var(--down); }
+.units__err .icon { margin-top: 2px; }
+.units__lib { padding: 24px; }
+.units__tool { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.units__title { display: flex; align-items: center; gap: 8px; }
+.units__cnt { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 24px; padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-text); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.units__search { position: relative; width: 240px; flex: none; }
+.units__search .icon { position: absolute; left: 12px; top: 12px; color: var(--muted); pointer-events: none; }
+.units__search .input { padding-left: 38px; }
+.units__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.units__item { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 56px; padding: 6px 6px 6px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.units__name { min-width: 0; font-size: 15px; line-height: 22px; font-weight: 600; overflow-wrap: anywhere; }
+.units__del { flex: none; width: 44px; height: 44px; }
+.units__empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 16px; text-align: center; font-size: 15px; color: var(--muted); }
+.units__empty p { max-width: 36ch; }
+.units__foot { display: flex; align-items: flex-start; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.6; color: var(--muted); }
+.units__foot .icon { flex: none; margin-top: 3px; }
+
+/* Delete dialog: 440px, outlined red confirm button (btn--reject), name line under the title. */
+.dialog--unit { width: min(440px, calc(100% - 32px)); }
+.dialog--unit .dialog__head { margin-bottom: 12px; }
+.dialog--unit .dialog__text--strong { margin: 0 0 4px; font-size: 15px; }
+.dialog--unit .dialog__text { font-size: 14px; line-height: 1.5; color: var(--muted); }
+.dialog--unit .dialog__text--strong { color: var(--ink); }
+.dialog--unit .dialog__foot { gap: 8px; }
+.dialog--unit .dialog__foot .btn { min-height: 44px; }
+
+/* Notice (sonner custom): icon, text, action, close. Narrow screens put the action on its own line under the text. */
+.units-toast { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px; width: 100%; padding: 10px 6px 10px 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r-md); box-shadow: var(--shadow-pop); font-family: var(--font); font-size: 14px; line-height: 22px; }
+.units-toast__ic { flex: none; order: 0; margin-top: 6px; color: var(--accent-text); }
+.units-toast--ok .units-toast__ic { color: var(--up); }
+.units-toast--error .units-toast__ic { color: var(--down); }
+.units-toast__tx { flex: 1; order: 1; min-width: 0; padding: 5px 0; overflow-wrap: anywhere; }
+.units-toast__acts { flex: none; order: 2; align-self: center; }
+.units-toast__act { min-height: 32px; padding: 0 10px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--accent-text); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.units-toast__act:hover { background: var(--surface-2); }
+.units-toast__act:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus); }
+.units-toast__cl { flex: none; order: 3; width: 32px; height: 32px; margin: 0; }
+/* Touch screens keep the 44px targets. */
+@media (pointer: coarse), (max-width: 576px) {
+  .units-toast__act { min-height: 44px; }
+  .units-toast__cl { width: 44px; height: 44px; margin: -6px 0; }
+}
+
+@media (max-width: 899px) {
+  .units__add { grid-template-columns: minmax(0, 1fr); }
+  .units__tool { flex-direction: column; align-items: stretch; gap: 12px; }
+  .units__search { width: 100%; }
+  .units__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 576px) {
+  .units__add { gap: 16px; padding: 16px; }
+  .units__lib { padding: 16px; }
+  .units__foot { padding: 16px; }
+  .units__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .units__item { padding: 6px 4px 6px 12px; }
+  .dialog--unit .dialog__foot .btn { flex: 1 1 0; }
+  .units-toast__acts { flex: 0 0 100%; order: 4; padding-left: 30px; }
+}
+/* 358px and wider keep two columns; 320 gets one (the longest name must not break inside a word). */
+@media (max-width: 360px) {
+  .units__grid { grid-template-columns: repeat(auto-fill, minmax(144px, 1fr)); }
+}

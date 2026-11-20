@@ -119,7 +119,7 @@ const MENU: MenuGroup[] = [
     label: L("시술 관리", "Treatment management"),
     icon: "heart",
     items: [
-      legacy("treatment_units", "admin_treatment_units.php", "단위 관리", "Units", "tag"),
+      { ...legacy("treatment_units", "admin_treatment_units.php", "단위 관리", "Units", "tag"), superOnly: true },
       // Becomes a page of this panel (super admin only) once the server has the treatment master switched on.
       { ...legacy("treatment_master", "admin_treatments.php", "시술 마스터 관리", "Treatment master list", "heart"), superOnly: true },
       legacy("hospital_treatments", "admin_hospital_treatments.php", "병원별 시술 배정 · 이미지 검수", "Assign treatments to hospitals and review images", "image"),
@@ -239,10 +239,11 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<"hospitals" | "treatments" | "hospitalApply" | "admins", { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
   hospitalApply: { key: "hospital_apply", href: "/hospital-apply" },
   treatments: { key: "treatment_master", href: "/treatments" },
+  treatmentUnits: { key: "treatment_units", href: "/treatment-units" },
   admins: { key: "admin_accounts", href: "/admins" },
 };
 

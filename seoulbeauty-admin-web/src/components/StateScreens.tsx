@@ -44,10 +44,10 @@ export function ForbiddenScreen({ variant = "super" }: { variant?: "super" | "ho
 }
 
 /**
- * "disabled": the whole panel is switched off. "hospitalsOff": only the hospitals page is; "treatmentsOff": only the treatment master page is.
+ * "disabled": the whole panel is switched off. "hospitalsOff": only the hospitals page is; "treatmentsOff": only the treatment master page is; "treatmentUnitsOff": only the price units page is.
  * "session": the sign-in check is down. "network": the dashboard numbers did not arrive. "load": any other page's data did not arrive.
  */
-export type ErrorKind = "disabled" | "hospitalsOff" | "adminsOff" | "archiveOff" | "treatmentsOff" | "session" | "network" | "load";
+export type ErrorKind = "disabled" | "hospitalsOff" | "adminsOff" | "archiveOff" | "treatmentsOff" | "treatmentUnitsOff" | "session" | "network" | "load";
 
 export function ErrorScreen({ kind, onRetry, retrying }: { kind: ErrorKind; onRetry: () => void; retrying: boolean }) {
   const t = useT();
