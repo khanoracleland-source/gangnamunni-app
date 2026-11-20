@@ -7,7 +7,7 @@ import {
 const ALL = { scope: 'all' as const, hospitalIds: [] };
 const OWN12 = { scope: 'own' as const, hospitalIds: [12] };
 const NONE = { scope: 'own' as const, hospitalIds: [] };
-const filters = (o: Partial<PaymentFilters> = {}): PaymentFilters => ({ hospitalId: 0, status: '', from: '2026-11-01', to: '2026-11-20', q: '', page: 1, ...o });
+const filters = (o: Partial<PaymentFilters> = {}): PaymentFilters => ({ hospitalId: 0, from: '2026-11-01', to: '2026-11-20', q: '', page: 1, ...o });
 
 describe('Seoul calendar', () => {
   it('Friday 2026-11-20 is the 5th day of a Monday-to-Sunday week and the 20th of the month', () => {
@@ -37,11 +37,11 @@ describe('Seoul calendar', () => {
 
 describe('payment queries', () => {
   it('the dates default to this month so far; bad input is a failure, never ignored', () => {
-    expect(parsePaymentQuery({}, '2026-11-20')).toMatchObject({ from: '2026-11-01', to: '2026-11-20', status: '', page: 1 });
-    for (const bad of [{ status: 'bogus' }, { from: '2026-02-30' }, { hospital_id: '0' }, { hospital_id: 'x' }, { page: '0' }, { q: 'x'.repeat(61) }, { from: '2026-11-21', to: '2026-11-20' }]) {
+    expect(parsePaymentQuery({}, '2026-11-20')).toMatchObject({ from: '2026-11-01', to: '2026-11-20', q: '', page: 1 });
+    for (const bad of [{ from: '2026-02-30' }, { hospital_id: '0' }, { hospital_id: 'x' }, { page: '0' }, { q: 'x'.repeat(61) }, { from: '2026-11-21', to: '2026-11-20' }]) {
       expect(isFail(parsePaymentQuery(bad, '2026-11-20'))).toBe(true);
     }
-    expect(isFail(parsePaymentQuery({ status: 'held', hospital_id: '12', page: '2', q: '김' }, '2026-11-20'))).toBe(false);
+    expect(isFail(parsePaymentQuery({ hospital_id: '12', page: '2', q: '김' }, '2026-11-20'))).toBe(false);
   });
   it('compare takes only the known measures', () => {
     expect(parseCompareQuery({})).toEqual({ hospitalId: 0, metric: 'received' });
@@ -59,14 +59,17 @@ describe('payment queries', () => {
     expect(q.sql).not.toContain('DROP');
     expect(q.values).toContain("%x'; DROP TABLE a;-- 100\\%\\_%");
   });
-  it('a phone number is searchable only by its last four digits (it is masked in every answer)', () => {
-    const four = countQuery(ALL, filters({ q: '5678' }));
-    expect(four.sql).toContain('REGEXP_REPLACE(p.patient_phone');
-    expect(four.values).toContain('5678');
-    for (const q of ['01012345678', '010-1234', '12345']) {
-      const w = countQuery(ALL, filters({ q }));
-      expect(w.sql).not.toContain('patient_phone');
-    }
+  it('the list is searched by the patient name only: no phone, treatment, hospital name or status', () => {
+    const w = countQuery(ALL, filters({ q: '5678' }));
+    expect(w.sql).toContain('p.patient_name LIKE ?');
+    for (const col of ['patient_phone', 'treatment_name', 'hospital_name', 'b.status = ', 'p.status = ']) expect(w.sql).not.toContain(col);
+    expect(w.values).toContain('%5678%');
+    expect(countQuery(ALL, filters()).sql).not.toContain('patient_name');
+  });
+  it('a status in the query is ignored: the list has no status filter', () => {
+    const f = parsePaymentQuery({ status: 'held' }, '2026-11-20');
+    expect(isFail(f)).toBe(false);
+    expect(f).not.toHaveProperty('status');
   });
   it('a range of a year or more is refused; just under a year is fine', () => {
     expect(isFail(parsePaymentQuery({ from: '2000-01-01', to: '2026-11-20' }, '2026-11-20'))).toBe(true);
@@ -96,8 +99,6 @@ describe('payment queries', () => {
   it('held and recognized follow the booking status', () => {
     const held = summaryQuery(ALL, filters()).sql;
     expect(held).toContain("b.status = 'completed'");
-    expect(listQuery(ALL, filters({ status: 'held' })).sql).toContain("COALESCE(b.status, '') <> 'completed'");
-    expect(listQuery(ALL, filters({ status: 'recognized' })).sql).toContain("b.status = 'completed'");
   });
   it('the page is cut by 20 rows', () => {
     expect(listQuery(ALL, filters({ page: 3 })).values.slice(-2)).toEqual([20, 40]);

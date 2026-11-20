@@ -91,7 +91,7 @@ describe('admin API: payments (read only)', () => {
     expect(calls.every((c) => c.sql.includes('1 = 0'))).toBe(true);
   });
   it('a bad query is a 400, not an SQL error', async () => {
-    for (const q of ['status=nope', 'from=2026-13-40', 'page=0', 'hospital_id=abc']) expect((await get(`/v1/payments?${q}`)).status).toBe(400);
+    for (const q of ['from=2026-13-40', 'page=0', 'hospital_id=abc']) expect((await get(`/v1/payments?${q}`)).status).toBe(400);
     expect((await get('/v1/payments/compare?metric=net')).status).toBe(400);
     expect((await get('/v1/payments/by-hospital?from=2026-11-21&to=2026-11-20')).status).toBe(400);
   });

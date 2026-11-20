@@ -13,7 +13,6 @@ export const DEAD_BOOKING_STATUSES = ['cancelled', 'refunded', 'no_show'] as con
 /** Sandbox / mock payments never count as revenue. */
 export const TEST_PROVIDERS = ['mock_booking_payment', 'inicis_test'] as const;
 export const COUNTED_STATUSES = ['paid', 'partially_refunded', 'refunded'] as const;
-export const LIST_STATUSES = ['held', 'recognized', 'partial', 'refunded'] as const;
 export const METRICS = ['received', 'recognized', 'held'] as const;
 export type Metric = (typeof METRICS)[number];
 
@@ -73,7 +72,8 @@ export function periodsOf(today: string): Periods {
 export const percentChange = (now: number, before: number): number | null => (before > 0 ? Math.round(((now - before) / before) * 1000) / 10 : null);
 
 // ───────── query strings ─────────
-export interface PaymentFilters { hospitalId: number; status: string; from: string; to: string; q: string; page: number }
+/** The list is narrowed by hospital, payment dates and the patient's name, nothing else. */
+export interface PaymentFilters { hospitalId: number; from: string; to: string; q: string; page: number }
 export interface RangeFilters { hospitalId: number; from: string; to: string }
 
 function parseRange(raw: Record<string, unknown>, today: string): RangeFilters | Fail {
@@ -93,13 +93,11 @@ export const parseRangeQuery = parseRange;
 /** The first TABLE_CAP rows and whether more existed. */
 export const capped = <T>(rows: T[]): { rows: T[]; truncated: boolean } => ({ rows: rows.slice(0, TABLE_CAP), truncated: rows.length > TABLE_CAP });
 
-/** Payment date range defaults to this month so far. An unknown status or a malformed date is a 400, never silently ignored. */
+/** Payment date range defaults to this month so far. A malformed date or hospital is a 400, never silently ignored. */
 export function parsePaymentQuery(raw: Record<string, unknown>, today: string = seoulToday()): PaymentFilters | Fail {
   const r = parseRange(raw, today);
   if ('error' in r) return r;
-  const out: PaymentFilters = { ...r, status: '', q: '', page: 1 };
-  const st = s(raw.status).trim();
-  if (st !== '') { if (!(LIST_STATUSES as readonly string[]).includes(st)) return { error: 'invalid', field: 'status' }; out.status = st; }
+  const out: PaymentFilters = { ...r, q: '', page: 1 };
   const q = stripControl(s(raw.q));
   if (q.length > SEARCH_MAX) return { error: 'invalid', field: 'q' };
   out.q = q;
@@ -130,20 +128,10 @@ function whereOf(scope: AdminScope, f: PaymentFilters): Query {
   const sc = scopeClause(scope, f.hospitalId, 'p.hospital_id');
   const parts = [BASE_SQL, sc.sql, PAID_RANGE_SQL];
   const values: unknown[] = [...baseValues(), ...sc.values, f.from, f.to];
-  if (f.status === 'held') parts.push(`p.status IN ('paid', 'partially_refunded') AND COALESCE(b.status, '') <> 'completed'`);
-  else if (f.status === 'recognized') parts.push(`p.status IN ('paid', 'partially_refunded') AND b.status = 'completed'`);
-  else if (f.status === 'partial') parts.push(`p.status = 'partially_refunded'`);
-  else if (f.status === 'refunded') parts.push(`p.status = 'refunded'`);
   if (f.q) {
-    if (/^\d{4}$/.test(f.q)) {
-      // Phone numbers are masked in every answer, so they are searchable only by their last four digits.
-      parts.push("RIGHT(REGEXP_REPLACE(p.patient_phone, '[^0-9]', ''), 4) = ?");
-      values.push(f.q);
-    } else {
-      const like = `%${escapeLike(f.q)}%`;
-      parts.push("(p.patient_name LIKE ? ESCAPE '\\\\' OR p.treatment_name LIKE ? ESCAPE '\\\\' OR p.hospital_name LIKE ? ESCAPE '\\\\')");
-      values.push(like, like, like);
-    }
+    // Only the patient's name (the phone number is masked in every answer, so it is not searched).
+    parts.push("p.patient_name LIKE ? ESCAPE '\\\\'");
+    values.push(`%${escapeLike(f.q)}%`);
   }
   return { sql: parts.join(' AND '), values };
 }
