@@ -355,8 +355,8 @@ function Board({ me }: { me: Me }) {
                     <td className="bk-num">{r.id}</td>
                     <td><button type="button" className="bk-name" title={r.name} onClick={() => setDetailId(r.id)}>{r.name}</button></td>
                     <td className="bk-num bk-nowrap">{r.phone}</td>
-                    {!own ? <td className="bk-ell" title={r.hospitalName}>{r.hospitalName}</td> : null}
-                    <td className="bk-ell" title={r.treatment}>{r.treatment}</td>
+                    {!own ? <td><span className="bk-ell" title={r.hospitalName}>{r.hospitalName}</span></td> : null}
+                    <td><span className="bk-ell" title={r.treatment}>{r.treatment}</span></td>
                     <td className="bk-num"><DateText date={r.date} /></td>
                     <td className="bk-num">{r.time}</td>
                     <td>{r.photoCount ? <span className="bk-photos"><Icon name="image" size={14} />{r.photoCount}</span> : <span className="muted">—</span>}</td>
