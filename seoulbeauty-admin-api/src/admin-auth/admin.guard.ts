@@ -281,6 +281,29 @@ export class TreatmentUnitsWriteEnabledGuard implements CanActivate {
   }
 }
 
+/** Booking management (/v1/bookings*). Independent of the hospital switches; hospital roles still need ADMIN_HOSPITALS_ENABLED (see scopeOf). Only the exact value "1" turns it on. */
+export const bookingsEnabled = (): boolean => process.env.ADMIN_BOOKINGS_ENABLED === '1';
+/** Assigning doctors and moving a booking to its next status. Needs the booking page on as well; only the exact value "1" turns it on. */
+export const bookingsWriteEnabled = (): boolean => bookingsEnabled() && process.env.ADMIN_BOOKINGS_WRITE === '1';
+
+/** With ADMIN_BOOKINGS_ENABLED off the booking routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class BookingsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !bookingsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the write switch off the writing booking routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class BookingsWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !bookingsWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Registering a hospital by a super admin (/v1/hospital-apply*). Independent of the hospital switches; needs the write user and the upload folder. Only the exact value "1" turns it on. */
 export const hospitalApplyEnabled = (): boolean => process.env.ADMIN_HOSPITAL_APPLY_ENABLED === '1';
 

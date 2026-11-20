@@ -12,6 +12,7 @@ import { HospitalArchiveModule } from './hospital-archive/hospital-archive.modul
 import { MapConfigModule } from './map-config/map-config.module';
 import { TreatmentsModule } from './treatments/treatments.module';
 import { TreatmentUnitsModule } from './treatment-units/treatment-units.module';
+import { BookingsModule } from './bookings/bookings.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -29,6 +30,7 @@ import { HealthController } from './health/health.controller';
     MapConfigModule,
     TreatmentsModule,
     TreatmentUnitsModule,
+    BookingsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

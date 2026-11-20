@@ -1182,6 +1182,49 @@ ADMIN_TREATMENT_UNITS_WRITE=1
 Then `sudo systemctl restart seoulbeauty-admin-api`. A refused grant shows as `503 {"error":"write_unavailable"}` on writes (reason in the journal) and as `tableReady:false` on the list.
 Turning it off: `ADMIN_TREATMENT_UNITS_WRITE=0` (the page becomes read-only) or `ADMIN_TREATMENT_UNITS_ENABLED=0` (all routes 404), then restart.
 
+## 17. Bookings (`ADMIN_BOOKINGS_ENABLED`, optional; super admin and hospital accounts)
+`/v1/bookings` (list, detail, hospital filter, Excel by visit day) and, with the write switch, the doctor assignment and the status flow
+(pending → checking → confirmed → completed, cancel while checking). A super admin sees every hospital, a hospital account only its own.
+A confirmation also opens the payment order (once per booking) and the member gets an in-app notice and a push after the change is saved.
+Points are not connected: `ADMIN_BOOKINGS_POINTS` is reserved and does nothing yet.
+
+17.1 Check the three columns the status flow writes exist (empty result = missing; ask before altering the schema):
+```sql
+SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '<DB_NAME>' AND TABLE_NAME = 'gangnamunni_bookings'
+  AND COLUMN_NAME IN ('cancelled_by', 'confirmed_at', 'expire_notice_seen_at', 'cancelled_at', 'cancel_reason');
+```
+17.2 GRANTs (run as the DB admin; repeat each line for `'127.0.0.1'` and `'localhost'`):
+```sql
+-- read-only user
+GRANT SELECT (id, hospital_id, hospital_name, name, phone, treatment, booking_date, booking_time, status, doctor_id, doctor_name, memo, cancel_reason, photo_urls, price, mb_id, created_at) ON <DB_NAME>.gangnamunni_bookings TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, booking_id, question, answer) ON <DB_NAME>.gangnamunni_booking_answers TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, name, hospital_id, status) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, name) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (mb_id, mb_hp, mb_datetime) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (mb_id, pt_token, pt_platform, pt_device_info, pt_use) ON <DB_NAME>.g5_push_tokens TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (member_id, noti_booking) ON <DB_NAME>.gangnamunni_notification_settings TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (setting_key, setting_value) ON <DB_NAME>.gangnamunni_theme_settings TO 'sb_admin_ro'@'127.0.0.1';
+-- write user
+GRANT SELECT (id, hospital_id, hospital_name, name, phone, treatment, status, doctor_id, doctor_name, price, mb_id), UPDATE (status, doctor_id, doctor_name, cancel_reason, cancelled_at, cancelled_by, confirmed_at, expire_notice_seen_at) ON <DB_NAME>.gangnamunni_bookings TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, name, hospital_id, status) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, payment_type, booking_id, status), INSERT (payment_type, funds_recipient, booking_id, hospital_id, hospital_name, patient_mb_id, patient_name, patient_phone, treatment_name, amount, currency, merchant_uid, status) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (setting_key, setting_value) ON <DB_NAME>.gangnamunni_settings TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (member_id, type, title, message, link, icon) ON <DB_NAME>.gangnamunni_user_notifications TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT (admin_id, admin_username, target_type, target_count, notification_type, title, message, link, resolved_count, in_app_count, push_sent, push_failed, push_skipped, push_error, push_details) ON <DB_NAME>.gangnamunni_notification_sends TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (pt_token), UPDATE (pt_use) ON <DB_NAME>.g5_push_tokens TO 'sb_admin_rw'@'127.0.0.1';
+```
+17.3 Push needs the Firebase service account file readable only by the service user (never inside the repo), then in `seoulbeauty-admin-api/.env`:
+```
+ADMIN_BOOKINGS_ENABLED=1
+ADMIN_BOOKINGS_WRITE=1
+FCM_SERVICE_ACCOUNT_PATH=/etc/seoulbeauty/fcm-service-account.json
+FCM_EXPECTED_PROJECT_ID=hospital-8425b
+PHP_PUBLIC_SITE_URL=https://seoulbeauty.app/
+```
+Without `FCM_SERVICE_ACCOUNT_PATH` the in-app notice is still created and the push is skipped. Then `sudo systemctl restart seoulbeauty-admin-api`.
+A missing column from 17.1 also shows as `write_unavailable`. If the journal says `payment order not created` after a confirmation, the booking is confirmed but has no payment order (as in the PHP page): check its price and create the order by hand. A booking without a member id is matched to the newest member with the same phone number (as in PHP). A refused grant shows as `503 {"error":"write_unavailable"}` on writes and `503 {"error":"bookings_unavailable"}` on reads (reason in the journal).
+Turning it off: `ADMIN_BOOKINGS_WRITE=0` (read-only) or `ADMIN_BOOKINGS_ENABLED=0` (all routes 404), then restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
