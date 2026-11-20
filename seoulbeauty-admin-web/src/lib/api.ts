@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -140,6 +140,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         adminsWrite: obj(d.features).adminsWrite === true,
         bookings: obj(d.features).bookings === true,
         bookingsWrite: obj(d.features).bookingsWrite === true,
+        payments: obj(d.features).payments === true,
       },
     },
   };
@@ -1858,4 +1859,146 @@ export async function downloadBookingsExcel(q: BookingsExport): Promise<ExcelRes
   } catch {
     return { ok: false, status: 0, error: "" };
   }
+}
+
+// ───────── Payments (read only) ─────────
+
+export type PaymentStage = "held" | "recognized" | "refunded";
+/** Money in won. received - refunded = recognized + held; `stuck` is the part of `held` that no treatment will release (cancelled / refunded / no-show booking). */
+export type PaymentSums = { payments: number; received: number; refunded: number; recognized: number; held: number; stuck: number };
+export type PaymentRow = {
+  id: number; bookingId: number; hospitalId: number; hospitalName: string; patientName: string; patientPhone: string; treatmentName: string;
+  amount: number; refundedAmount: number; status: string; paidAt: string; bookingStatus: string; visitDate: string; visitTime: string;
+  stage: PaymentStage; needsAttention: boolean;
+};
+export type PaymentList = { items: PaymentRow[]; total: number; page: number; perPage: number; totalPages: number; summary: PaymentSums; from: string; to: string };
+export type PaymentsQuery = { hospitalId: number; from: string; to: string; q: string; page: number };
+export type PaymentsRangeQuery = { hospitalId: number; from: string; to: string };
+export type PaymentHospitalSums = PaymentSums & { hospitalId: number; hospitalName: string };
+export type PaymentTreatmentSums = PaymentSums & { treatmentName: string };
+/** `truncated`: the table shows only its first rows; more existed. */
+export type PaymentTable<T> = { items: T[]; from: string; to: string; truncated: boolean };
+
+export type CompareMetric = "received" | "recognized" | "held";
+export type DayValue = { date: string; value: number };
+export type PaymentsWeek = {
+  thisWeek: { start: string; days: DayValue[] };
+  lastWeek: { start: string; end: string; days: DayValue[] };
+  totals: { thisToDate: number; lastSameDays: number; lastFull: number };
+  changeSameDays: number | null;
+  changeFull: number | null;
+};
+export type CumulativePoint = { day: number; value: number };
+export type PaymentsMonth = {
+  thisMonth: { start: string; cumulative: CumulativePoint[] };
+  lastMonth: { start: string; end: string; cumulative: CumulativePoint[] };
+  totals: { thisToDate: number; lastSameDay: number; lastFull: number };
+  changeSameDay: number | null;
+  changeFull: number | null;
+};
+export type PaymentsCompare = { metric: CompareMetric; today: string; week: PaymentsWeek; month: PaymentsMonth };
+
+const paymentSums = (v: unknown): PaymentSums => {
+  const d = obj(v);
+  return { payments: num(d.payments), received: num(d.received), refunded: num(d.refunded), recognized: num(d.recognized), held: num(d.held), stuck: num(d.stuck) };
+};
+const paymentStage = (v: unknown): PaymentStage => (v === "recognized" || v === "refunded" ? v : "held");
+const paymentRow = (v: unknown): PaymentRow => {
+  const d = obj(v);
+  return {
+    id: num(d.id), bookingId: num(d.bookingId), hospitalId: num(d.hospitalId), hospitalName: str(d.hospitalName), patientName: str(d.patientName), patientPhone: str(d.patientPhone),
+    treatmentName: str(d.treatmentName), amount: num(d.amount), refundedAmount: num(d.refundedAmount), status: str(d.status), paidAt: str(d.paidAt), bookingStatus: str(d.bookingStatus),
+    visitDate: str(d.visitDate), visitTime: str(d.visitTime), stage: paymentStage(d.stage), needsAttention: d.needsAttention === true,
+  };
+};
+const dayValues = (v: unknown): DayValue[] => list(v).map((x) => ({ date: str(obj(x).date), value: num(obj(x).value) })).filter((x) => x.date !== "");
+const points = (v: unknown): CumulativePoint[] => list(v).map((x) => ({ day: num(obj(x).day), value: num(obj(x).value) })).filter((x) => x.day > 0);
+
+function paymentsParams(q: { hospitalId: number; from: string; to: string }): URLSearchParams {
+  const p = new URLSearchParams();
+  if (q.hospitalId > 0) p.set("hospital_id", String(q.hospitalId));
+  if (q.from) p.set("from", q.from);
+  if (q.to) p.set("to", q.to);
+  return p;
+}
+
+/** The ledger rows of the chosen hospital, dates and patient name, with the totals of the same hospital and dates. */
+export async function fetchPayments(q: PaymentsQuery, signal?: AbortSignal): Promise<ApiResult<PaymentList>> {
+  const p = paymentsParams(q);
+  if (q.q.trim()) p.set("q", q.q.trim());
+  if (q.page > 1) p.set("page", String(q.page));
+  const qs = p.toString();
+  const res = await getJson(`/v1/payments${qs ? `?${qs}` : ""}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: {
+      items: list(d.items).map(paymentRow).filter((r) => r.id > 0), total: num(d.total), page: Math.max(1, num(d.page)), perPage: Math.max(1, num(d.perPage)),
+      totalPages: Math.max(1, num(d.totalPages)), summary: paymentSums(d.summary), from: str(d.from), to: str(d.to),
+    },
+  };
+}
+
+export async function fetchPaymentHospitals(signal?: AbortSignal): Promise<ApiResult<{ id: number; name: string }[]>> {
+  const res = await getJson("/v1/payments/hospitals", signal);
+  if (!res.ok) return res;
+  return { ok: true, data: list(obj(res.data).items).map((h) => ({ id: num(obj(h).id), name: str(obj(h).name) })).filter((h) => h.id > 0) };
+}
+
+export async function fetchPaymentsByHospital(q: PaymentsRangeQuery, signal?: AbortSignal): Promise<ApiResult<PaymentTable<PaymentHospitalSums>>> {
+  const qs = paymentsParams(q).toString();
+  const res = await getJson(`/v1/payments/by-hospital${qs ? `?${qs}` : ""}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: {
+      items: list(d.items).map((r) => ({ hospitalId: num(obj(r).hospitalId), hospitalName: str(obj(r).hospitalName), ...paymentSums(r) })).filter((r) => r.hospitalId > 0),
+      from: str(d.from), to: str(d.to), truncated: d.truncated === true,
+    },
+  };
+}
+
+export async function fetchPaymentsByTreatment(q: PaymentsRangeQuery, signal?: AbortSignal): Promise<ApiResult<PaymentTable<PaymentTreatmentSums>>> {
+  const qs = paymentsParams(q).toString();
+  const res = await getJson(`/v1/payments/by-treatment${qs ? `?${qs}` : ""}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: { items: list(d.items).map((r) => ({ treatmentName: str(obj(r).treatmentName), ...paymentSums(r) })), from: str(d.from), to: str(d.to), truncated: d.truncated === true },
+  };
+}
+
+/** This week against last week (day by day) and this month against last month (running total), for one money measure. */
+export async function fetchPaymentsCompare(hospitalId: number, metric: CompareMetric, signal?: AbortSignal): Promise<ApiResult<PaymentsCompare>> {
+  const p = new URLSearchParams({ metric });
+  if (hospitalId > 0) p.set("hospital_id", String(hospitalId));
+  const res = await getJson(`/v1/payments/compare?${p}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const w = obj(d.week);
+  const m = obj(d.month);
+  const wt = obj(w.totals);
+  const mt = obj(m.totals);
+  const metricOut: CompareMetric = d.metric === "recognized" || d.metric === "held" ? d.metric : "received";
+  return {
+    ok: true,
+    data: {
+      metric: metricOut, today: str(d.today),
+      week: {
+        thisWeek: { start: str(obj(w.thisWeek).start), days: dayValues(obj(w.thisWeek).days) },
+        lastWeek: { start: str(obj(w.lastWeek).start), end: str(obj(w.lastWeek).end), days: dayValues(obj(w.lastWeek).days) },
+        totals: { thisToDate: num(wt.thisToDate), lastSameDays: num(wt.lastSameDays), lastFull: num(wt.lastFull) },
+        changeSameDays: numOrNull(w.changeSameDays), changeFull: numOrNull(w.changeFull),
+      },
+      month: {
+        thisMonth: { start: str(obj(m.thisMonth).start), cumulative: points(obj(m.thisMonth).cumulative) },
+        lastMonth: { start: str(obj(m.lastMonth).start), end: str(obj(m.lastMonth).end), cumulative: points(obj(m.lastMonth).cumulative) },
+        totals: { thisToDate: num(mt.thisToDate), lastSameDay: num(mt.lastSameDay), lastFull: num(mt.lastFull) },
+        changeSameDay: numOrNull(m.changeSameDay), changeFull: numOrNull(m.changeFull),
+      },
+    },
+  };
 }

@@ -225,7 +225,7 @@ const MENU: MenuGroup[] = [
     key: "payment_group",
     label: L("결제 관리", "Payments"),
     icon: "card",
-    items: [legacy("booking_revenue", "admin_booking_revenue.php", "예약 결제 매출", "Booking payment revenue", "card")],
+    items: [legacy("booking_revenue", "admin_booking_revenue.php", "예약 결제", "Booking payments", "card")],
   },
   {
     key: "app_download_group",
@@ -239,13 +239,14 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<"hospitals" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings", { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "payments", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
   hospitalApply: { key: "hospital_apply", href: "/hospital-apply" },
   treatments: { key: "treatment_master", href: "/treatments" },
   treatmentUnits: { key: "treatment_units", href: "/treatment-units" },
   admins: { key: "admin_accounts", href: "/admins" },
   bookings: { key: "bookings", href: "/bookings" },
+  payments: { key: "booking_revenue", href: "/payments" },
 };
 
 /**
