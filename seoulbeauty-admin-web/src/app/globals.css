@@ -2897,3 +2897,24 @@ html[data-theme="dark"] { --s-done-bg: #2E2040; --s-done: #D7A8EA; --danger-soli
 @media (prefers-reduced-motion: reduce) { .bk-modal[open] { animation: none; } }
 .bk-busy { opacity: 0.6; transition: opacity var(--t-fast) var(--ease); }
 .bk-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+
+/* Booking payments: money panel */
+.pay-page { display: flex; flex-direction: column; gap: 16px; }
+.pay-money { display: flex; flex-direction: column; gap: 14px; padding: 20px; border: 1px solid var(--line); border-radius: var(--r-md, 12px); }
+.pay-money__net { display: flex; flex-direction: column; gap: 4px; }
+.pay-money__value { font-size: 32px; line-height: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pay-money small { margin-left: 2px; font-size: 14px; font-weight: 500; }
+.pay-bar { display: flex; gap: 2px; height: 12px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.pay-bar__rec { background: var(--accent); }
+.pay-bar__held { background: var(--warn-line); }
+.pay-money__parts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.pay-part { display: flex; flex-direction: column; gap: 2px; padding-left: 12px; border-left: 4px solid var(--accent); }
+.pay-part--held { border-left-color: var(--warn-line); }
+.pay-part dt { font-size: 13px; font-weight: 600; }
+.pay-part dd { margin: 0; font-variant-numeric: tabular-nums; }
+.pay-part dd:first-of-type { font-size: 20px; font-weight: 700; }
+@media (max-width: 560px) {
+  .pay-money { padding: 16px; }
+  .pay-money__value { font-size: 28px; line-height: 36px; }
+  .pay-money__parts { grid-template-columns: 1fr; }
+}
