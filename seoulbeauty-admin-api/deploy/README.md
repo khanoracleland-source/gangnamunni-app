@@ -1225,6 +1225,27 @@ Without `FCM_SERVICE_ACCOUNT_PATH` the in-app notice is still created and the pu
 A missing column from 17.1 also shows as `write_unavailable`. If the journal says `payment order not created` after a confirmation, the booking is confirmed but has no payment order (as in the PHP page): check its price and create the order by hand. A booking without a member id is matched to the newest member with the same phone number (as in PHP). A refused grant shows as `503 {"error":"write_unavailable"}` on writes and `503 {"error":"bookings_unavailable"}` on reads (reason in the journal).
 Turning it off: `ADMIN_BOOKINGS_WRITE=0` (read-only) or `ADMIN_BOOKINGS_ENABLED=0` (all routes 404), then restart.
 
+## 18. Booking payments and revenue (`ADMIN_PAYMENTS_ENABLED`, optional, read only; super admin and hospital accounts)
+`/v1/payments` (list of the ledger with the totals of the dates), `/v1/payments/by-hospital`, `/v1/payments/by-treatment`, `/v1/payments/hospitals` and
+`/v1/payments/compare` (this week against last week day by day, this month against last month as a running total; `metric=received|recognized|held`).
+Nothing here writes and no payment gateway is called; refunds and gateway syncs stay in the PHP admin (`admin_booking_payments.php`).
+A super admin sees every hospital, a hospital account only its own (the same scope as the booking page, applied in every query).
+Counted: booking payments to hospitals with status `paid`, `partially_refunded`, `refunded`, never the sandbox providers (`mock_booking_payment`, `inicis_test`).
+Dates are the payment day (`paid_at`, KST); a week runs Monday to Sunday.
+Money is split by the booking: received (what was paid) - refunded = recognized (booking `completed`) + held (treatment not done yet, the hospital may not take it out).
+The phone number of a patient is masked in every answer.
+
+18.1 GRANTs (run as the DB admin; repeat each line for `'127.0.0.1'` and `'localhost'`). The read-only user already reads the booking columns of 17.2 (`id`, `status`, `booking_date`, `booking_time`):
+```sql
+GRANT SELECT (id, payment_type, funds_recipient, booking_id, hospital_id, hospital_name, patient_name, patient_phone, treatment_name, amount, refunded_amount, provider, status, paid_at, refunded_at) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_ro'@'127.0.0.1';
+```
+18.2 `seoulbeauty-admin-api/.env` (needs `ADMIN_PANEL_ENABLED=1`; hospital accounts also need `ADMIN_HOSPITALS_ENABLED=1`):
+```
+ADMIN_PAYMENTS_ENABLED=1
+```
+Then `sudo systemctl restart seoulbeauty-admin-api`. Missing table or column: the routes answer 503 `payments_unavailable`.
+Turning it off: `ADMIN_PAYMENTS_ENABLED=0`, then restart (all routes 404).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
