@@ -2895,3 +2895,5 @@ html[data-theme="dark"] { --s-done-bg: #2E2040; --s-done: #D7A8EA; --danger-soli
 }
 @media (min-width: 1200px) { .bk-stats .stat { padding-inline: 14px; } }
 @media (prefers-reduced-motion: reduce) { .bk-modal[open] { animation: none; } }
+.bk-busy { opacity: 0.6; transition: opacity var(--t-fast) var(--ease); }
+.bk-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }

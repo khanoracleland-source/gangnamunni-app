@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -138,6 +138,8 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalApply: obj(d.features).hospitalApply === true,
         admins: obj(d.features).admins === true,
         adminsWrite: obj(d.features).adminsWrite === true,
+        bookings: obj(d.features).bookings === true,
+        bookingsWrite: obj(d.features).bookingsWrite === true,
       },
     },
   };
@@ -1741,4 +1743,119 @@ export async function addTreatmentUnit(name: string): Promise<WriteResult<UnitAd
 export async function removeTreatmentUnit(id: number): Promise<WriteResult<null>> {
   const res = await sendJson("DELETE", `/v1/treatment-units/${encodeURIComponent(String(id))}`);
   return res.ok ? { ok: true, data: null } : res;
+}
+
+
+// ───────── Bookings ─────────
+
+export type BookingAction = "checking" | "confirm" | "cancel" | "complete";
+export type BookingRow = {
+  id: number; hospitalId: number; hospitalName: string; name: string; phone: string; treatment: string;
+  date: string; time: string; status: string; doctorId: number; doctorName: string; photoCount: number; receivedAt: string; actions: BookingAction[];
+};
+export type BookingStats = Record<"total" | "pending" | "hospital_checking" | "confirmed" | "completed" | "cancelled" | "refunded" | "no_show" | "today", number>;
+export type BookingList = { items: BookingRow[]; total: number; page: number; perPage: number; totalPages: number; stats: BookingStats };
+export type BookingHospital = { id: number; name: string };
+export type BookingDetail = {
+  booking: BookingRow & { memo: string; cancelReason: string };
+  photos: string[];
+  /** `yes` is the member's answer to a question asked before the treatment. */
+  answers: { question: string; yes: boolean }[];
+  doctors: { id: number; name: string }[];
+};
+export type BookingsQuery = { hospitalId: number; status: string; from: string; to: string; q: string; page: number };
+
+const BOOKING_ACTIONS: readonly string[] = ["checking", "confirm", "cancel", "complete"];
+const STAT_KEYS = ["total", "pending", "hospital_checking", "confirmed", "completed", "cancelled", "refunded", "no_show", "today"] as const;
+
+const bookingRow = (v: unknown): BookingRow => {
+  const d = obj(v);
+  return {
+    id: num(d.id), hospitalId: num(d.hospitalId), hospitalName: str(d.hospitalName), name: str(d.name), phone: text(d.phone), treatment: str(d.treatment),
+    date: str(d.bookingDate), time: str(d.bookingTime), status: str(d.status), doctorId: num(d.doctorId), doctorName: str(d.doctorName), photoCount: num(d.photoCount),
+    receivedAt: str(d.createdAt), actions: list(d.actions).filter((a): a is BookingAction => typeof a === "string" && BOOKING_ACTIONS.includes(a)),
+  };
+};
+
+/** The list, the status counts (they follow only the hospital choice) and the page the server settled on. */
+export async function fetchBookings(q: BookingsQuery, signal?: AbortSignal): Promise<ApiResult<BookingList>> {
+  const p = new URLSearchParams();
+  if (q.hospitalId > 0) p.set("hospital_id", String(q.hospitalId));
+  if (q.status) p.set("status", q.status);
+  if (q.from) p.set("from", q.from);
+  if (q.to) p.set("to", q.to);
+  if (q.q.trim()) p.set("q", q.q.trim());
+  if (q.page > 1) p.set("page", String(q.page));
+  const qs = p.toString();
+  const res = await getJson(`/v1/bookings${qs ? `?${qs}` : ""}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const stats = {} as BookingStats;
+  for (const k of STAT_KEYS) stats[k] = num(obj(d.stats)[k]);
+  return {
+    ok: true,
+    data: { items: list(d.items).map(bookingRow).filter((b) => b.id > 0), total: num(d.total), page: Math.max(1, num(d.page)), perPage: Math.max(1, num(d.perPage)), totalPages: Math.max(1, num(d.totalPages)), stats },
+  };
+}
+
+export async function fetchBookingHospitals(signal?: AbortSignal): Promise<ApiResult<BookingHospital[]>> {
+  const res = await getJson("/v1/bookings/hospitals", signal);
+  if (!res.ok) return res;
+  return { ok: true, data: list(obj(res.data).items).map((h) => ({ id: num(obj(h).id), name: str(obj(h).name) })).filter((h) => h.id > 0) };
+}
+
+export async function fetchBookingDetail(id: number, signal?: AbortSignal): Promise<ApiResult<BookingDetail>> {
+  const res = await getJson(`/v1/bookings/${encodeURIComponent(String(id))}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const b = obj(d.booking);
+  return {
+    ok: true,
+    data: {
+      booking: { ...bookingRow(b), memo: str(b.memo), cancelReason: str(b.cancelReason) },
+      photos: list(d.photos).filter((u): u is string => typeof u === "string"),
+      answers: list(d.answers).map((a) => ({ question: str(obj(a).question), yes: num(obj(a).answer) === 1 })),
+      doctors: list(d.doctors).map((x) => ({ id: num(obj(x).id), name: str(obj(x).name) })).filter((x) => x.id > 0),
+    },
+  };
+}
+
+/** One step of the booking flow. The reason only counts for "cancel". */
+export async function changeBookingStatus(id: number, action: BookingAction, cancelReason = ""): Promise<WriteResult<{ status: string }>> {
+  const res = await sendJson("POST", `/v1/bookings/${encodeURIComponent(String(id))}/status`, action === "cancel" ? { action, cancelReason } : { action });
+  return res.ok ? { ok: true, data: { status: str(res.data.status) } } : res;
+}
+
+/** doctorId 0 removes the assignment. */
+export async function assignBookingDoctor(id: number, doctorId: number): Promise<WriteResult<{ doctorName: string }>> {
+  const res = await sendJson("POST", `/v1/bookings/${encodeURIComponent(String(id))}/doctor`, { doctorId });
+  return res.ok ? { ok: true, data: { doctorName: str(res.data.doctorName) } } : res;
+}
+
+export type BookingsExport = { hospitalIds: number[]; from: string; to: string; status: string };
+export type ExcelResult = { ok: true; blob: Blob; filename: string } | { ok: false; status: number; error: string };
+
+/** The Excel file of the chosen hospitals and visit dates, fetched with the admin's session. */
+export async function downloadBookingsExcel(q: BookingsExport): Promise<ExcelResult> {
+  const p = new URLSearchParams({ from: q.from, to: q.to });
+  if (q.hospitalIds.length) p.set("hospital_ids", q.hospitalIds.join(","));
+  if (q.status) p.set("status", q.status);
+  try {
+    const res = await fetch(`${BASE_PATH}/api/v1/bookings/export?${p}`, { credentials: "same-origin", cache: "no-store", headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" } });
+    if (!res.ok) {
+      let error = "";
+      try {
+        error = str(obj(await res.json()).error);
+      } catch {
+        // No JSON body: the status says enough.
+      }
+      return { ok: false, status: res.status, error };
+    }
+    // A session that ran out may be answered with a login page: only a spreadsheet counts as the file.
+    if (!(res.headers.get("content-type") ?? "").includes("spreadsheetml")) return { ok: false, status: 0, error: "not_a_file" };
+    const name = /filename="?([^";]+)"?/i.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? "bookings.xlsx";
+    return { ok: true, blob: await res.blob(), filename: name };
+  } catch {
+    return { ok: false, status: 0, error: "" };
+  }
 }
