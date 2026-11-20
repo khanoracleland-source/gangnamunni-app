@@ -1850,6 +1850,10 @@ const ko = {
   "pay.err.unavailable": "결제 정보를 불러올 수 없습니다. 서버 설정을 확인해 주세요.",
   "pay.err.range": "선택한 기간이 올바르지 않습니다.",
   "pay.err.retry": "다시 시도",
+  "pay.pager.label": "결제 내역 페이지",
+  "pay.page": "{n}페이지",
+  "pay.noName": "(시술명 없음)",
+  "pay.groupNoQ": "병원별·시술별 합계에는 환자 이름 검색이 적용되지 않습니다.",
   "state.paymentsOff.title": "예약 결제 화면이 아직 열리지 않았습니다",
   "state.paymentsOff.body": "서버에서 새 예약 결제 기능이 꺼져 있습니다. 켜지기 전까지는 기존 관리자의 예약 결제 매출을 이용해 주세요.",
 } as const;
@@ -3684,6 +3688,10 @@ const en: Record<MessageKey, string> = {
   "pay.err.unavailable": "Payment data is not available. Check the server settings.",
   "pay.err.range": "The chosen dates are not valid.",
   "pay.err.retry": "Try again",
+  "pay.pager.label": "Payments pages",
+  "pay.page": "Page {n}",
+  "pay.noName": "(no treatment name)",
+  "pay.groupNoQ": "The patient name search does not apply to the hospital and treatment totals.",
   "state.paymentsOff.title": "The booking payments screen is not open yet",
   "state.paymentsOff.body": "The new booking payments feature is off on the server. Until it is on, use the booking payment revenue page of the old admin.",
 };

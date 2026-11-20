@@ -5,6 +5,7 @@ import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import CompareCharts from "./CompareCharts";
+import { GroupTable, PaymentRows, Tabs, type Tab } from "./PaymentsTables";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import { fetchMe, fetchPaymentHospitals, fetchPayments, type ApiResult, type Me, type PaymentList } from "@/lib/api";
 import { todayIso } from "@/lib/bookings";
@@ -69,11 +70,13 @@ function Board({ me }: { me: Me }) {
   const [filters, setFilters] = useState<Filters>(() => defaultFilters(today));
   const [qInput, setQInput] = useState("");
   const [tick, setTick] = useState(0);
+  const [page, setPage] = useState(1);
+  const [tab, setTab] = useState<Tab>("list");
   const [hospitals, setHospitals] = useState<{ id: number; name: string }[]>([]);
   const [got, setGot] = useState<{ key: string; res: ApiResult<PaymentList> } | null>(null);
 
   const problem = rangeProblem(filters.from, filters.to);
-  const query = toQuery(filters, 1);
+  const query = toQuery(filters, page);
   const key = `${queryKey(query)}#${tick}`;
 
   useEffect(() => {
@@ -86,6 +89,8 @@ function Board({ me }: { me: Me }) {
         return;
       }
       setGot({ key, res });
+      // The server settles on a page that exists; follow it.
+      if (res.ok && res.data.page !== query.page) setPage(res.data.page);
     });
     return () => c.abort();
     // `query` is rebuilt from `filters` on every render; `key` stands for it.
@@ -103,15 +108,22 @@ function Board({ me }: { me: Me }) {
   // The search text is applied a moment after typing stops.
   useEffect(() => {
     if (qInput.trim() === filters.q.trim()) return;
-    const id = window.setTimeout(() => setFilters((f) => ({ ...f, q: qInput })), 350);
+    const id = window.setTimeout(() => {
+      setFilters((f) => ({ ...f, q: qInput }));
+      setPage(1);
+    }, 350);
     return () => window.clearTimeout(id);
   }, [qInput, filters.q]);
 
-  const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, ...patch }));
+  const set = (patch: Partial<Filters>) => {
+    setFilters((f) => ({ ...f, ...patch }));
+    setPage(1);
+  };
   const initial = defaultFilters(today);
   const reset = () => {
     setFilters(initial);
     setQInput("");
+    setPage(1);
   };
   const dirty = JSON.stringify(filters) !== JSON.stringify(initial) || qInput !== "";
 
@@ -188,6 +200,20 @@ function Board({ me }: { me: Me }) {
       ) : null}
 
       <CompareCharts hospitalId={filters.hospitalId} />
+
+      {!problem ? (
+        <section className="pay-list">
+          <Tabs tab={own && tab === "hospitals" ? "list" : tab} own={own} onTab={setTab} />
+          <div id="pay-panel" role="tabpanel" aria-labelledby={`pay-tab-${own && tab === "hospitals" ? "list" : tab}`}>
+            {tab !== "list" && filters.q.trim() ? <p className="muted pay-qnote">{t("pay.groupNoQ")}</p> : null}
+            {tab === "list" || (own && tab === "hospitals") ? (
+              got?.res.ok ? <PaymentRows list={got.res.data} loading={loading} own={own} dirty={dirty} onPage={setPage} onReset={reset} /> : null
+            ) : (
+              <GroupTable kind={tab} hospitalId={filters.hospitalId} from={filters.from} to={filters.to} />
+            )}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

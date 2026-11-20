@@ -96,7 +96,7 @@ function Frame({ title, range, note, rows, today, labelOf, draw, totals, nowName
       <p className="muted pay-cmp__note">{note}</p>
       <details className="pay-table">
         <summary>{t("pay.cmp.table")}</summary>
-        <table className="tbl">
+        <table className="pay-ptbl">
           <thead><tr><th scope="col">{t("pay.cmp.col.date")}</th><th scope="col" className="pay-n">{nowName}</th><th scope="col" className="pay-n">{beforeName}</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
