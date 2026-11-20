@@ -13,6 +13,7 @@ import { MapConfigModule } from './map-config/map-config.module';
 import { TreatmentsModule } from './treatments/treatments.module';
 import { TreatmentUnitsModule } from './treatment-units/treatment-units.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { PaymentsModule } from './payments/payments.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -31,6 +32,7 @@ import { HealthController } from './health/health.controller';
     TreatmentsModule,
     TreatmentUnitsModule,
     BookingsModule,
+    PaymentsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

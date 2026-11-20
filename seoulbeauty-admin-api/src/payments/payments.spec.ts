@@ -1,0 +1,105 @@
+import { Test } from '@nestjs/testing';
+import { Global, INestApplication, Module } from '@nestjs/common';
+import request from 'supertest';
+import { AdminAuthModule } from '../admin-auth/admin-auth.module';
+import { MeModule } from '../me/me.module';
+import { PaymentsModule } from './payments.module';
+import { DB } from '../db/db.module';
+
+const SUPER = 'PHPSESSID=super';
+const HOSPITAL = 'PHPSESSID=hospital12';
+const NOHOSP = 'PHPSESSID=nohosp';
+const EDITOR = 'PHPSESSID=editor';
+const admin = (role: string, hospitalId: number | null = null) => ({ id: 7, username: 'boss', name: '김관리', role, hospitalId });
+type Call = { sql: string; values: unknown[] };
+
+describe('admin API: payments (read only)', () => {
+  let app: INestApplication;
+  const realFetch = global.fetch;
+  const calls: Call[] = [];
+  let missing = false;
+  const roStub = {
+    query: jest.fn(async (sql: string, values: unknown[] = []) => {
+      calls.push({ sql, values });
+      if (missing) throw Object.assign(new Error('no table'), { code: 'ER_NO_SUCH_TABLE', errno: 1146 });
+      if (sql.includes('COUNT(*) AS cnt')) return [[{ cnt: 1 }]];
+      if (sql.includes('AS payments')) return [[{ payments: 1, received: '180000', refunded: '0', recognized: '0', held: '180000' }]];
+      if (sql.includes('p.booking_id')) return [[{ id: 9, booking_id: 4, hospital_id: 12, hospital_name: 'H', patient_name: '김', patient_phone: '010-1234-5678', treatment_name: 't', amount: '180000', refunded_amount: '0', status: 'paid', paid_at: '2026-11-20 14:02:00', booking_status: 'confirmed', booking_date: '2026-11-23', booking_time: '10:00:00' }]];
+      return [[]];
+    }),
+  };
+
+  beforeAll(() => {
+    global.fetch = jest.fn(async (_url: any, init: any) => {
+      const cookie = init?.headers?.cookie || '';
+      const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200, headers: { 'content-type': 'application/json' } });
+      if (cookie.includes('super')) return json({ loggedIn: true, admin: admin('super_admin') });
+      if (cookie.includes('hospital12')) return json({ loggedIn: true, admin: admin('hospital_super_admin', 12) });
+      if (cookie.includes('nohosp')) return json({ loggedIn: true, admin: admin('hospital_admin', null) });
+      if (cookie.includes('editor')) return json({ loggedIn: true, admin: admin('editor') });
+      return json({ loggedIn: false, admin: null });
+    }) as any;
+  });
+  beforeEach(async () => {
+    process.env.ADMIN_PANEL_ENABLED = '1';
+    process.env.ADMIN_HOSPITALS_ENABLED = '1';
+    process.env.ADMIN_PAYMENTS_ENABLED = '1';
+    calls.length = 0; missing = false;
+    @Global() @Module({ providers: [{ provide: DB, useValue: roStub }], exports: [DB] }) class TestDbModule {}
+    const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, MeModule, PaymentsModule] }).compile();
+    app = mod.createNestApplication();
+    await app.init();
+  });
+  afterEach(async () => { await app.close(); jest.restoreAllMocks(); });
+  afterAll(() => { global.fetch = realFetch; for (const k of ['ADMIN_PANEL_ENABLED', 'ADMIN_HOSPITALS_ENABLED', 'ADMIN_PAYMENTS_ENABLED']) delete process.env[k]; });
+
+  const get = (path: string, cookie: string = SUPER) => { const r = request(app.getHttpServer()).get(path); return cookie ? r.set('Cookie', cookie) : r; };
+
+  it('switch off -> 404 on every route; no session -> 401; a role without the page -> 403', async () => {
+    expect((await get('/v1/payments', '')).status).toBe(401);
+    expect((await get('/v1/payments', EDITOR)).status).toBe(403);
+    process.env.ADMIN_PAYMENTS_ENABLED = '0';
+    for (const p of ['', '/hospitals', '/by-hospital', '/by-treatment']) expect((await get(`/v1/payments${p}`)).status).toBe(404);
+  });
+  it('there is no way to write: POST is 404', async () => {
+    expect((await request(app.getHttpServer()).post('/v1/payments').set('Cookie', SUPER).send({})).status).toBe(404);
+    expect((await request(app.getHttpServer()).post('/v1/payments/refund').set('Cookie', SUPER).send({})).status).toBe(404);
+  });
+  it('the list carries the rows, the totals of the period and the stage of each payment', async () => {
+    const r = await get('/v1/payments?from=2026-11-01&to=2026-11-20');
+    expect(r.status).toBe(200);
+    expect(r.body.items[0]).toMatchObject({ id: 9, stage: 'held', patientPhone: '010-****-5678', amount: 180000, visitDate: '2026-11-23' });
+    expect(r.body.summary).toEqual({ payments: 1, received: 180000, refunded: 0, recognized: 0, held: 180000 });
+    expect(r.body.total).toBe(1);
+  });
+  it('a hospital account is held to its own hospital in every query, whatever hospital_id it asks for', async () => {
+    for (const path of ['/v1/payments', '/v1/payments?hospital_id=99', '/v1/payments/by-hospital', '/v1/payments/by-treatment']) {
+      calls.length = 0;
+      const r = await get(path, HOSPITAL);
+      expect(r.status).toBe(200);
+      expect(calls.length).toBeGreaterThan(0);
+      for (const c of calls) { expect(c.values).toContain(12); expect(c.sql).not.toMatch(/\b12\b/); }
+    }
+  });
+  it('a hospital account without a hospital sees nothing', async () => {
+    const r = await get('/v1/payments', NOHOSP);
+    expect(r.status).toBe(200);
+    expect(calls.every((c) => c.sql.includes('1 = 0'))).toBe(true);
+  });
+  it('a bad query is a 400, not an SQL error', async () => {
+    for (const q of ['status=nope', 'from=2026-13-40', 'page=0', 'hospital_id=abc']) expect((await get(`/v1/payments?${q}`)).status).toBe(400);
+    expect((await get('/v1/payments/by-hospital?from=2026-11-21&to=2026-11-20')).status).toBe(400);
+  });
+  it('missing ledger tables are a clear 503, not a crash', async () => {
+    missing = true;
+    const r = await get('/v1/payments');
+    expect(r.status).toBe(503);
+    expect(r.body).toMatchObject({ error: 'payments_unavailable' });
+  });
+  it('/me reports the switch', async () => {
+    const r = await get('/v1/me');
+    expect(r.body.features.payments).toBe(true);
+    process.env.ADMIN_PAYMENTS_ENABLED = '0';
+    expect((await get('/v1/me')).body.features.payments).toBe(false);
+  });
+});

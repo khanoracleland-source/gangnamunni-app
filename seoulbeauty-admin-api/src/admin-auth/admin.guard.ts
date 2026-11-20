@@ -304,6 +304,18 @@ export class BookingsWriteEnabledGuard implements CanActivate {
   }
 }
 
+/** Booking payments and revenue (/v1/payments*), read only. Independent of the other switches; hospital roles still need ADMIN_HOSPITALS_ENABLED (see scopeOf). Only the exact value "1" turns it on. */
+export const paymentsEnabled = (): boolean => process.env.ADMIN_PAYMENTS_ENABLED === '1';
+
+/** With ADMIN_PAYMENTS_ENABLED off the payment routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class PaymentsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !paymentsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Registering a hospital by a super admin (/v1/hospital-apply*). Independent of the hospital switches; needs the write user and the upload folder. Only the exact value "1" turns it on. */
 export const hospitalApplyEnabled = (): boolean => process.env.ADMIN_HOSPITAL_APPLY_ENABLED === '1';
 
