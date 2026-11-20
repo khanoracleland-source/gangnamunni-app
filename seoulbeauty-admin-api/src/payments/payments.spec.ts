@@ -24,6 +24,7 @@ describe('admin API: payments (read only)', () => {
       if (missing) throw Object.assign(new Error('no table'), { code: 'ER_NO_SUCH_TABLE', errno: 1146 });
       if (sql.includes('COUNT(*) AS cnt')) return [[{ cnt: 1 }]];
       if (sql.includes('AS payments')) return [[{ payments: 1, received: '180000', refunded: '0', recognized: '0', held: '180000' }]];
+      if (sql.includes('AS pay_day')) return [[{ pay_day: '2026-11-20', value: '180000' }]];
       if (sql.includes('p.booking_id')) return [[{ id: 9, booking_id: 4, hospital_id: 12, hospital_name: 'H', patient_name: '김', patient_phone: '010-1234-5678', treatment_name: 't', amount: '180000', refunded_amount: '0', status: 'paid', paid_at: '2026-11-20 14:02:00', booking_status: 'confirmed', booking_date: '2026-11-23', booking_time: '10:00:00' }]];
       return [[]];
     }),
@@ -59,7 +60,7 @@ describe('admin API: payments (read only)', () => {
     expect((await get('/v1/payments', '')).status).toBe(401);
     expect((await get('/v1/payments', EDITOR)).status).toBe(403);
     process.env.ADMIN_PAYMENTS_ENABLED = '0';
-    for (const p of ['', '/hospitals', '/by-hospital', '/by-treatment']) expect((await get(`/v1/payments${p}`)).status).toBe(404);
+    for (const p of ['', '/hospitals', '/by-hospital', '/by-treatment', '/compare']) expect((await get(`/v1/payments${p}`)).status).toBe(404);
   });
   it('there is no way to write: POST is 404', async () => {
     expect((await request(app.getHttpServer()).post('/v1/payments').set('Cookie', SUPER).send({})).status).toBe(404);
@@ -73,7 +74,7 @@ describe('admin API: payments (read only)', () => {
     expect(r.body.total).toBe(1);
   });
   it('a hospital account is held to its own hospital in every query, whatever hospital_id it asks for', async () => {
-    for (const path of ['/v1/payments', '/v1/payments?hospital_id=99', '/v1/payments/by-hospital', '/v1/payments/by-treatment']) {
+    for (const path of ['/v1/payments', '/v1/payments?hospital_id=99', '/v1/payments/by-hospital', '/v1/payments/by-treatment', '/v1/payments/compare?metric=held']) {
       calls.length = 0;
       const r = await get(path, HOSPITAL);
       expect(r.status).toBe(200);
@@ -88,7 +89,16 @@ describe('admin API: payments (read only)', () => {
   });
   it('a bad query is a 400, not an SQL error', async () => {
     for (const q of ['status=nope', 'from=2026-13-40', 'page=0', 'hospital_id=abc']) expect((await get(`/v1/payments?${q}`)).status).toBe(400);
+    expect((await get('/v1/payments/compare?metric=net')).status).toBe(400);
     expect((await get('/v1/payments/by-hospital?from=2026-11-21&to=2026-11-20')).status).toBe(400);
+  });
+  it('compare answers both weeks and both months for the chosen measure', async () => {
+    const r = await get('/v1/payments/compare?metric=held');
+    expect(r.status).toBe(200);
+    expect(r.body.metric).toBe('held');
+    expect(r.body.week.lastWeek.days).toHaveLength(7);
+    expect(r.body.month.lastMonth.cumulative.length).toBeGreaterThanOrEqual(28);
+    expect(calls).toHaveLength(2);
   });
   it('missing ledger tables are a clear 503, not a crash', async () => {
     missing = true;

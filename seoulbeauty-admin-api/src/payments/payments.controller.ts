@@ -35,4 +35,10 @@ export class PaymentsController {
   byTreatment(@Req() req: ScopedAdminRequest, @Query() query: Record<string, unknown>) {
     return this.payments.byTreatment(scopeOfReq(req), query);
   }
+
+  @Get('compare')
+  @UseGuards(PaymentsEnabledGuard, AdminGuard)
+  compare(@Req() req: ScopedAdminRequest, @Query() query: Record<string, unknown>) {
+    return this.payments.compare(scopeOfReq(req), query);
+  }
 }

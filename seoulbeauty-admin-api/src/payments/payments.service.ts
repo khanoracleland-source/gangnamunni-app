@@ -4,8 +4,8 @@ import { isFail } from '../bookings/bookings.logic';
 import { DB, Db } from '../db/db.module';
 import { isMissingObject } from '../hospitals/hospitals.treatments.logic';
 import {
-  byHospitalQuery, byTreatmentQuery, countQuery, hospitalOptionsQuery, listQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE,
-  seoulToday, summaryQuery, Sums, toItem, toSums, PaymentItem,
+  byHospitalQuery, byTreatmentQuery, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
+  seoulToday, seriesQuery, summaryQuery, Sums, toItem, toSums, weekCompare, PaymentItem,
 } from './payments.logic';
 
 export interface ListAnswer { items: PaymentItem[]; total: number; page: number; perPage: number; totalPages: number; summary: Sums; from: string; to: string }
@@ -59,5 +59,18 @@ export class PaymentsService {
     if (isFail(f)) throw new BadRequestException(f);
     const rows = await this.run(byTreatmentQuery(scope, f));
     return { from: f.from, to: f.to, items: rows.map((r) => ({ treatmentName: String(r.treatment_name ?? ''), ...toSums(r) })) };
+  }
+
+  /** This week against last week (day by day) and this month against last month (running total), for one money measure. */
+  async compare(scope: AdminScope, raw: Record<string, unknown>) {
+    const f = parseCompareQuery(raw);
+    if (isFail(f)) throw new BadRequestException(f);
+    const p = periodsOf(seoulToday());
+    const [weekRows, monthRows] = await Promise.all([
+      this.run(seriesQuery(scope, f.hospitalId, f.metric, p.week.lastStart, p.today)),
+      this.run(seriesQuery(scope, f.hospitalId, f.metric, p.month.lastStart, p.today)),
+    ]);
+    const norm = (rows: Record<string, unknown>[]) => rows.map((r) => ({ day: String(r.pay_day ?? ''), value: Number(r.value) || 0 }));
+    return { metric: f.metric, today: p.today, week: weekCompare(norm(weekRows), p), month: monthCompare(norm(monthRows), p) };
   }
 }
