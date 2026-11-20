@@ -15,6 +15,7 @@ JSON API (read-only, plus hospital editing behind its own switch and its own dat
 | `POST /v1/hospitals/:id/active` | `{"active":true\|false}` — activate / deactivate — `super_admin` only, `ADMIN_HOSPITALS_WRITE=1` |
 | `POST /v1/hospitals/:id/revisions/review` | mark the unreviewed changes as reviewed — `super_admin` only, `ADMIN_HOSPITALS_WRITE=1` |
 | `GET /v1/treatments` | the whole treatment master (treatments with aliases, categories, conflict pairs, counters, home table mode) — `super_admin` only, `ADMIN_TREATMENTS_ENABLED=1` (section 13) |
+| `GET /v1/treatment-units` | the active price units (`{"tableReady","items":[{"id","name"}]}`) — `super_admin` only, `ADMIN_TREATMENT_UNITS_ENABLED=1` (section 16) |
 
 Who may call what:
 - `super_admin`: everything, all hospitals (`scope: "all"`).
@@ -1152,6 +1153,34 @@ GRANT INSERT (admin_id, type, title, message, link, icon) ON <DB_NAME>.gangnamun
 `ADMIN_ADMINS_WRITE_ENABLED=1` in `.env`, then `systemctl restart seoulbeauty-admin-api`. Without the grants the routes answer `503 write_unavailable`.
 Note: the old PHP page flips `is_active` without touching `deactivated_at`. An account it switches off keeps an older mark (or none), so switch accounts off in the new panel only.
 SSO (`g5_mb_id`) is not editable here: the column does not exist on this site yet.
+
+## 16. Price units (`ADMIN_TREATMENT_UNITS_ENABLED`, optional; super admin only)
+The PHP page `admin_treatment_units.php` (table `gangnamunni_treatment_units`: the units of the price forms, e.g. Box, cc, ml, 시린지). Independent of the other switches. Hospital roles and anyone not
+signed in get 403 / 401; with the switch off every route answers `404 {"error":"not_found"}` and `/v1/me` reports `"treatmentUnits":false`. The PHP `admin` role keeps using the PHP page.
+This API never creates the table (the PHP page does it with `sql/treatment_units.sql` on every visit): without it the list answers `{"tableReady":false,"items":[]}` and a write answers
+`503 {"error":"table_missing"}`. The table normally exists already because the price forms read it.
+
+Routes (guard order for writes: write switch -> CSRF -> signed in -> super admin):
+- `GET /v1/treatment-units` -> `{"tableReady":true,"items":[{"id","name"}]}`; active units only, Latin letters and digits first (case-insensitive), then Korean (same order as the PHP page).
+- `POST /v1/treatment-units` `{"name"}` -> `{"unit":{"id","name"},"status":"created"|"restored"|"exists"}`. The name is trimmed, 1-20 characters, no control characters (`400 invalid_field`
+  with `field:"name"` and `reason` `required|too_long|bad_format`). The key ignores case, so `box` finds `Box`: a removed unit is switched on again (`restored`, the stored spelling is kept), an active one changes nothing (`exists`).
+- `DELETE /v1/treatment-units/:id` -> `{"ok":true}`. Soft delete (`is_active=0`) like the PHP page: prices that already carry the unit keep it. Repeating it is fine; an unknown id answers `404`.
+
+Needs the write switch `ADMIN_TREATMENT_UNITS_WRITE=1` (also `ADMIN_TREATMENT_UNITS_ENABLED=1` and `DB_RW_*`) for the two writing routes. GRANTs (run as the DB admin; `<DB_NAME>` = schema from step 1):
+```sql
+-- read-only user: already granted for the price forms (section 10.4); needed for the list
+GRANT SELECT (id, name, is_active) ON <DB_NAME>.gangnamunni_treatment_units TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, name, is_active) ON <DB_NAME>.gangnamunni_treatment_units TO 'sb_admin_ro'@'localhost';
+-- write user
+GRANT SELECT (id, name, is_active), INSERT (name, is_active), UPDATE (is_active) ON <DB_NAME>.gangnamunni_treatment_units TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, name, is_active), INSERT (name, is_active), UPDATE (is_active) ON <DB_NAME>.gangnamunni_treatment_units TO 'sb_admin_rw'@'localhost';
+```
+```
+ADMIN_TREATMENT_UNITS_ENABLED=1
+ADMIN_TREATMENT_UNITS_WRITE=1
+```
+Then `sudo systemctl restart seoulbeauty-admin-api`. A refused grant shows as `503 {"error":"write_unavailable"}` on writes (reason in the journal) and as `tableReady:false` on the list.
+Turning it off: `ADMIN_TREATMENT_UNITS_WRITE=0` (the page becomes read-only) or `ADMIN_TREATMENT_UNITS_ENABLED=0` (all routes 404), then restart.
 
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app

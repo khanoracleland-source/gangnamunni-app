@@ -258,6 +258,29 @@ export class TreatmentsImagesEnabledGuard implements CanActivate {
   }
 }
 
+/** Unit list of the price forms (/v1/treatment-units); super admin only. Independent of the other switches; only the exact value "1" turns it on. */
+export const treatmentUnitsEnabled = (): boolean => process.env.ADMIN_TREATMENT_UNITS_ENABLED === '1';
+/** Adding and removing units. Needs the unit page on as well; only the exact value "1" turns it on. */
+export const treatmentUnitsWriteEnabled = (): boolean => treatmentUnitsEnabled() && process.env.ADMIN_TREATMENT_UNITS_WRITE === '1';
+
+/** With ADMIN_TREATMENT_UNITS_ENABLED off the unit routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class TreatmentUnitsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !treatmentUnitsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the write switch off the writing unit routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class TreatmentUnitsWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !treatmentUnitsWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Registering a hospital by a super admin (/v1/hospital-apply*). Independent of the hospital switches; needs the write user and the upload folder. Only the exact value "1" turns it on. */
 export const hospitalApplyEnabled = (): boolean => process.env.ADMIN_HOSPITAL_APPLY_ENABLED === '1';
 

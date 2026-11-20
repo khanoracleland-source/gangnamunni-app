@@ -11,6 +11,7 @@ import { HospitalApplyModule } from './hospital-apply/hospital-apply.module';
 import { HospitalArchiveModule } from './hospital-archive/hospital-archive.module';
 import { MapConfigModule } from './map-config/map-config.module';
 import { TreatmentsModule } from './treatments/treatments.module';
+import { TreatmentUnitsModule } from './treatment-units/treatment-units.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -27,6 +28,7 @@ import { HealthController } from './health/health.controller';
     HospitalArchiveModule,
     MapConfigModule,
     TreatmentsModule,
+    TreatmentUnitsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
