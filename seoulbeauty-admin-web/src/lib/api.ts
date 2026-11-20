@@ -1651,7 +1651,7 @@ export async function fetchAdmins(signal?: AbortSignal): Promise<ApiResult<Admin
     ok: true,
     data: {
       scope: d.scope === "all" ? "all" : "self",
-      deleteAfterDays: num(d.deleteAfterDays) > 0 ? num(d.deleteAfterDays) : 5,
+      deleteAfterDays: num(d.deleteAfterDays) > 0 ? num(d.deleteAfterDays) : 1,
       total: num(d.total),
       items: list(d.items).map(adminAccount),
     },

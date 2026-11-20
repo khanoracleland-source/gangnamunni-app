@@ -5,7 +5,7 @@ export interface Query {
 type Row = Record<string, unknown>;
 
 /** An account that has been switched off for this many days may be deleted for good (never earlier, never while active). */
-export const DELETE_AFTER_DAYS = 5;
+export const DELETE_AFTER_DAYS = 1;
 /** Shortest password the new panel accepts (the old PHP page accepts 6). */
 export const MIN_PASSWORD_LENGTH = 8;
 /** The only roles this page hands out; older roles are shown as they are but cannot be picked. */

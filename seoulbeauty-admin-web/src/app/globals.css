@@ -438,7 +438,7 @@ button, select { font: inherit; color: inherit; }
 .drawer-scrim { display: none; }
 
 /* ───────── Main ───────── */
-.main { grid-row: 2; grid-column: 2; min-width: 0; padding: 40px 32px 64px; }
+.main { grid-row: 2; grid-column: 2; min-width: 0; padding: 40px 32px 32px; }
 .page { max-width: var(--content-max); margin: 0 auto; }
 
 .page-head { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
@@ -499,6 +499,8 @@ h1 { font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: -0.02
 
 /* ───────── Sections and cards ───────── */
 .section { margin-bottom: 36px; }
+/* The last block of a page does not add its own gap under itself, so a page that fits the window does not scroll. */
+.page > .section:last-of-type { margin-bottom: 0; }
 /* Section titles read like the rules of a quote board: a small tracked word on a hairline. */
 .section h2 { display: flex; align-items: center; gap: 12px; font-size: 13px; line-height: 20px; font-weight: 600; letter-spacing: 0.04em; color: var(--muted); }
 .section h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -658,7 +660,7 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   .topbar__menu { display: inline-flex; }
   .brand { width: auto; margin-left: 0; padding: 0 12px; border-radius: var(--r-sm); align-self: center; height: 40px; }
   .brand::after { content: none; }
-  .main { grid-column: 1; padding: 32px 24px 56px; }
+  .main { grid-column: 1; padding: 32px 24px 32px; }
   .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
   .sidebar {
@@ -680,13 +682,13 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 @media (max-width: 767px) {
   .who, .top-legacy span { display: none; }
   .sidebar__who { display: block; }
-  .main { padding: 24px 20px 48px; }
+  .main { padding: 24px 20px 28px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .card.hero .num__value { font-size: 36px; }
 }
 
 @media (max-width: 576px) {
-  .main { padding: 20px 16px 40px; }
+  .main { padding: 20px 16px 24px; }
   .grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   h1 { font-size: 20px; line-height: 28px; }
   .brand__name, .top-legacy { display: none; }
@@ -703,7 +705,7 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 }
 
 @media (max-width: 360px) {
-  .main { padding: 16px 12px 32px; }
+  .main { padding: 16px 12px 24px; }
   .topbar { gap: 4px; padding: 0 8px; }
   .sel { max-width: 84px; padding: 0 4px; }
   .num__value { font-size: 26px; }
@@ -2623,3 +2625,27 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
   .tbl--adm .adm__account { width: 22%; }
   .tbl--adm .adm__acts { width: 180px; }
 }
+
+/* While a dialog is open the page behind it does not scroll (wheel, touch or keys); the dialog itself scrolls and does not pass the scroll on. */
+html:has(dialog[open]) { overflow: hidden; scrollbar-gutter: stable; }
+body:has(dialog[open]) { overflow: hidden; }
+.dialog { overscroll-behavior: contain; }
+
+/* Hospital picker of the admin form: search box, the matches right under it, or the chosen hospital on one line. */
+.hpick { gap: 8px; }
+.hpick__box { position: relative; }
+.hpick__icon { position: absolute; top: 50%; left: 12px; color: var(--muted); transform: translateY(-50%); pointer-events: none; }
+.hpick__input.input { padding-left: 38px; }
+.hpick__status { margin: 0; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.hpick__list { max-height: 252px; margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain; list-style: none; background: var(--surface); border: 1px solid var(--control-line); border-radius: var(--r-sm); }
+.hpick__opt { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-height: 56px; padding: 8px 12px; border-top: 1px solid var(--line); cursor: pointer; }
+.hpick__opt:first-child { border-top: 0; }
+.hpick__opt.is-active { background: var(--accent-soft); }
+.hpick__oname { font-weight: 600; overflow-wrap: anywhere; }
+.hpick__hit { color: var(--accent-text); font-weight: 700; }
+.hpick__addr { color: var(--muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.hpick__chosen { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 6px 8px 6px 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.hpick__tick { flex: none; color: var(--accent-text); }
+.hpick__name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.hpick__chosen .txtbtn { min-height: 44px; }
+@media (max-width: 899px) { .hpick__list { max-height: 40dvh; } }

@@ -237,48 +237,153 @@ function Field({ id, label, hint, error, required, wide, children }: { id: strin
   );
 }
 
-/** Search by name, then choose from what the server found (active hospitals). The chosen one stays in the list. */
+type HospitalOption = { id: number; name: string; address: string };
+
+/** The name split around the typed text, so the match can be drawn in bold. */
+function splitMatch(name: string, query: string): { text: string; hit: boolean }[] {
+  const q = query.trim().toLowerCase();
+  const at = q ? name.toLowerCase().indexOf(q) : -1;
+  if (at < 0) return [{ text: name, hit: false }];
+  return [
+    ...(at > 0 ? [{ text: name.slice(0, at), hit: false }] : []),
+    { text: name.slice(at, at + q.length), hit: true },
+    ...(at + q.length < name.length ? [{ text: name.slice(at + q.length), hit: false }] : []),
+  ];
+}
+
+/**
+ * Picks the hospital of a hospital admin. Nothing chosen: a search box with the matching hospitals right under it (they narrow as
+ * you type; arrows and Enter work). Chosen: the hospital on one line with "Change", which opens the search again.
+ */
 function HospitalPick({ form, error, busy, onPick, clearError }: { form: AdminForm; error?: string | false; busy: boolean; onPick: (id: number | null, name: string) => void; clearError: () => void }) {
   const t = useT();
+  const listId = useId();
   const [search, setSearch] = useState("");
-  const [options, setOptions] = useState<{ id: number; name: string }[]>([]);
+  const [options, setOptions] = useState<HospitalOption[]>([]);
+  const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [active, setActive] = useState(0);
+  const changeRef = useRef<HTMLButtonElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const chosen = form.hospitalId !== null;
 
   useEffect(() => {
+    if (chosen) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       const res = await fetchHospitals({ search: search.trim(), treatmentId: 0, active: "1", pending: false, page: 1, perPage: 50 }, controller.signal);
       if (controller.signal.aborted) return;
+      setLoading(false);
       setFailed(!res.ok);
-      if (res.ok) setOptions(res.data.items.map((h) => ({ id: h.id, name: h.name })));
-    }, search ? 300 : 0);
+      if (res.ok) {
+        setOptions(res.data.items.map((h) => ({ id: h.id, name: h.name, address: h.address })));
+        setActive(0);
+      }
+    }, search ? 250 : 0);
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [search]);
+  }, [search, chosen]);
 
-  const list = form.hospitalId !== null && !options.some((o) => o.id === form.hospitalId) ? [{ id: form.hospitalId, name: form.hospitalName }, ...options] : options;
+  const pick = (o: HospitalOption) => {
+    onPick(o.id, o.name);
+    clearError();
+    setSearch("");
+    // The search box is gone now; the "Change" button is where the cursor goes next.
+    window.setTimeout(() => changeRef.current?.focus(), 0);
+  };
+  const reopen = () => {
+    setLoading(true);
+    onPick(null, "");
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // never submits the form
+      if (options[active]) pick(options[active]);
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (options.length === 0) return;
+      setActive((i) => (e.key === "ArrowDown" ? Math.min(options.length - 1, i + 1) : Math.max(0, i - 1)));
+    } else if (e.key === "Escape" && search) {
+      e.stopPropagation(); // clears the text instead of closing the dialog
+      e.preventDefault();
+      setSearch("");
+    }
+  };
+
+  // The highlighted row scrolls into view while moving with the arrows.
+  useEffect(() => {
+    if (chosen) return;
+    document.getElementById(`${listId}-${active}`)?.scrollIntoView({ block: "nearest" });
+  }, [active, chosen, listId]);
+
   return (
-    <div className="field adm-form__wide">
-      <label className="field__label" htmlFor="ad-hsearch">{t("ad.f.hospital")}<span className="field__req" aria-hidden="true">*</span></label>
-      <input id="ad-hsearch" className="input" type="search" value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} placeholder={t("ad.f.hospital.search")} autoComplete="off" disabled={busy} />
-      <select
-        className="sel sel--field"
-        aria-label={t("ad.f.hospital")}
-        value={form.hospitalId ?? ""}
-        onChange={(e) => {
-          const id = Number(e.target.value);
-          onPick(id > 0 ? id : null, list.find((o) => o.id === id)?.name ?? "");
-          clearError();
-        }}
-        disabled={busy}
-        aria-invalid={error ? true : undefined}
-      >
-        <option value="">{t("ad.f.hospital.pick")}</option>
-        {list.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-      </select>
-      {failed ? <span className="field__error" role="alert">{t("ad.f.hospital.failed")}</span> : list.length === 0 && search ? <span className="field__hint">{t("ad.f.hospital.none")}</span> : null}
+    <div className="field adm-form__wide hpick">
+      <label className="field__label" htmlFor={chosen ? undefined : `${listId}-input`} id={`${listId}-label`}>
+        {t("ad.f.hospital")}<span className="field__req" aria-hidden="true">*</span>
+      </label>
+
+      {chosen ? (
+        <div className="hpick__chosen" role="group" aria-labelledby={`${listId}-label`}>
+          <Icon name="check" size={16} className="hpick__tick" />
+          <span className="hpick__name" translate="no">{form.hospitalName}</span>
+          <button ref={changeRef} type="button" className="txtbtn" onClick={reopen} disabled={busy}>{t("ad.f.hospital.change")}</button>
+        </div>
+      ) : (
+        <>
+          <div className="hpick__box">
+            <Icon name="search" size={18} className="hpick__icon" />
+            <input
+              ref={inputRef}
+              id={`${listId}-input`}
+              className="input hpick__input"
+              type="text"
+              role="combobox"
+              aria-expanded="true"
+              aria-controls={listId}
+              aria-autocomplete="list"
+              aria-activedescendant={options[active] ? `${listId}-${active}` : undefined}
+              aria-invalid={error ? true : undefined}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setLoading(true);
+              }}
+              onKeyDown={onKeyDown}
+              placeholder={t("ad.f.hospital.search")}
+              autoComplete="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              disabled={busy}
+            />
+          </div>
+          <p className="hpick__status" role="status">
+            {failed ? t("ad.f.hospital.failed") : loading ? t("ad.f.hospital.loading") : options.length === 0 ? t("ad.f.hospital.none") : t("ad.f.hospital.count", { n: options.length })}
+          </p>
+          <ul id={listId} className="hpick__list" role="listbox" aria-label={t("ad.f.hospital")}>
+            {options.map((o, i) => (
+              <li
+                key={o.id}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={i === active}
+                className={i === active ? "hpick__opt is-active" : "hpick__opt"}
+                onMouseMove={() => { if (i !== active) setActive(i); }}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => pick(o)}
+              >
+                <span className="hpick__oname" translate="no">
+                  {splitMatch(o.name, search).map((part, k) => (part.hit ? <b key={k} className="hpick__hit">{part.text}</b> : <span key={k}>{part.text}</span>))}
+                </span>
+                {o.address ? <span className="hpick__addr" translate="no">{o.address}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {error ? <span className="field__error" role="alert">{error}</span> : null}
     </div>
   );

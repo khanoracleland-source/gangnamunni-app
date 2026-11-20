@@ -105,7 +105,7 @@ describe('admin API: admin accounts (read)', () => {
     it('super admin: every account, no secrets, inactivity marks for the switched-off ones', async () => {
       const res = await get('/v1/admins', SUPER);
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({ scope: 'all', deleteAfterDays: 5, total: 4 });
+      expect(res.body).toMatchObject({ scope: 'all', deleteAfterDays: 1, total: 4 });
       expect(JSON.stringify(res.body)).not.toMatch(/password|cred_epoch/i);
       const by = Object.fromEntries(res.body.items.map((i: any) => [i.id, i]));
       expect(by[1]).toMatchObject({ role: 'super_admin', hospitalId: null, isSelf: true, ssoMemberId: 'm1' });
@@ -114,7 +114,7 @@ describe('admin API: admin accounts (read)', () => {
       expect(by[7]).toMatchObject({ isActive: false, deleteReady: false, inactiveDays: 1 });
       expect(by[1].ssoMemberId).toBe('m1');
       const inactivity = calls.find((c) => c.sql.includes('deactivated_at'))!;
-      expect(inactivity.values).toEqual([5, [6, 7]]);
+      expect(inactivity.values).toEqual([1, [6, 7]]);
     });
     it('hospital role: only itself, no SSO link, no options for others', async () => {
       const res = await get('/v1/admins', HOSPITAL5);

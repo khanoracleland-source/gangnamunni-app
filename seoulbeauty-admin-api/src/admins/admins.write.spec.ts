@@ -319,7 +319,7 @@ describe('admin API: admin account writes (edit, active state)', () => {
       const res = await active(5, { active: false });
       expect(res.status).toBe(200);
       expect(events).toEqual(['BEGIN', expect.stringContaining('FOR UPDATE'), 'UPDATE gangnamunni_admins SET is_active = 0, deactivated_at = NOW() WHERE id = ?', 'COMMIT', 'RELEASE']);
-      expect(rwCalls[0].values).toEqual([5, 5]);
+      expect(rwCalls[0].values).toEqual([1, 5]);
     });
     it('switching on clears the mark', async () => {
       expect((await active(6, { active: true })).status).toBe(200);
@@ -491,7 +491,7 @@ describe('admin API: admin account writes (edit, active state)', () => {
 
   describe('delete an admin', () => {
     const inactive = (id: number, days: number) => {
-      rows[id] = baseRow(id, 'hospital_admin', 0, { username: `old${id}`, deactivated_at: '2026-11-01 10:00:00', ready: days >= 5 ? 1 : 0, inactive_days: days });
+      rows[id] = baseRow(id, 'hospital_admin', 0, { username: `old${id}`, deactivated_at: '2026-11-01 10:00:00', ready: days >= 1 ? 1 : 0, inactive_days: days });
     };
     it('super admin only', async () => {
       inactive(6, 9);
@@ -506,14 +506,12 @@ describe('admin API: admin account writes (edit, active state)', () => {
       expect(events).toEqual(['BEGIN', expect.stringContaining('FOR UPDATE'), 'DELETE FROM gangnamunni_admins WHERE id = ?', 'COMMIT', 'RELEASE']);
       expect(rwCalls[1].values).toEqual([6]);
     });
-    it('exactly 5 days counts; 4 days does not (409 with the days left)', async () => {
-      inactive(6, 5);
+    it('exactly 1 day counts; switched off today does not (409 with the days left)', async () => {
+      inactive(6, 1);
       expect((await remove(6, { confirm: 'old6' })).status).toBe(200);
-      inactive(6, 4);
+      inactive(6, 0);
       const early = await remove(6, { confirm: 'old6' });
       expect(early.status).toBe(409); expect(early.body).toEqual({ error: 'not_inactive_long_enough', daysLeft: 1 });
-      inactive(6, 2);
-      expect((await remove(6, { confirm: 'old6' })).body).toEqual({ error: 'not_inactive_long_enough', daysLeft: 3 });
       expect(rwCalls.filter((c) => c.sql.startsWith('DELETE')).length).toBe(1);
     });
     it('an active account is never deleted (409); an account without a switch-off record is not either (409)', async () => {

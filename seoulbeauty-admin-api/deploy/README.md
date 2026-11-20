@@ -1112,10 +1112,10 @@ role sees and opens only its own (another id answers 403). The password hash and
 Independent of the hospital switches. Anything but `1` = off: the routes answer 404 and `/v1/me` reports `admins=false`.
 
 ### 15.1 Database (run as the DB admin; `<DB_NAME>` = schema from section 1)
-First the column that records when an account was switched off (an account may be deleted only after 5 days of being inactive). Run once; safe to run again. The old PHP page does not write this column: an account it switches off keeps `deactivated_at` NULL, which the panel reads as "the 5 days have not started":
+First the column that records when an account was switched off (an account may be deleted only after 1 day of being inactive). Run once; safe to run again. The old PHP page does not write this column: an account it switches off keeps `deactivated_at` NULL, which the panel reads as "the waiting time has not started":
 ```sql
 ALTER TABLE gangnamunni_admins ADD COLUMN IF NOT EXISTS deactivated_at DATETIME NULL DEFAULT NULL;
--- accounts that are off right now start their 5 days today
+-- accounts that are off right now start their waiting day today
 UPDATE gangnamunni_admins SET deactivated_at = NOW() WHERE is_active = 0 AND deactivated_at IS NULL;
 ```
 Then the read grants. They add up to the ones of section 1 (same read-only user). No password, session counter or other secret column is granted:
@@ -1133,7 +1133,7 @@ The hospital drop-down reads `id, name` of `gangnamunni_hospitals`, already gran
 - `POST /v1/admins` add an account (login name `[A-Za-z0-9_]{3,30}`, password of at least 8 characters, name, optional email / phone, role `super_admin` or `hospital_admin`, a hospital for a hospital admin, notifications). Super admin only. The email must not belong to another admin, member (`g5_member`) or user (`users`). The password is stored as a bcrypt hash with the `$2y$` prefix (what PHP `password_hash` writes, so the old login accepts it). Every active admin who receives "new admin" gets one notice row; no push.
 - `PATCH /v1/admins/:id` name, phone, notification choice, email and password (`newPassword`, at least 8 characters) — a super admin for any account, every other role for its own only; a super admin may also change role and hospital (nobody their own role; the last active super admin cannot be demoted). A role that is not a super admin must send `currentPassword` to change its own email or password (checked before anything else: `400` missing, `403 wrong_password`; 5 wrong answers lock that account's check for 15 minutes: `429 too_many_attempts` with `retryAfterSeconds`; the counter lives in the process and resets on restart). A new password ends every session of that account (`cred_epoch + 1`, same statement; the old PHP login compares `cred_epoch` on each request, this API does not read it) and the answer says `passwordChanged`. The email follows the same uniqueness rule as add (the account's own email is not a clash). The audit log line names the fields, never their values.
 - `POST /v1/admins/:id/active` (`{"active":true|false}`, super admin only). Switching off records the moment (`deactivated_at`), switching on clears it; nobody changes their own state; the last active super admin cannot be switched off.
-- `DELETE /v1/admins/:id` (`{"confirm":"<login name>"}`, super admin only): only an account that has been inactive for 5 days (`409 still_active`, `no_inactive_record`, `not_inactive_long_enough`), never your own, and the login name must be typed exactly.
+- `DELETE /v1/admins/:id` (`{"confirm":"<login name>"}`, super admin only): only an account that has been inactive for 1 day (24 hours) (`409 still_active`, `no_inactive_record`, `not_inactive_long_enough`), never your own, and the login name must be typed exactly.
 Every write locks the account and the active super admins in one transaction. Needs `ADMIN_ADMINS_ENABLED=1` as well; anything but `1` = off (404). `GET /v1/me` reports it as `features.adminsWrite`; the page shows the switch, edit and delete controls only then.
 
 Grants (run as the DB admin; the same two hosts as the read user, shown for `127.0.0.1`: repeat each line for `'localhost'`):

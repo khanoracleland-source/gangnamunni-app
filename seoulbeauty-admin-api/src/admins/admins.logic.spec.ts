@@ -42,7 +42,7 @@ describe('admins logic', () => {
     expect(toItem(row(), SUPER).ssoMemberId).toBeNull(); // no link column / no answer
   });
 
-  it('item: delete is ready only when inactive AND the 5 days are over', () => {
+  it('item: delete is ready only when inactive AND the waiting days are over', () => {
     const off = row({ is_active: 0 });
     expect(toItem(off, SUPER).deleteReady).toBe(false); // no record of when it was switched off
     expect(toItem(off, SUPER, { id: 5, deactivated_at: null, inactive_days: null, ready: 0 })).toMatchObject({ deleteReady: false, deactivatedAt: null, inactiveDays: null });
@@ -53,7 +53,7 @@ describe('admins logic', () => {
   });
 
   it('options: roles and hospitals only for a super admin', () => {
-    expect(buildOptions(SUPER, [{ id: 2, name: 'B' }])).toMatchObject({ roles: [...ASSIGNABLE_ROLES], hospitals: [{ id: 2, name: 'B' }], minPasswordLength: 8, deleteAfterDays: 5 });
+    expect(buildOptions(SUPER, [{ id: 2, name: 'B' }])).toMatchObject({ roles: [...ASSIGNABLE_ROLES], hospitals: [{ id: 2, name: 'B' }], minPasswordLength: 8, deleteAfterDays: 1 });
     expect(buildOptions(OTHER, [{ id: 2, name: 'B' }])).toMatchObject({ roles: [], hospitals: [] });
   });
 });
