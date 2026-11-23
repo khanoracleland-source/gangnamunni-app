@@ -2025,8 +2025,10 @@ export type PaymentOverview = { methods: MethodSums[]; weeks: WeekSums[]; ordere
 const payMethod = (v: unknown): PayMethod => (v === "card" || v === "bank_transfer" ? v : "");
 const boardBox = (v: unknown): BoardBox => ({ count: num(obj(v).count), amount: num(obj(v).amount), noFee: num(obj(v).noFee) });
 
-export async function fetchPaymentBoard(hospitalId: number, period: BoardPeriod, signal?: AbortSignal): Promise<ApiResult<PaymentBoard>> {
+/** `range` (both dates) replaces the week / month bounds. */
+export async function fetchPaymentBoard(hospitalId: number, period: BoardPeriod, signal?: AbortSignal, range?: { from: string; to: string }): Promise<ApiResult<PaymentBoard>> {
   const p = new URLSearchParams({ period });
+  if (range && range.from && range.to) { p.set("from", range.from); p.set("to", range.to); }
   if (hospitalId > 0) p.set("hospital_id", String(hospitalId));
   const res = await getJson(`/v1/payments/board?${p}`, signal);
   if (!res.ok) return res;

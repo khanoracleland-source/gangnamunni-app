@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useState, type KeyboardEvent } from "react";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import { Pager } from "./PaymentsTables";
@@ -27,15 +27,15 @@ function Help({ text, label }: { text: string; label: string }) {
   );
 }
 
-/** This week / this month: how much of the chosen hospital is 보류, 반영 and 입금. */
-export function PeriodBoard({ hospitalId, tick, onLeave, onRange }: { hospitalId: number; tick: number; onLeave?: () => void; onRange?: (r: { from: string; to: string }) => void }) {
+/** The three cards (보류, 반영, 입금) of the chosen period. A card is also the tab that picks the list below. */
+export function PeriodBoard({ hospitalId, period, custom, stage, onStage, tick, onLeave, onRange }: { hospitalId: number; period: BoardPeriod; custom: { from: string; to: string } | null; stage: SectionStage; onStage: (s: SectionStage) => void; tick: number; onLeave?: () => void; onRange?: (r: { from: string; to: string }) => void }) {
   const t = useT();
-  const [period, setPeriod] = useState<BoardPeriod>("week");
   const [got, setGot] = useState<{ key: string; res: ApiResult<PaymentBoard> } | null>(null);
-  const key = `${hospitalId}|${period}|${tick}`;
+  const [retry, setRetry] = useState(0);
+  const key = `${hospitalId}|${period}|${custom ? `${custom.from}~${custom.to}` : ""}|${tick}|${retry}`;
   useEffect(() => {
     const c = new AbortController();
-    void fetchPaymentBoard(hospitalId, period, c.signal).then((res) => {
+    void fetchPaymentBoard(hospitalId, period, c.signal, custom ?? undefined).then((res) => {
       if (c.signal.aborted) return;
       if (!res.ok && res.status === 401) { (onLeave ?? leaveToLogin)(); return; }
       setGot({ key, res });
@@ -55,27 +55,31 @@ export function PeriodBoard({ hospitalId, tick, onLeave, onRange }: { hospitalId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardFrom, boardTo]);
   const box = (s: SectionStage): BoardBox | null => (board ? board[s] : null);
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = STAGES.indexOf(stage);
+    let n = i;
+    if (e.key === "ArrowRight") n = (i + 1) % 3;
+    else if (e.key === "ArrowLeft") n = (i + 2) % 3;
+    else return;
+    e.preventDefault();
+    onStage(STAGES[n]);
+    document.getElementById(`pay-stage-${STAGES[n]}`)?.focus();
+  };
   return (
     <section className={`pay-board${loading ? " bk-busy" : ""}`} aria-label={t("pay.board.title")} aria-busy={loading}>
-      <div className="pay-board__head">
-        <h2 className="pay-board__title">{t("pay.board.title")}</h2>
-        <div className="pay-seg" role="group" aria-label={t("pay.board.period")}>
-          {(["week", "month"] as const).map((p) => (
-            <button key={p} type="button" className="pay-seg__btn" aria-pressed={period === p} onClick={() => setPeriod(p)}>{t(p === "week" ? "pay.board.week" : "pay.board.month")}</button>
-          ))}
-        </div>
-        {board ? <span className="muted pay-board__range">{board.from} ~ {board.to}</span> : null}
-      </div>
-      {failed ? <Notice tone="warn" icon="alert">{t("pay.err.list")}</Notice> : null}
-      <div className="pay-boxes">
+      {failed ? <Notice tone="warn" icon="alert" action={<button type="button" className="btn btn--ghost btn--sm" onClick={() => setRetry((n) => n + 1)}>{t("pay.err.retry")}</button>}>{t("pay.err.list")}</Notice> : null}
+      <div className="pay-boxes pay-boxes--tabs" role="tablist" aria-label={t("pay.tabs")} onKeyDown={onKey}>
         {STAGES.map((s) => {
           const b = box(s);
+          const on = stage === s;
           return (
-            <div key={s} className={`pay-box pay-box--${s}`}>
-              <div className="pay-box__label">{t(`pay.stage3.${s}` as never)}<Help label={t("pay.help.label")} text={t(`pay.help.${s}` as never)} /></div>
-              <div className="pay-box__value">{b ? won(b.amount) : "—"}<small>원</small></div>
-              <div className="muted pay-box__sub">{b ? t("pay.board.count", { n: won(b.count) }) : ""}{b && b.noFee > 0 ? ` · ${t("pay.board.noFee", { n: String(b.noFee) })}` : ""}</div>
-              <div className="muted pay-box__note">{t(`pay.board.note.${s}` as never)}</div>
+            <div key={s} className={`pay-box pay-box--${s}`} data-active={on}>
+              <button type="button" role="tab" id={`pay-stage-${s}`} aria-selected={on} aria-controls="pay-stage-panel" tabIndex={on ? 0 : -1} className="pay-box__main" onClick={() => onStage(s)}>
+                <span className="pay-box__label">{t(`pay.stage3.${s}` as never)}</span>
+                <span className="pay-box__value">{b ? won(b.amount) : "—"}<small>원</small></span>
+                <span className="muted pay-box__sub">{b ? t("pay.board.count", { n: won(b.count) }) : " "}{b && b.noFee > 0 ? ` · ${t("pay.board.noFee", { n: String(b.noFee) })}` : ""}</span>
+              </button>
+              <span className="pay-box__help"><Help label={t("pay.help.label")} text={t(`pay.help.${s}` as never)} /></span>
             </div>
           );
         })}
@@ -127,20 +131,18 @@ function Head({ stage, own }: { stage: SectionStage; own: boolean }) {
   );
 }
 
-export type SectionFilters = { hospitalId: number; from: string; to: string; q: string };
+export type SectionFilters = { hospitalId: number; q: string };
 
 /** The three sections: 보류, 반영 and 입금, each a list of bookings with its own columns. Dates are sent only once the user chose them. */
-export function Sections({ filters, datesTouched, range, own, tick, onLeave }: { filters: SectionFilters; datesTouched: boolean; range: { from: string; to: string } | null; own: boolean; tick: number; onLeave?: () => void }) {
+export function Sections({ filters, stage, range, own, tick, onLeave }: { filters: SectionFilters; stage: SectionStage; range: { from: string; to: string } | null; own: boolean; tick: number; onLeave?: () => void }) {
   const t = useT();
-  const [stage, setStage] = useState<SectionStage>("held");
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
   const [got, setGot] = useState<{ key: string; res: ApiResult<PaymentSection> } | null>(null);
-  const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  // Until the user picks dates, the lists follow the week or month chosen on the board above.
-  const from = datesTouched ? filters.from : (range?.from ?? "");
-  const to = datesTouched ? filters.to : (range?.to ?? "");
-  const waiting = !datesTouched && !range;
+  // The lists follow the range of the cards above.
+  const from = range?.from ?? "";
+  const to = range?.to ?? "";
+  const waiting = !range;
   const key = `${stage}|${filters.hospitalId}|${from}|${to}|${filters.q.trim()}|${page}|${tick}|${retry}`;
 
   // A new filter or section starts again at the first page.
@@ -162,32 +164,13 @@ export function Sections({ filters, datesTouched, range, own, tick, onLeave }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    const i = STAGES.indexOf(stage);
-    let n = i;
-    if (e.key === "ArrowRight") n = (i + 1) % 3;
-    else if (e.key === "ArrowLeft") n = (i + 2) % 3;
-    else return;
-    e.preventDefault();
-    setStage(STAGES[n]);
-    refs.current[n]?.focus();
-  };
-
   const loading = got?.key !== key;
   // While another section loads, the previous one's rows are not shown under the new columns.
   const data = got?.res.ok && got.res.data.stage === stage ? got.res.data : null;
   const failed = got?.key === key && !got.res.ok;
   return (
     <section className="pay-list">
-      <div className="pay-tabs" role="tablist" aria-label={t("pay.tabs")} onKeyDown={onKey}>
-        {STAGES.map((s, i) => (
-          <button key={s} ref={(el) => { refs.current[i] = el; }} type="button" role="tab" id={`pay-stage-${s}`} aria-selected={stage === s} aria-controls="pay-stage-panel" tabIndex={stage === s ? 0 : -1} className="pay-tab" onClick={() => setStage(s)}>
-            {t(`pay.stage3.${s}` as never)}
-          </button>
-        ))}
-      </div>
       <div id="pay-stage-panel" role="tabpanel" aria-labelledby={`pay-stage-${stage}`} className={loading ? "bk-busy" : undefined} aria-busy={loading}>
-        <p className="muted pay-stage-note">{t(`pay.help.${stage}` as never)}</p>
         {failed ? (
           <Notice tone="warn" icon="alert" action={<button type="button" className="btn btn--ghost btn--sm" onClick={() => setRetry((n) => n + 1)}>{t("pay.err.retry")}</button>}>{t("pay.err.list")}</Notice>
         ) : null}
