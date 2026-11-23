@@ -84,3 +84,7 @@ export function payMethodFromInicisType(type: unknown): PayMethod | null {
 }
 /** PAYMENTS_RECORD_PAY_METHOD=1 turns on writing gangnamunni_platform_payments.pay_method (needs the pay_method column). Default off. */
 export const recordPayMethodOn = (env: NodeJS.ProcessEnv = process.env): boolean => (env.PAYMENTS_RECORD_PAY_METHOD ?? '').trim() === '1';
+/** PAYMENTS_RECORD_FEE=1 (with PAYMENTS_RECORD_PAY_METHOD=1) also writes fee_rate_bp / fee_amount when a payment is confirmed. Needs platform_payments_fee.sql. Default off. */
+export const recordFeeOn = (env: NodeJS.ProcessEnv = process.env): boolean => (env.PAYMENTS_RECORD_FEE ?? '').trim() === '1' && recordPayMethodOn(env);
+/** Fee of one payment: the amount paid by card / transfer times the rate (basis points), rounded DOWN to a whole won. Same rule as the PHP page and the admin API. */
+export const feeAmountOf = (paid: number, rateBp: number): number => Math.floor((Math.max(0, paid) * Math.max(0, rateBp)) / 10000);

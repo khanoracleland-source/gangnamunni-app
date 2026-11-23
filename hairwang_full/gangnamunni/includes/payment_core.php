@@ -1,4 +1,6 @@
 <?php
+
+require_once __DIR__ . '/payment_fee.php';
 require_once __DIR__ . '/booking_payment_config.php';
 /**
  * Canonical Seoul Beauty payment service.
@@ -62,6 +64,31 @@ function platform_payment_method_to_record(?string $pay_method): ?string {
     return $pay_method;
 }
 
+/**
+ * Fee and rate of a payment, or null: switch G5_PAYMENTS_RECORD_FEE=1 (default off), the rate in force on the payment's Seoul date
+ * (latest effective_from <= that date) from gangnamunni_payment_fee_rates. A missing rate or an unreadable table returns null and never stops the payment.
+ * @return array{rate_bp:int,amount:int}|null
+ */
+function platform_payment_fee_for(mysqli $db, string $method, string $paid_at, int $amount): ?array {
+    if (!function_exists('booking_payment_setting') || booking_payment_setting('G5_PAYMENTS_RECORD_FEE', '0') !== '1') return null;
+    try {
+        $day = substr($paid_at, 0, 10);
+        $st = mysqli_prepare($db, "SELECT rate_bp FROM gangnamunni_payment_fee_rates WHERE pay_method=? AND effective_from<=? ORDER BY effective_from DESC LIMIT 1");
+        if (!$st) return null;
+        mysqli_stmt_bind_param($st, 'ss', $method, $day);
+        $ok = mysqli_stmt_execute($st);
+        $row = $ok ? mysqli_fetch_assoc(mysqli_stmt_get_result($st)) : null;
+        mysqli_stmt_close($st);
+        if (!$row) return null;
+        $bp = (int)$row['rate_bp'];
+        if ($bp < 0 || $bp > 10000) return null;
+        return ['rate_bp' => $bp, 'amount' => platform_payment_fee_amount($amount, $bp)];
+    } catch (Throwable $e) {
+        error_log('fee rate lookup failed: ' . $e->getMessage());
+        return null;
+    }
+}
+
 function platform_payment_mark_verified(
     mysqli $db,
     string $merchant_uid,
@@ -119,16 +146,17 @@ function platform_payment_mark_verified(
 
         // pay_method (card|bank_transfer) is written only when the server switch is on and the value is one of the two known methods.
         $method = platform_payment_method_to_record($pay_method);
-        $update = mysqli_prepare($db,
-            "UPDATE gangnamunni_platform_payments
-             SET provider=?,provider_transaction_id=?,verified_amount=?,verified_at=NOW(),
-                 verification_source=?,status='paid',paid_at=?" . ($method !== null ? ",pay_method=?" : "") . "
-             WHERE id=? AND status='pending'");
-        if ($method !== null) {
-            mysqli_stmt_bind_param($update, 'ssisssi', $provider, $provider_transaction_id, $verified_amount, $source, $paid_at, $method, $payment_id);
-        } else {
-            mysqli_stmt_bind_param($update, 'ssissi', $provider, $provider_transaction_id, $verified_amount, $source, $paid_at, $payment_id);
-        }
+        // The fee is fixed now, once: the rate in force on the payment's date (null = not recorded; never blocks the payment).
+        $fee = $method !== null ? platform_payment_fee_for($db, $method, $paid_at, $verified_amount) : null;
+        $sets = "provider=?,provider_transaction_id=?,verified_amount=?,verified_at=NOW(),verification_source=?,status='paid',paid_at=?";
+        $types = 'ssiss';
+        $params = [$provider, $provider_transaction_id, $verified_amount, $source, $paid_at];
+        if ($method !== null) { $sets .= ',pay_method=?'; $types .= 's'; $params[] = $method; }
+        if ($fee !== null) { $sets .= ',fee_rate_bp=?,fee_amount=?'; $types .= 'ii'; $params[] = $fee['rate_bp']; $params[] = $fee['amount']; }
+        $types .= 'i';
+        $params[] = $payment_id;
+        $update = mysqli_prepare($db, "UPDATE gangnamunni_platform_payments SET " . $sets . " WHERE id=? AND status='pending'");
+        mysqli_stmt_bind_param($update, $types, ...$params);
         if (!mysqli_stmt_execute($update) || mysqli_stmt_affected_rows($update) !== 1) {
             throw new RuntimeException('Payment verification update failed.');
         }

@@ -98,6 +98,7 @@ describe('Inicis card payment API', () => {
   const base = () => ({
     booking: { id: 7, hospital_id: 3, mb_id: 'kim', phone: '010-1234-5678', status: 'confirmed', booking_date: '2099-01-05', booking_time: '14:00:00', treatment: '보톡스 · 50U', hospital_name: 'A병원', name: '김민', price: 50000, h_name: 'A병원', profile_image_url: '', hospital_address: '서울 강남구 1' },
     order: { id: 31, booking_id: 7, patient_mb_id: 'kim', merchant_uid: OID, status: 'pending', amount: 50000, points_used: 0, provider: null, provider_transaction_id: null } as any,
+    rates: [{ method: 'card', bp: 143, from: '2026-01-01' }, { method: 'bank_transfer', bp: 198, from: '2026-01-01' }] as { method: string; bp: number; from: string }[], rateFails: false,
     sql: [] as { sql: string; args: any[] }[], attempts: [] as any[], events: [] as any[], history: [] as any[], failUpdate: false, locked: true, poolDown: false, attemptCount: undefined as number | undefined,
   });
   const respond = (sql: string, args: any[]): any => {
@@ -113,10 +114,16 @@ describe('Inicis card payment API', () => {
     if (/INSERT INTO gangnamunni_payment_attempts/.test(sql)) { const row = st.attempts.find((x: any) => x.key === args[3]); if (row) Object.assign(row, { outcome: args[5], reason: args[6] }); else st.attempts.push({ key: args[3], outcome: args[5], reason: args[6] }); return [{ affectedRows: 1 }]; } // UNIQUE (provider, pg_payment_key): one auth TID = one row
     if (/INSERT INTO gangnamunni_payment_events/.test(sql)) { st.events.push(args); return [{ affectedRows: 1 }]; }
     if (/INSERT INTO gangnamunni_payment_status_history/.test(sql)) { st.history.push(args); return [{ affectedRows: 1 }]; }
+    if (/FROM gangnamunni_payment_fee_rates/.test(sql)) {
+      if (st.rateFails) throw Object.assign(new Error('no table'), { code: 'ER_NO_SUCH_TABLE' });
+      const hit = st.rates.filter((r: any) => r.method === args[0] && r.from <= args[1]).sort((a: any, b: any) => (a.from < b.from ? 1 : -1))[0];
+      return [hit ? [{ rate_bp: hit.bp }] : []];
+    }
     if (/UPDATE gangnamunni_platform_payments SET provider/.test(sql)) {
       if (st.failUpdate) return [{ affectedRows: 0 }];
       Object.assign(st.order, { provider: args[0], provider_transaction_id: args[1], verified_amount: args[2], status: 'paid', paid_at: args[3] });
       if (/pay_method = \?/.test(sql)) st.order.pay_method = args[4];
+      if (/fee_rate_bp = \?, fee_amount = \?/.test(sql)) Object.assign(st.order, { fee_rate_bp: args[5], fee_amount: args[6] });
       return [{ affectedRows: 1 }];
     }
     return [{ affectedRows: 1 }];
@@ -147,7 +154,7 @@ describe('Inicis card payment API', () => {
     Object.assign(process.env, { INICIS_TEST_MEMBERS: 'kim, tester2', INICIS_MID: MID, INICIS_HASHKEY: KEY, PG_PAYMENTS_ENABLED: '1', DB_PAY_USER: 'u', DB_PAY_PASSWORD: 'p' });
     delete process.env.INICIS_MODE; delete process.env.INICIS_PUBLIC_BASE;
   });
-  afterEach(() => { for (const k of ['PAYMENTS_RECORD_PAY_METHOD', 'INICIS_LIVE_MEMBERS', 'INICIS_TEST_MEMBERS', 'INICIS_MID', 'INICIS_HASHKEY', 'PG_PAYMENTS_ENABLED', 'DB_PAY_USER', 'DB_PAY_PASSWORD']) { if (env[k] === undefined) delete process.env[k]; else process.env[k] = env[k]; } });
+  afterEach(() => { for (const k of ['PAYMENTS_RECORD_FEE', 'PAYMENTS_RECORD_PAY_METHOD', 'INICIS_LIVE_MEMBERS', 'INICIS_TEST_MEMBERS', 'INICIS_MID', 'INICIS_HASHKEY', 'PG_PAYMENTS_ENABLED', 'DB_PAY_USER', 'DB_PAY_PASSWORD']) { if (env[k] === undefined) delete process.env[k]; else process.env[k] = env[k]; } });
   const api = () => request(app.getHttpServer());
   const authed = (r: request.Test) => r.set('Cookie', 'sid=kim').set('X-Requested-With', 'XMLHttpRequest');
   const prepare = (body: object = {}) => authed(api().post('/v1/mypage/bookings/7/payment/inicis/prepare')).send(body);
@@ -162,6 +169,43 @@ describe('Inicis card payment API', () => {
     q = await run('CARD'); expect(st.order.pay_method).toBe('card');
     q = await run('BANK'); expect(st.order.pay_method).toBe('bank_transfer');
     q = await run('VBANK'); expect(q.sql).not.toMatch(/pay_method/); expect(st.order.pay_method).toBeUndefined(); // unknown stays NULL
+  });
+
+  describe('fee recorded when the payment is confirmed (PAYMENTS_RECORD_FEE)', () => {
+    const run = async (type = 'CARD', amt = '50000') => {
+      st = base(); st.order.amount = Number(amt); inicisReply = reply(approveOk({ P_TYPE: type, P_AMT: amt }));
+      return ret(authResult({ P_AMT: amt })).expect(303);
+    };
+    const updateSql = () => st.sql.find((q: any) => /UPDATE gangnamunni_platform_payments SET provider/.test(q.sql));
+    const fixedRates = [{ method: 'card', bp: 143, from: '2026-01-01' }, { method: 'bank_transfer', bp: 198, from: '2026-01-01' }];
+    it('off by default (and off without PAYMENTS_RECORD_PAY_METHOD): no rate is read and the UPDATE has no fee columns', async () => {
+      await run(); expect(updateSql().sql).not.toMatch(/fee_/); expect(st.sql.some((q: any) => /payment_fee_rates/.test(q.sql))).toBe(false);
+      process.env.PAYMENTS_RECORD_FEE = '1'; await run(); expect(updateSql().sql).not.toMatch(/fee_/); // pay_method switch still off
+    });
+    it('card 45 000 at 1.43% -> rate 143, fee 643 (rounded down); transfer 45 000 at 1.98% -> 891', async () => {
+      process.env.PAYMENTS_RECORD_PAY_METHOD = '1'; process.env.PAYMENTS_RECORD_FEE = '1';
+      await run('CARD', '45000'); expect(st.order).toMatchObject({ pay_method: 'card', fee_rate_bp: 143, fee_amount: 643, status: 'paid' });
+      await run('BANK', '45000'); expect(st.order).toMatchObject({ pay_method: 'bank_transfer', fee_rate_bp: 198, fee_amount: 891 });
+      expect(updateSql().sql).toMatch(/fee_rate_bp = \?, fee_amount = \?/); expect(updateSql().sql).not.toContain('643');
+    });
+    it('the rate is the one in force on the payment date: a later rate does not change it', async () => {
+      process.env.PAYMENTS_RECORD_PAY_METHOD = '1'; process.env.PAYMENTS_RECORD_FEE = '1';
+      st = base(); st.rates = [...fixedRates, { method: 'card', bp: 200, from: '2026-02-01' }]; inicisReply = reply(approveOk({ P_TYPE: 'CARD' }));
+      await ret(authResult()).expect(303); // approved 2026-01-05: still the January rate
+      expect(st.order.fee_rate_bp).toBe(143);
+      const lookup = st.sql.find((q: any) => /payment_fee_rates/.test(q.sql)); expect(lookup.args).toEqual(['card', '2026-01-05']);
+    });
+    it('no rate for that date, or an unreadable rate table: the payment still succeeds and the fee stays NULL', async () => {
+      process.env.PAYMENTS_RECORD_PAY_METHOD = '1'; process.env.PAYMENTS_RECORD_FEE = '1';
+      st = base(); st.rates = []; inicisReply = reply(approveOk());
+      await ret(authResult()).expect(303); expect(st.order).toMatchObject({ status: 'paid', pay_method: 'card' }); expect(st.order.fee_rate_bp).toBeUndefined();
+      st = base(); st.rateFails = true; inicisReply = reply(approveOk());
+      await ret(authResult()).expect(303); expect(st.order.status).toBe('paid'); expect(st.order.fee_amount).toBeUndefined();
+    });
+    it('an unknown method (VBANK) records neither method nor fee', async () => {
+      process.env.PAYMENTS_RECORD_PAY_METHOD = '1'; process.env.PAYMENTS_RECORD_FEE = '1';
+      await run('VBANK'); expect(updateSql().sql).not.toMatch(/pay_method|fee_/);
+    });
   });
 
   it('live checkout needs MID + hash key + the payment DB account + PG_PAYMENTS_ENABLED', () => {

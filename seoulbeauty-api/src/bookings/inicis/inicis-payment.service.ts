@@ -6,7 +6,7 @@ import { kstNow } from '../bookings.logic';
 import { BookingPaymentService, PaymentRefused } from '../booking-payment.service';
 import { MemberNotifyService } from '../../member-notify/member-notify.service';
 import { approve, InicisFetch, InicisUnknownOutcome, netCancel } from './inicis.client';
-import { chkFake, InicisConfig, inicisAllowedFor, inicisConfig, inicisProvider, inicisPublicBase, isIdc, payMethodFromInicisType, recordPayMethodOn } from './inicis.config';
+import { chkFake, InicisConfig, inicisAllowedFor, inicisConfig, inicisProvider, inicisPublicBase, feeAmountOf, isIdc, payMethodFromInicisType, recordFeeOn, recordPayMethodOn } from './inicis.config';
 import { PAY_DB } from './pay-db';
 
 export const INICIS_FETCH = Symbol('INICIS_FETCH');
@@ -264,14 +264,33 @@ export class InicisPaymentService {
         "INSERT INTO gangnamunni_payment_events (payment_id, provider, provider_event_id, event_type, amount, payload_sha256, provider_occurred_at) VALUES (?, ?, ?, 'payment_verified', ?, ?, ?)",
         [n(order.id), provider, `paid:${tid}`, amount, hash, paidAt]);
       const payMethod = recordPayMethodOn() ? payMethodFromInicisType(res.P_TYPE) : null;
-      const [upd] = (await conn.query(
-        `UPDATE gangnamunni_platform_payments SET provider = ?, provider_transaction_id = ?, verified_amount = ?, verified_at = NOW(), verification_source = 'server_query', status = 'paid', paid_at = ?${payMethod ? ', pay_method = ?' : ''} WHERE id = ? AND status = 'pending'`,
-        payMethod ? [provider, tid, amount, paidAt, payMethod, n(order.id)] : [provider, tid, amount, paidAt, n(order.id)])) as any;
+      const fee = payMethod && recordFeeOn() ? await this.feeFor(conn, payMethod, paidAt, amount, s(order.merchant_uid)) : null;
+      const sets = ['provider = ?', 'provider_transaction_id = ?', 'verified_amount = ?', 'verified_at = NOW()', "verification_source = 'server_query'", "status = 'paid'", 'paid_at = ?'];
+      const args: unknown[] = [provider, tid, amount, paidAt];
+      if (payMethod) { sets.push('pay_method = ?'); args.push(payMethod); }
+      if (fee) { sets.push('fee_rate_bp = ?', 'fee_amount = ?'); args.push(fee.rateBp, fee.amount); }
+      const [upd] = (await conn.query(`UPDATE gangnamunni_platform_payments SET ${sets.join(', ')} WHERE id = ? AND status = 'pending'`, [...args, n(order.id)])) as any;
       if (n((upd as any).affectedRows) !== 1) throw new Error('Payment verification update failed.');
       await conn.query(
         "INSERT INTO gangnamunni_payment_status_history (payment_id, old_status, new_status, actor_type, actor_id, reason) VALUES (?, 'pending', 'paid', 'provider', ?, 'Server-to-server verification')",
         [n(order.id), provider]);
       await conn.query('COMMIT');
     } catch (e) { await conn.query('ROLLBACK').catch(() => undefined); throw e; }
+  }
+
+  /**
+   * The fee of this payment, fixed now: the rate in force on the payment's Seoul date (the latest start on or before it), applied once.
+   * A failed lookup or a missing rate never blocks the payment: the fee columns then stay NULL and the reason is logged.
+   */
+  private async feeFor(conn: DbConn, method: string, paidAt: string, amount: number, oid: string): Promise<{ rateBp: number; amount: number } | null> {
+    try {
+      const [rows] = (await conn.query('SELECT rate_bp FROM gangnamunni_payment_fee_rates WHERE pay_method = ? AND effective_from <= ? ORDER BY effective_from DESC LIMIT 1', [method, paidAt.slice(0, 10)])) as any;
+      const rate = (rows as any[])?.[0]?.rate_bp;
+      if (rate === undefined || rate === null || !Number.isInteger(Number(rate)) || Number(rate) < 0 || Number(rate) > 10000) { this.log.warn(`no fee rate for ${method} on ${paidAt.slice(0, 10)} (${oid}): fee not recorded`); return null; }
+      return { rateBp: Number(rate), amount: feeAmountOf(amount, Number(rate)) };
+    } catch (e) {
+      this.log.warn(`fee rate lookup failed (${oid}): ${(e as Error).message}: fee not recorded`);
+      return null;
+    }
   }
 }
