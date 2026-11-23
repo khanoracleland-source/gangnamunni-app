@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -122,6 +122,10 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsDelete: obj(d.features).hospitalsDelete === true,
         hospitalsReview: obj(d.features).hospitalsReview === true,
         hospitalsOrder: obj(d.features).hospitalsOrder === true,
+        doctors: obj(d.features).doctors === true,
+        doctorsWrite: obj(d.features).doctorsWrite === true,
+        doctorsOrder: obj(d.features).doctorsOrder === true,
+        doctorsDelete: obj(d.features).doctorsDelete === true,
         hospitalsImages: obj(d.features).hospitalsImages === true,
         hospitalsDocuments: obj(d.features).hospitalsDocuments === true,
         hospitalsDoctors: obj(d.features).hospitalsDoctors === true,
@@ -2131,4 +2135,177 @@ export async function createFeeRate(input: { payMethod: "card" | "bank_transfer"
 }
 export async function deleteFeeRate(id: number): Promise<WriteResult<Json>> {
   return sendJson("DELETE", `/v1/payments/fee-rates/${id}`);
+}
+
+
+// ───────── Doctors (all hospitals) ─────────
+
+export const DOCTOR_PER_PAGE_OPTIONS = [10, 20, 50] as const;
+export type DoctorStatusFilter = "all" | "active" | "resigned";
+export type DoctorListQuery = { hospitalId: number; search: string; status: DoctorStatusFilter; page: number; perPage: number };
+
+export type DoctorCard = {
+  id: number;
+  name: string;
+  hospitalId: number;
+  hospitalName: string;
+  specialty: string;
+  qualification: string;
+  /** As stored; shown only through `doctorPhotoUrl`. */
+  photoUrl: string | null;
+  status: "active" | "resigned";
+  /** Place among the active doctors of the hospital (1 = first); null = none yet. */
+  displayOrder: number | null;
+  treatments: string[];
+};
+export type DoctorListData = { scope: Scope; stats: { total: number; hospitals: number; active: number }; total: number; page: number; perPage: number; items: DoctorCard[] };
+export type DoctorTreatmentOption = { id: number; name: string; category: string };
+export type DoctorFull = Omit<DoctorCard, "treatments"> & { experience: number; bio: string; treatments: DoctorTreatmentOption[] };
+export type DoctorHospitalOption = { id: number; name: string };
+export type DoctorOrderItem = { id: number; name: string; specialty: string; photoUrl: string | null; position: number };
+export type DoctorOrderBoard = { hospitalId: number; orderable: boolean; total: number; items: DoctorOrderItem[] };
+
+const doctorStatus = (v: unknown): "active" | "resigned" => (v === "resigned" ? "resigned" : "active");
+const photoOf = (v: unknown): string | null => (str(v).trim() === "" ? null : str(v));
+
+function doctorCard(raw: unknown): DoctorCard {
+  const d = obj(raw);
+  return {
+    id: num(d.id),
+    name: str(d.name),
+    hospitalId: num(d.hospitalId),
+    hospitalName: str(d.hospitalName),
+    specialty: str(d.specialty),
+    qualification: str(d.qualification),
+    photoUrl: photoOf(d.photoUrl),
+    status: doctorStatus(d.status),
+    displayOrder: numOrNull(d.displayOrder),
+    treatments: names(d.treatments),
+  };
+}
+
+const treatmentOption = (raw: unknown): DoctorTreatmentOption => {
+  const t = obj(raw);
+  return { id: num(t.id), name: str(t.name), category: str(t.category) };
+};
+
+function doctorFull(raw: unknown): DoctorFull {
+  const d = obj(raw);
+  const { treatments: _unused, ...base } = doctorCard(d);
+  void _unused;
+  return { ...base, experience: num(d.experience), bio: str(d.bio), treatments: list(d.treatments).map(treatmentOption) };
+}
+
+export async function fetchDoctors(q: DoctorListQuery, signal?: AbortSignal): Promise<ApiResult<DoctorListData>> {
+  const params = new URLSearchParams();
+  if (q.hospitalId > 0) params.set("hospitalId", String(q.hospitalId));
+  if (q.search !== "") params.set("search", q.search);
+  if (q.status !== "all") params.set("status", q.status);
+  if (q.page > 1) params.set("page", String(q.page));
+  params.set("perPage", String(q.perPage));
+  const res = await getJson(`/v1/doctors?${params.toString()}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const s = obj(d.stats);
+  return {
+    ok: true,
+    data: {
+      scope: d.scope === "own" ? "own" : "all",
+      stats: { total: num(s.total), hospitals: num(s.hospitals), active: num(s.active) },
+      total: num(d.total),
+      page: Math.max(1, num(d.page)),
+      perPage: num(d.perPage) || q.perPage,
+      items: list(d.items).map(doctorCard),
+    },
+  };
+}
+
+export async function fetchDoctor(id: number, signal?: AbortSignal): Promise<ApiResult<DoctorFull>> {
+  const res = await getJson(`/v1/doctors/${encodeURIComponent(String(id))}`, signal);
+  return res.ok ? { ok: true, data: doctorFull(res.data) } : res;
+}
+
+export async function fetchDoctorHospitals(signal?: AbortSignal): Promise<ApiResult<DoctorHospitalOption[]>> {
+  const res = await getJson("/v1/doctors/hospitals", signal);
+  if (!res.ok) return res;
+  return { ok: true, data: list(obj(res.data).items).map((raw) => ({ id: num(obj(raw).id), name: str(obj(raw).name) })) };
+}
+
+/** The treatments a hospital offers: the only ones a doctor of that hospital may be assigned to. */
+export async function fetchDoctorTreatmentOptions(hospitalId: number, signal?: AbortSignal): Promise<ApiResult<DoctorTreatmentOption[]>> {
+  const res = await getJson(`/v1/doctors/treatment-options?hospitalId=${encodeURIComponent(String(hospitalId))}`, signal);
+  return res.ok ? { ok: true, data: list(obj(res.data).items).map(treatmentOption) } : res;
+}
+
+export async function fetchDoctorOrder(hospitalId: number, signal?: AbortSignal): Promise<ApiResult<DoctorOrderBoard>> {
+  const res = await getJson(`/v1/doctors/order?hospitalId=${encodeURIComponent(String(hospitalId))}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: {
+      hospitalId: num(d.hospitalId),
+      orderable: d.orderable === true,
+      total: num(d.total),
+      items: list(d.items).map((raw) => {
+        const i = obj(raw);
+        return { id: num(i.id), name: str(i.name), specialty: str(i.specialty), photoUrl: photoOf(i.photoUrl), position: num(i.position) };
+      }),
+    },
+  };
+}
+
+export type DoctorEditInput = { name: string; hospitalId: number; specialty: string; qualification: string; treatmentIds: number[] };
+export type DoctorEditFailure = {
+  ok: false;
+  /** 0 = no answer (network down, proxy error page). */
+  status: number;
+  /** "name_required", "hospital_required", "invalid_field", "invalid_type", "too_large", "doctor_resigned", "upload_failed", ...; "" when none. */
+  error: string;
+  field: string;
+};
+export type DoctorEditResult = { ok: true; data: DoctorFull } | DoctorEditFailure;
+
+/** Saves the doctor: a `doctor` JSON text and at most one `photo` file in one multipart request (the browser adds the boundary itself). */
+export async function editDoctor(id: number, input: DoctorEditInput, photo: File | null, signal?: AbortSignal): Promise<DoctorEditResult> {
+  const body = new FormData();
+  body.append("doctor", JSON.stringify(input));
+  if (photo) body.append("photo", photo);
+  try {
+    const res = await fetch(`${BASE_PATH}/api/v1/doctors/${encodeURIComponent(String(id))}`, {
+      method: "PATCH",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "X-Requested-With": "admin-next" },
+      body,
+      signal,
+    });
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // An empty or non-JSON body: the status alone says what happened.
+    }
+    const d = obj(data);
+    if (!res.ok) return { ok: false, status: res.status, error: str(d.error), field: str(d.field) };
+    return { ok: true, data: doctorFull(d) };
+  } catch {
+    return { ok: false, status: 0, error: "", field: "" };
+  }
+}
+
+export async function retireDoctor(id: number): Promise<WriteResult<DoctorFull>> {
+  const res = await sendJson("POST", `/v1/doctors/${encodeURIComponent(String(id))}/retire`, {});
+  return res.ok ? { ok: true, data: doctorFull(res.data) } : res;
+}
+
+export async function moveDoctor(id: number, move: { direction: "up" | "down" } | { position: number }): Promise<WriteResult<{ position: number; total: number; changed: number }>> {
+  const res = await sendJson("POST", `/v1/doctors/${encodeURIComponent(String(id))}/order`, move);
+  return res.ok ? { ok: true, data: { position: num(res.data.position), total: num(res.data.total), changed: num(res.data.changed) } } : res;
+}
+
+/** Super admin only; a retired doctor only. Cannot be undone. */
+export async function deleteDoctor(id: number): Promise<WriteResult<{ name: string }>> {
+  const res = await sendJson("POST", `/v1/doctors/${encodeURIComponent(String(id))}/delete`, { confirm: true });
+  return res.ok ? { ok: true, data: { name: str(res.data.name) } } : res;
 }
