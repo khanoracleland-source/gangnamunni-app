@@ -46,9 +46,6 @@ const MENU: MenuGroup[] = [
     icon: "gauge",
     items: [
       { key: "dashboard", label: L("대시보드", "Dashboard"), icon: "gauge", status: "new", href: "/", superOnly: true },
-      legacy("sns_reviews", "admin_sns_reviews.php", "SNS / 앱스토어 심사 관리", "SNS / App Store review", "phone"),
-      legacy("menu_guide", "admin_menu_guide.php", "메뉴 안내", "Menu guide", "info"),
-      legacy("menu_manager", "admin_menu_manager.php", "메뉴 관리", "Menu manager", "gear"),
     ],
   },
   {
@@ -57,7 +54,6 @@ const MENU: MenuGroup[] = [
     icon: "hospital",
     items: [
       { ...legacy("hospital_apply", "hospital_apply.php", "병원 등록 신청", "Hospital registration request", "clipboard"), superOnly: true },
-      legacy("hospital_apply_status", "hospital_apply_status.php", "내 신청 현황", "My request status", "check"),
     ],
   },
   {
@@ -65,12 +61,9 @@ const MENU: MenuGroup[] = [
     label: L("콘텐츠 관리", "Content management"),
     icon: "collection",
     items: [
-      legacy("content_hub", "admin_content_hub.php", "콘텐츠 허브", "Content hub", "collection"),
-      legacy("recommend", "admin_recommend.php", "메인 추천 병원", "Featured hospitals on home", "star"),
+      legacy("recommend", "admin_recommend.php", "메인 추천 병원", "Recommended hospitals", "star"),
       legacy("hospitals", "admin_hospitals.php", "병원 관리", "Hospitals", "hospital"),
       { key: "hospital_archive", label: L("삭제 병원 보관함", "Archive"), icon: "collection", status: "new", href: "/hospital-archive", superOnly: true, requires: "archive" },
-      legacy("hospital_request_review", "admin_requested_hospitals.php", "입점 신청 병원", "Hospitals requesting a listing", "clipboard"),
-      legacy("hospital_locations", "admin_hospital_locations.php", "병원 노출 순서", "Hospital display order", "chart"),
       legacy("doctors", "admin_doctors.php", "의사 관리", "Doctors", "people"),
       legacy("personnel", "admin_personnel.php", "인력 관리", "Staff", "people"),
       legacy("community_moderation", "admin_community_posts.php", "커뮤니티 심사", "Community post review", "shield"),
