@@ -7,6 +7,7 @@ import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
+import HospitalReorder from "./HospitalReorder";
 import { ActivePill, Chips, GradePill, Notice, Pill, Section } from "./parts";
 import {
   PER_PAGE_OPTIONS,
@@ -68,6 +69,7 @@ export default function HospitalList() {
   const query = useMemo(() => parseListQuery(new URLSearchParams(queryString)), [queryString]);
   const [state, setState] = useState<State>(INITIAL);
   const [attempt, setAttempt] = useState(0);
+  const [reorder, setReorder] = useState(false);
   const [groups, setGroups] = useState<TreatmentGroup[]>([]);
   const meRef = useRef<Me | null>(null);
   // 401 / 403 are final for this page view: stop asking.
@@ -200,6 +202,9 @@ export default function HospitalList() {
     : null;
   // Only a super admin may change it (the server refuses anyone else) and only while changes are switched on.
   const canToggle = me?.features.hospitalsWrite === true && me.admin.role === "super_admin";
+  // The reorder screen: super admin only, while the order switch is on (the server refuses anyone else).
+  const canOrder = canToggle && me?.features.hospitalsOrder === true;
+  const reordering = canOrder && reorder;
 
   let screen: ReactNode = null;
   if (phase === "loading") screen = <LoadingScreen text={t("h.loading")} />;
@@ -213,7 +218,17 @@ export default function HospitalList() {
   const knownTreatment = groups.some((g) => g.items.some((item) => item.id === query.treatmentId));
 
   return (
-    <AdminShell admin={me?.admin ?? null} features={me?.features ?? null} title={t("h.title")} description={t("h.desc")} screen={screen}>
+    <AdminShell admin={me?.admin ?? null} features={me?.features ?? null} title={t("h.title")}
+      description={t("h.desc")}
+      screen={screen}
+      actions={
+        canOrder ? (
+          <button type="button" className={reordering ? "btn btn--primary reo-toggle" : "btn btn--ghost reo-toggle"} onClick={() => setReorder((on) => !on)}>
+            {t(reordering ? "h.reo.end" : "h.reo.start")}
+          </button>
+        ) : null
+      }
+    >
       {scope === "own" ? <Notice>{t("h.scope.own")}</Notice> : null}
 
       {list ? (
@@ -239,7 +254,12 @@ export default function HospitalList() {
             </ul>
           </Section>
 
-          <Section id="sec-h-find" title={t("h.find.title")} desc={t("h.find.desc")}>
+          {reordering ? <HospitalReorder onExit={() => setReorder(false)} onShowInactive={() => {
+            setReorder(false);
+            router.push(listHref({ ...query, active: "0", pending: false, search: "", treatmentId: 0, page: 1 }));
+          }} /> : null}
+
+          {reordering ? null : <Section id="sec-h-find" title={t("h.find.title")} desc={t("h.find.desc")}>
             <div className="filters">
               <SearchForm key={query.search} initial={query.search} onSearch={(search) => go({ search })} />
               <div className="filters__row">
@@ -268,9 +288,9 @@ export default function HospitalList() {
               </div>
               <p className="filters__hint">{t("h.find.hint")}</p>
             </div>
-          </Section>
+          </Section>}
 
-          <Section id="sec-h-list" title={t("h.list.title")} desc={t("h.list.desc")}>
+          {reordering ? null : <Section id="sec-h-list" title={t("h.list.title")} desc={t("h.list.desc")}>
             {stale ? (
               <Notice tone="warn" icon="alert" action={<button type="button" className="txtbtn" onClick={retry} disabled={busy}>{t("state.retry")}</button>}>
                 {t("h.list.stale")}
@@ -297,7 +317,7 @@ export default function HospitalList() {
               onToggle={askActive}
             />
             <Pager query={query} total={list.total} />
-          </Section>
+          </Section>}
           <ConfirmDialog
             spec={askSpec}
             busy={working}

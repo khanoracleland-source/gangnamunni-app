@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -121,6 +121,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         hospitalsWrite: obj(d.features).hospitalsWrite === true,
         hospitalsDelete: obj(d.features).hospitalsDelete === true,
         hospitalsReview: obj(d.features).hospitalsReview === true,
+        hospitalsOrder: obj(d.features).hospitalsOrder === true,
         hospitalsImages: obj(d.features).hospitalsImages === true,
         hospitalsDocuments: obj(d.features).hospitalsDocuments === true,
         hospitalsDoctors: obj(d.features).hospitalsDoctors === true,
@@ -1069,6 +1070,33 @@ export async function removeHospitalTreatment(
 export async function setHospitalActive(id: number, active: boolean): Promise<WriteResult<{ isActive: boolean; updatedAt: string }>> {
   const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/active`, { active });
   return res.ok ? { ok: true, data: { isActive: bool(res.data.isActive), updatedAt: str(res.data.updatedAt) } } : res;
+}
+
+export type OrderBoardItem = { id: number; name: string; address: string; adGrade: AdGrade; position: number };
+export type OrderBoard = { total: number; inactive: number; items: OrderBoardItem[] };
+
+/** Super admin only. Every hospital that has a place in the app order, in that order (no paging). */
+export async function fetchOrderBoard(signal?: AbortSignal): Promise<ApiResult<OrderBoard>> {
+  const res = await getJson("/v1/hospitals/order", signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: {
+      total: num(d.total),
+      inactive: num(d.inactive),
+      items: list(d.items).map((raw) => {
+        const h = obj(raw);
+        return { id: num(h.id), name: str(h.name), address: str(h.address), adGrade: adGrade(h.adGrade), position: num(h.position) };
+      }),
+    },
+  };
+}
+
+/** Super admin only. Moves one hospital one step up/down or to a place (1 = first); the server renumbers the rest. */
+export async function moveHospital(id: number, move: { direction: "up" | "down" } | { position: number }): Promise<WriteResult<{ position: number; total: number; changed: number }>> {
+  const res = await sendJson("POST", `/v1/hospitals/${encodeURIComponent(String(id))}/order`, move);
+  return res.ok ? { ok: true, data: { position: num(res.data.position), total: num(res.data.total), changed: num(res.data.changed) } } : res;
 }
 
 /** Super admin only. Marks every change the hospital made so far as reviewed. */
