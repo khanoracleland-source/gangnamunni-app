@@ -76,6 +76,23 @@ describe('admin API: payments (read only)', () => {
     expect(r.body.summary).toEqual({ payments: 1, received: 180000, refunded: 0, recognized: 0, held: 180000, stuck: 0 });
     expect(r.body.total).toBe(1);
   });
+  it('ADMIN_PAYMENTS_FEES=1 adds method, fee, settlement, per-method and weekly figures; off leaves every answer as it was', async () => {
+    const off = await get('/v1/payments?from=2026-11-01&to=2026-11-20');
+    expect(off.body).not.toHaveProperty('methods');
+    expect(off.body.items[0]).not.toHaveProperty('settlement');
+    process.env.ADMIN_PAYMENTS_FEES = '1';
+    try {
+      calls.length = 0;
+      const on = await get('/v1/payments?from=2026-11-01&to=2026-11-20');
+      expect(on.status).toBe(200);
+      expect(on.body.items[0]).toHaveProperty('settlementState');
+      expect(on.body.summary).toMatchObject({ payments: 1, held: 180000, fee: 0, settlement: 0, settlementCounted: 0, settlementReceived: 0 });
+      expect(Array.isArray(on.body.methods)).toBe(true);
+      expect(Array.isArray(on.body.weeks)).toBe(true);
+      expect(calls.every((c) => (c.sql.match(/\?/g) || []).length === c.values.length)).toBe(true);
+      for (const p of ['/by-hospital', '/by-treatment']) expect((await get(`/v1/payments${p}`)).body.items[0]).toHaveProperty('settlement');
+    } finally { delete process.env.ADMIN_PAYMENTS_FEES; }
+  });
   it('a hospital account is held to its own hospital in every query, whatever hospital_id it asks for', async () => {
     for (const path of ['/v1/payments', '/v1/payments?hospital_id=99', '/v1/payments/by-hospital', '/v1/payments/by-treatment', '/v1/payments/compare?metric=held']) {
       calls.length = 0;

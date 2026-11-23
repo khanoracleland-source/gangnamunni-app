@@ -1,14 +1,19 @@
 import { BadRequestException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { AdminScope } from '../admin-auth/admin.guard';
+import { AdminScope, paymentsFeesEnabled } from '../admin-auth/admin.guard';
 import { isFail } from '../bookings/bookings.logic';
 import { DB, Db } from '../db/db.module';
 import { isMissingObject } from '../hospitals/hospitals.treatments.logic';
 import {
-  byHospitalQuery, byTreatmentQuery, capped, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
+  byHospitalQuery, byMethodQuery, byTreatmentQuery, capped, toFeeSums, weeklyQuery, FeeSums, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
   seoulToday, seriesQuery, summaryQuery, Sums, toItem, toSums, weekCompare, PaymentItem,
 } from './payments.logic';
 
-export interface ListAnswer { items: PaymentItem[]; total: number; page: number; perPage: number; totalPages: number; summary: Sums; from: string; to: string }
+export interface ListAnswer {
+  items: PaymentItem[]; total: number; page: number; perPage: number; totalPages: number; summary: Sums & Partial<FeeSums>; from: string; to: string;
+  /** Only with ADMIN_PAYMENTS_FEES=1: per payment method and per payout Sunday (the hospital's week). */
+  methods?: (Sums & FeeSums & { method: string })[];
+  weeks?: { payoutDate: string; payments: number; fee: number; settlement: number }[];
+}
 
 const rowsOf = (r: unknown): Record<string, unknown>[] => (Array.isArray(r) ? (r as Record<string, unknown>[]) : []);
 
@@ -34,12 +39,20 @@ export class PaymentsService {
   async list(scope: AdminScope, raw: Record<string, unknown>): Promise<ListAnswer> {
     const f = parsePaymentQuery(raw);
     if (isFail(f)) throw new BadRequestException(f);
-    const [countRows, sumRows] = await Promise.all([this.run(countQuery(scope, f)), this.run(summaryQuery(scope, f))]);
+    const today = paymentsFeesEnabled() ? seoulToday() : undefined;
+    const [countRows, sumRows] = await Promise.all([this.run(countQuery(scope, f)), this.run(summaryQuery(scope, f, today))]);
     const total = Number(countRows[0]?.cnt) || 0;
     const totalPages = Math.max(1, Math.ceil(total / PAY_PER_PAGE));
     const page = Math.min(f.page, totalPages);
-    const rows = await this.run(listQuery(scope, { ...f, page }));
-    return { items: rows.map(toItem), total, page, perPage: PAY_PER_PAGE, totalPages, summary: toSums(sumRows[0]), from: f.from, to: f.to };
+    const rows = await this.run(listQuery(scope, { ...f, page }, !!today));
+    const answer: ListAnswer = { items: rows.map((r) => toItem(r, today)), total, page, perPage: PAY_PER_PAGE, totalPages, summary: toSums(sumRows[0]), from: f.from, to: f.to };
+    if (today) {
+      Object.assign(answer.summary, toFeeSums(sumRows[0]));
+      const [methodRows, weekRows] = await Promise.all([this.run(byMethodQuery(scope, f, today)), this.run(weeklyQuery(scope, f))]);
+      answer.methods = methodRows.map((r) => ({ method: String(r.method ?? ''), ...toSums(r), ...toFeeSums(r) }));
+      answer.weeks = weekRows.map((r) => ({ payoutDate: String(r.payout_date ?? ''), payments: Number(r.payments) || 0, fee: Number(r.fee) || 0, settlement: Number(r.settlement) || 0 }));
+    }
+    return answer;
   }
 
   async hospitals(scope: AdminScope): Promise<{ items: { id: number; name: string }[] }> {
@@ -50,15 +63,17 @@ export class PaymentsService {
   async byHospital(scope: AdminScope, raw: Record<string, unknown>) {
     const f = parseRangeQuery(raw, seoulToday());
     if (isFail(f)) throw new BadRequestException(f);
-    const { rows, truncated } = capped(await this.run(byHospitalQuery(scope, f)));
-    return { from: f.from, to: f.to, truncated, items: rows.map((r) => ({ hospitalId: Number(r.hospital_id), hospitalName: String(r.hospital_name ?? ''), ...toSums(r) })) };
+    const today = paymentsFeesEnabled() ? seoulToday() : undefined;
+    const { rows, truncated } = capped(await this.run(byHospitalQuery(scope, f, today)));
+    return { from: f.from, to: f.to, truncated, items: rows.map((r) => ({ hospitalId: Number(r.hospital_id), hospitalName: String(r.hospital_name ?? ''), ...toSums(r), ...(today ? toFeeSums(r) : {}) })) };
   }
 
   async byTreatment(scope: AdminScope, raw: Record<string, unknown>) {
     const f = parseRangeQuery(raw, seoulToday());
     if (isFail(f)) throw new BadRequestException(f);
-    const { rows, truncated } = capped(await this.run(byTreatmentQuery(scope, f)));
-    return { from: f.from, to: f.to, truncated, items: rows.map((r) => ({ treatmentName: String(r.treatment_name ?? ''), ...toSums(r) })) };
+    const today = paymentsFeesEnabled() ? seoulToday() : undefined;
+    const { rows, truncated } = capped(await this.run(byTreatmentQuery(scope, f, today)));
+    return { from: f.from, to: f.to, truncated, items: rows.map((r) => ({ treatmentName: String(r.treatment_name ?? ''), ...toSums(r), ...(today ? toFeeSums(r) : {}) })) };
   }
 
   /** This week against last week (day by day) and this month against last month (running total), for one money measure. */

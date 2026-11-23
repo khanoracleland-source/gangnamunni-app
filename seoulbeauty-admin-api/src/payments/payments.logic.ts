@@ -37,6 +37,25 @@ const STUCK_SQL = `CASE WHEN b.status IN (${DEAD_BOOKING_STATUSES.map((x) => `'$
 const SUMS_SQL = `COUNT(*) AS payments, COALESCE(SUM(p.amount), 0) AS received, COALESCE(SUM(p.refunded_amount), 0) AS refunded,
   COALESCE(SUM(${RECOGNIZED_SQL}), 0) AS recognized, COALESCE(SUM(${HELD_SQL}), 0) AS held, COALESCE(SUM(${STUCK_SQL}), 0) AS stuck`;
 
+/**
+ * Fee and settlement (only when the fee switch is on; the same rule as the PHP revenue page and platform_payment_figures()).
+ * A payment has a recorded fee when pay_method, fee_rate_bp and fee_amount were all stored at payment time; otherwise fee and settlement stay unknown (never guessed).
+ * Settlement = (paid by card/transfer - fee) + points that covered part of the price; a part refund removes that part and its fee (rounded down); a full refund is 0.
+ * Payout day = the Sunday strictly after the visit date of a completed booking; from that day the settlement is "received", before it "counted".
+ */
+export const FEE_RECORDED_SQL = "(p.pay_method IS NOT NULL AND p.pay_method <> '' AND p.fee_rate_bp IS NOT NULL AND p.fee_amount IS NOT NULL)";
+const FEE_NET_SQL = 'GREATEST(0, CAST(p.fee_amount AS SIGNED) - ((CAST(p.refunded_amount AS SIGNED) * CAST(p.fee_rate_bp AS SIGNED)) DIV 10000))';
+const FEE_ROW_SQL = `CASE WHEN p.status = 'refunded' THEN 0 ELSE ${FEE_NET_SQL} END`;
+const SETTLE_ROW_SQL = `CASE WHEN p.status = 'refunded' THEN 0 ELSE (CAST(p.amount AS SIGNED) - CAST(p.refunded_amount AS SIGNED)) - ${FEE_NET_SQL} + CAST(COALESCE(p.points_used, 0) AS SIGNED) END`;
+export const PAYOUT_SQL = 'DATE_ADD(b.booking_date, INTERVAL (8 - DAYOFWEEK(b.booking_date)) DAY)';
+/** One placeholder: today (Seoul, Y-m-d). */
+export const FEE_SUMS_SQL = `COALESCE(SUM(CASE WHEN ${FEE_RECORDED_SQL} THEN ${FEE_ROW_SQL} ELSE 0 END), 0) AS fee,
+  COALESCE(SUM(CASE WHEN ${FEE_RECORDED_SQL} THEN ${SETTLE_ROW_SQL} ELSE 0 END), 0) AS settlement,
+  COALESCE(SUM(CASE WHEN ${FEE_RECORDED_SQL} AND p.status <> 'refunded' AND b.status = 'completed' AND ${PAYOUT_SQL} <= ? THEN ${SETTLE_ROW_SQL} ELSE 0 END), 0) AS settlement_received,
+  COALESCE(SUM(CASE WHEN ${FEE_RECORDED_SQL} OR p.status = 'refunded' THEN 0 ELSE 1 END), 0) AS no_fee`;
+const sumsSql = (today?: string): string => (today ? `${SUMS_SQL}, ${FEE_SUMS_SQL}` : SUMS_SQL);
+const feeValues = (today?: string): unknown[] => (today ? [today] : []);
+
 // ───────── Seoul calendar ─────────
 export const seoulToday = (now: Date = new Date()): string => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
 const utc = (day: string): Date => { const [y, m, d] = day.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
@@ -138,39 +157,60 @@ function whereOf(scope: AdminScope, f: PaymentFilters): Query {
 
 const LIST_COLUMNS = `p.id, p.booking_id, p.hospital_id, p.hospital_name, p.patient_name, p.patient_phone, p.treatment_name, p.amount, p.refunded_amount,
   p.status, p.paid_at, p.refunded_at, b.status AS booking_status, b.booking_date, b.booking_time`;
+const FEE_LIST_COLUMNS = ', p.pay_method, p.fee_rate_bp, p.fee_amount, p.points_used';
 
 /** Newest payment first. */
-export function listQuery(scope: AdminScope, f: PaymentFilters): Query {
+export function listQuery(scope: AdminScope, f: PaymentFilters, withFees = false): Query {
   const w = whereOf(scope, f);
-  return { sql: `SELECT ${LIST_COLUMNS} ${FROM_SQL} WHERE ${w.sql} ORDER BY p.paid_at DESC, p.id DESC LIMIT ? OFFSET ?`, values: [...w.values, PAY_PER_PAGE, (f.page - 1) * PAY_PER_PAGE] };
+  return { sql: `SELECT ${LIST_COLUMNS}${withFees ? FEE_LIST_COLUMNS : ''} ${FROM_SQL} WHERE ${w.sql} ORDER BY p.paid_at DESC, p.id DESC LIMIT ? OFFSET ?`, values: [...w.values, PAY_PER_PAGE, (f.page - 1) * PAY_PER_PAGE] };
 }
 export function countQuery(scope: AdminScope, f: PaymentFilters): Query {
   const w = whereOf(scope, f);
   return { sql: `SELECT COUNT(*) AS cnt ${FROM_SQL} WHERE ${w.sql}`, values: w.values };
 }
 /** The panel above the list follows the hospital and the dates only (not the status or the search). */
-export function summaryQuery(scope: AdminScope, f: RangeFilters): Query {
+export function summaryQuery(scope: AdminScope, f: RangeFilters, today?: string): Query {
   const sc = scopeClause(scope, f.hospitalId, 'p.hospital_id');
-  return { sql: `SELECT ${SUMS_SQL} ${FROM_SQL} WHERE ${BASE_SQL} AND ${sc.sql} AND ${PAID_RANGE_SQL}`, values: [...baseValues(), ...sc.values, f.from, f.to] };
+  return { sql: `SELECT ${sumsSql(today)} ${FROM_SQL} WHERE ${BASE_SQL} AND ${sc.sql} AND ${PAID_RANGE_SQL}`, values: [...feeValues(today), ...baseValues(), ...sc.values, f.from, f.to] };
 }
 /** Every hospital of the scope, also the ones without a payment in the dates. */
-export function byHospitalQuery(scope: AdminScope, f: RangeFilters): Query {
+export function byHospitalQuery(scope: AdminScope, f: RangeFilters, today?: string): Query {
   const sc = scopeClause(scope, f.hospitalId, 'h.id');
   return {
     sql: `SELECT h.id AS hospital_id, h.name AS hospital_name, COALESCE(a.payments, 0) AS payments, COALESCE(a.received, 0) AS received, COALESCE(a.refunded, 0) AS refunded,
-                 COALESCE(a.recognized, 0) AS recognized, COALESCE(a.held, 0) AS held, COALESCE(a.stuck, 0) AS stuck
+                 COALESCE(a.recognized, 0) AS recognized, COALESCE(a.held, 0) AS held, COALESCE(a.stuck, 0) AS stuck${today ? `,
+                 COALESCE(a.fee, 0) AS fee, COALESCE(a.settlement, 0) AS settlement, COALESCE(a.settlement_received, 0) AS settlement_received, COALESCE(a.no_fee, 0) AS no_fee` : ''}
           FROM gangnamunni_hospitals h
-          LEFT JOIN (SELECT p.hospital_id, ${SUMS_SQL} ${FROM_SQL} WHERE ${BASE_SQL} AND ${PAID_RANGE_SQL} GROUP BY p.hospital_id) a ON a.hospital_id = h.id
+          LEFT JOIN (SELECT p.hospital_id, ${sumsSql(today)} ${FROM_SQL} WHERE ${BASE_SQL} AND ${PAID_RANGE_SQL} GROUP BY p.hospital_id) a ON a.hospital_id = h.id
           WHERE ${sc.sql}
           ORDER BY (COALESCE(a.received, 0) - COALESCE(a.refunded, 0)) DESC, h.name ASC LIMIT ${TABLE_CAP + 1}`,
-    values: [...baseValues(), f.from, f.to, ...sc.values],
+    values: [...feeValues(today), ...baseValues(), f.from, f.to, ...sc.values],
   };
 }
-export function byTreatmentQuery(scope: AdminScope, f: RangeFilters): Query {
+export function byTreatmentQuery(scope: AdminScope, f: RangeFilters, today?: string): Query {
   const sc = scopeClause(scope, f.hospitalId, 'p.hospital_id');
   return {
-    sql: `SELECT p.treatment_name AS treatment_name, ${SUMS_SQL} ${FROM_SQL} WHERE ${BASE_SQL} AND ${sc.sql} AND ${PAID_RANGE_SQL}
+    sql: `SELECT p.treatment_name AS treatment_name, ${sumsSql(today)} ${FROM_SQL} WHERE ${BASE_SQL} AND ${sc.sql} AND ${PAID_RANGE_SQL}
           GROUP BY p.treatment_name ORDER BY (SUM(p.amount) - SUM(p.refunded_amount)) DESC, p.treatment_name ASC LIMIT ${TABLE_CAP + 1}`,
+    values: [...feeValues(today), ...baseValues(), ...sc.values, f.from, f.to],
+  };
+}
+/** Per payment method (card / transfer / unknown) in the dates: paid after refunds, fee and settlement. Only with the fee switch. */
+export function byMethodQuery(scope: AdminScope, f: RangeFilters, today: string): Query {
+  const sc = scopeClause(scope, f.hospitalId, 'p.hospital_id');
+  return {
+    sql: `SELECT COALESCE(p.pay_method, '') AS method, ${SUMS_SQL}, ${FEE_SUMS_SQL} ${FROM_SQL} WHERE ${BASE_SQL} AND ${sc.sql} AND ${PAID_RANGE_SQL} GROUP BY COALESCE(p.pay_method, '') ORDER BY method ASC`,
+    values: [today, ...baseValues(), ...sc.values, f.from, f.to],
+  };
+}
+/** Settlement per payout Sunday (the hospital's week): only completed bookings with a recorded fee. Newest week first. Only with the fee switch. */
+export const WEEKS_CAP = 60;
+export function weeklyQuery(scope: AdminScope, f: RangeFilters): Query {
+  const sc = scopeClause(scope, f.hospitalId, 'p.hospital_id');
+  return {
+    sql: `SELECT DATE_FORMAT(${PAYOUT_SQL}, '%Y-%m-%d') AS payout_date, COUNT(*) AS payments, COALESCE(SUM(${FEE_ROW_SQL}), 0) AS fee, COALESCE(SUM(${SETTLE_ROW_SQL}), 0) AS settlement ${FROM_SQL}
+          WHERE ${BASE_SQL} AND ${sc.sql} AND ${PAID_RANGE_SQL} AND b.status = 'completed' AND b.booking_date IS NOT NULL AND p.status <> 'refunded' AND ${FEE_RECORDED_SQL}
+          GROUP BY payout_date ORDER BY payout_date DESC LIMIT ${WEEKS_CAP}`,
     values: [...baseValues(), ...sc.values, f.from, f.to],
   };
 }
@@ -194,6 +234,43 @@ export interface Sums { payments: number; received: number; refunded: number; re
 export const toSums = (r: Record<string, unknown> | undefined): Sums => ({
   payments: Number(r?.payments) || 0, received: Number(r?.received) || 0, refunded: Number(r?.refunded) || 0, recognized: Number(r?.recognized) || 0, held: Number(r?.held) || 0, stuck: Number(r?.stuck) || 0,
 });
+/** Present only with the fee switch. fee / settlement are null for a payment whose fee was not recorded. */
+export interface FeeSums { fee: number; settlement: number; settlementCounted: number; settlementReceived: number; noFee: number }
+export const toFeeSums = (r: Record<string, unknown> | undefined): FeeSums => {
+  const settlement = Number(r?.settlement) || 0;
+  const received = Number(r?.settlement_received) || 0;
+  return { fee: Number(r?.fee) || 0, settlement, settlementCounted: settlement - received, settlementReceived: received, noFee: Number(r?.no_fee) || 0 };
+};
+export const PAY_METHODS = ['card', 'bank_transfer'] as const;
+export type SettlementState = 'counted' | 'received' | 'refunded' | 'none';
+export interface Figures { state: SettlementState; fee: number | null; settlement: number | null; payoutDate: string | null; paidNet: number }
+/** The Sunday strictly after a Y-m-d date; null when it is not a real date. Same as platform_payment_next_sunday(). */
+export function nextSunday(day: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(day);
+  if (!m) return null;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  if (d.getUTCFullYear() !== +m[1] || d.getUTCMonth() !== +m[2] - 1 || d.getUTCDate() !== +m[3]) return null;
+  const dow = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() + (dow === 0 ? 7 : 7 - dow));
+  return fmt(d);
+}
+export interface FigureRow { status: string; amount: number; refundedAmount: number; pointsUsed: number; payMethod: string; feeRateBp: number | null; feeAmount: number | null; bookingStatus: string; visitDate: string }
+/** One payment seen by the hospital; the port of platform_payment_figures() (the same shared examples are tested on both sides). */
+export function figuresOf(r: FigureRow, today: string): Figures {
+  const amount = Math.max(0, r.amount);
+  const refunded = Math.min(amount, Math.max(0, r.refundedAmount));
+  const out: Figures = { state: 'none', fee: null, settlement: null, payoutDate: null, paidNet: 0 };
+  if (r.status === 'refunded') return { ...out, state: 'refunded', fee: 0, settlement: 0 };
+  if (r.status !== 'paid' && r.status !== 'partially_refunded') return out;
+  out.paidNet = amount - refunded;
+  out.payoutDate = r.bookingStatus === 'completed' ? nextSunday(r.visitDate) : null;
+  out.state = out.payoutDate !== null && out.payoutDate <= today ? 'received' : 'counted';
+  if (r.payMethod === '' || r.feeRateBp === null || r.feeAmount === null) return out;
+  const feeNet = Math.max(0, r.feeAmount - Math.floor((refunded * Math.max(0, r.feeRateBp)) / 10000));
+  out.fee = feeNet;
+  out.settlement = out.paidNet - feeNet + Math.max(0, r.pointsUsed);
+  return out;
+}
 export interface PaymentItem {
   id: number; bookingId: number; hospitalId: number; hospitalName: string; patientName: string; patientPhone: string; treatmentName: string;
   amount: number; refundedAmount: number; status: string; paidAt: string; refundedAt: string; bookingStatus: string; visitDate: string; visitTime: string;
@@ -201,6 +278,8 @@ export interface PaymentItem {
   stage: 'held' | 'recognized' | 'refunded';
   /** Held, but the booking is cancelled / refunded / no-show: the money will not be released by a treatment. */
   needsAttention: boolean;
+  /** Only with the fee switch: card / bank_transfer / '' (unknown), the rate stored with the payment (basis points) and the figures. */
+  payMethod?: string; feeRateBp?: number | null; fee?: number | null; settlement?: number | null; settlementState?: SettlementState; payoutDate?: string | null;
 }
 /** 010-1234-5678 -> 010-****-5678; anything else keeps only its last four characters. */
 export function maskPhone(v: string): string {
@@ -209,16 +288,23 @@ export function maskPhone(v: string): string {
   if (m) return `${m[1]}-****-${m[3]}`;
   return t.length > 4 ? `****${t.slice(-4)}` : '****';
 }
-export function toItem(r: Record<string, unknown>): PaymentItem {
+export function toItem(r: Record<string, unknown>, today?: string): PaymentItem {
   const status = s(r.status);
   const booking = s(r.booking_status);
-  return {
+  const item: PaymentItem = {
     id: Number(r.id), bookingId: Number(r.booking_id) || 0, hospitalId: Number(r.hospital_id) || 0, hospitalName: s(r.hospital_name), patientName: s(r.patient_name),
     patientPhone: maskPhone(s(r.patient_phone)), treatmentName: s(r.treatment_name), amount: Number(r.amount) || 0, refundedAmount: Number(r.refunded_amount) || 0, status,
     paidAt: s(r.paid_at), refundedAt: s(r.refunded_at), bookingStatus: booking, visitDate: s(r.booking_date).slice(0, 10), visitTime: s(r.booking_time).slice(0, 5),
     stage: status === 'refunded' ? 'refunded' : booking === 'completed' ? 'recognized' : 'held',
     needsAttention: status !== 'refunded' && (DEAD_BOOKING_STATUSES as readonly string[]).includes(booking),
   };
+  if (today) {
+    const num = (v: unknown): number | null => (v == null || v === '' ? null : Number(v));
+    const method = s(r.pay_method);
+    const g = figuresOf({ status, amount: item.amount, refundedAmount: item.refundedAmount, pointsUsed: Number(r.points_used) || 0, payMethod: method, feeRateBp: num(r.fee_rate_bp), feeAmount: num(r.fee_amount), bookingStatus: booking, visitDate: item.visitDate }, today);
+    Object.assign(item, { payMethod: method, feeRateBp: num(r.fee_rate_bp), fee: g.fee, settlement: g.settlement, settlementState: g.state, payoutDate: g.payoutDate });
+  }
+  return item;
 }
 
 export interface DayValue { date: string; value: number }
