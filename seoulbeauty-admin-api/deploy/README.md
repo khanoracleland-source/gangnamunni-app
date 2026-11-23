@@ -1248,6 +1248,31 @@ ADMIN_PAYMENTS_ENABLED=1
 Then `sudo systemctl restart seoulbeauty-admin-api`. Missing table or column: the routes answer 503 `payments_unavailable`.
 Turning it off: `ADMIN_PAYMENTS_ENABLED=0`, then restart (all routes 404).
 
+### 18.3 Payment method, fee and settlement (`ADMIN_PAYMENTS_FEES`, optional; needs 18)
+With the switch on, `/v1/payments` also answers per payment the method (card / bank transfer), the fee rate and fee stored with the payment, the settlement
+(`(paid by card/transfer - fee) + points used`, a full refund is 0) and its state; `methods` (per method), `weeks` (per payout Sunday) and `orderedHeld` (booked, payment awaited).
+`/v1/payments/board?period=week|month` (the three boxes: held / counted / received; a week runs Monday to Sunday) and
+`/v1/payments/section?stage=held|counted|received` (the bookings of one box, with the treatment date and time; without dates the whole current month).
+`/v1/payments/fee-rates` (GET for every admin who may see payments; POST and DELETE for a super admin only): a rate in basis points (143 = 1.43%) per method with a start date.
+A new rate must start after the method's latest start and from tomorrow on; only a rate that is not in force yet can be deleted. The fee of a payment is fixed when it is paid, so a later rate change never touches it.
+Held = treatment booked, payment awaited (no fee). Counted = paid, settlement calculated, not paid out yet. Received = paid out on the Sunday after the treatment (booking `completed`).
+Payments made before the columns exist show no fee or settlement ("—"); nothing is guessed. Everything is off and answers 404 unless the switch is `1`.
+
+18.3.1 SQL, in this order (run as the DB admin; the files are in `hairwang_full/gangnamunni/sql/`): `platform_payments_pay_method.sql`, `payment_fee_rates.sql`, `platform_payments_fee.sql`.
+18.3.2 GRANTs (repeat each line for `'127.0.0.1'` and `'localhost'`):
+```sql
+GRANT SELECT (pay_method, fee_rate_bp, fee_amount, points_used) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT ON <DB_NAME>.gangnamunni_payment_fee_rates TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT, INSERT, DELETE ON <DB_NAME>.gangnamunni_payment_fee_rates TO 'sb_admin_rw'@'127.0.0.1';
+```
+The payment return (Nest `DB_PAY_USER`) also needs `SELECT` on `gangnamunni_payment_fee_rates` and the right to write the three new payment columns.
+18.3.3 Enter the first rates (card, bank transfer) in the admin screen `/admin-next/payments/fee-rates` before turning the recording on. Then in `seoulbeauty-admin-api/.env`:
+```
+ADMIN_PAYMENTS_FEES=1
+```
+and in the payment return (`seoulbeauty-api`) `PAYMENTS_RECORD_PAY_METHOD=1` and `PAYMENTS_RECORD_FEE=1` (the PHP page uses `G5_PAYMENTS_RECORD_PAY_METHOD`, `G5_PAYMENTS_RECORD_FEE`, `G5_PAYMENT_FEES_ADMIN`). Then `sudo systemctl restart seoulbeauty-admin-api`.
+Turning it off: `ADMIN_PAYMENTS_FEES=0`, restart (the new routes answer 404, the old answers are unchanged).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
