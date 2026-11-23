@@ -4,7 +4,7 @@ import request from 'supertest';
 import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { DoctorsModule } from './doctors.module';
-import { DB } from '../db/db.module';
+import { DB, DB_RW } from '../db/db.module';
 
 const SUPER = 'PHPSESSID=super';
 const HOSPITAL = 'PHPSESSID=hospital12';
@@ -52,7 +52,7 @@ describe('admin API: doctors (read)', () => {
     process.env.ADMIN_HOSPITALS_ENABLED = '1';
     process.env.ADMIN_DOCTORS_ENABLED = '1';
     sqls.length = 0;
-    @Global() @Module({ providers: [{ provide: DB, useValue: stub }], exports: [DB] }) class TestDbModule {}
+    @Global() @Module({ providers: [{ provide: DB, useValue: stub }, { provide: DB_RW, useValue: { get: () => null } }], exports: [DB, DB_RW] }) class TestDbModule {}
     const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, MeModule, DoctorsModule] }).compile();
     app = mod.createNestApplication();
     await app.init();

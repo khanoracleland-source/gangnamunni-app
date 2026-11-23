@@ -1318,6 +1318,28 @@ FLUSH PRIVILEGES;
 `display_order` of the doctors table is added by the old admin page the first time it is opened; until it exists the list is ordered by name and the second `display_order` GRANT must wait. The hospital filter offers approved hospitals only.
 `seoulbeauty-admin-api/.env`: `ADMIN_DOCTORS_ENABLED=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_DOCTORS_ENABLED=0` + restart.
 
+## 21. Editing and retiring doctors (`ADMIN_DOCTORS_WRITE`, optional)
+
+`PATCH /v1/doctors/:id` (multipart: `doctor` = JSON text with name, hospitalId, specialty, qualification, treatmentIds; `photo` = optional picture, 5 MB, jpg/png/webp) and `POST /v1/doctors/:id/retire` (JSON, empty body).
+Edit: the doctor row, the treatments the doctor is assigned to (only treatments the hospital offers right now; the rest is ignored and every assignment not in the list is switched off) and the photo (the old file is removed after the commit) change in one transaction. Moving a doctor to another hospital puts the doctor last there (display order cleared) and re-assigns the treatments there. A retired doctor can not be edited (409 `doctor_resigned`). A hospital account works only on its own hospital's doctors and can not move one away (404).
+Retire: status `resigned`, display order cleared, every assignment switched off; repeating it changes nothing. Nothing is deleted.
+Needs `ADMIN_DOCTORS_ENABLED=1` and `ADMIN_DOCTORS_WRITE=1`; the photo also needs `ADMIN_UPLOAD_ROOT` (same folder as section 11). The write pool (`DB_RW_USER`) must be set, otherwise 503 `write_unavailable`.
+
+Database (as root; the write user, add only what is missing in `SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1'`):
+
+```sql
+GRANT SELECT (id, hospital_id, specialty, photo_url, status), UPDATE (name, hospital_id, specialty, qualification, photo_url, status, updated_at) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'127.0.0.1';
+-- only when the column exists (see section 20):
+GRANT UPDATE (display_order) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (doctor_id, treatment_id, is_active), INSERT (doctor_id, hospital_id, treatment_id, case_count, speciality_level, is_active), UPDATE (hospital_id, is_active) ON <DB_NAME>.gangnamunni_doctor_treatments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (hospital_id, treatment_id, is_active, status) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, status) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'127.0.0.1';
+-- the same for 'sb_admin_rw'@'localhost'
+FLUSH PRIVILEGES;
+```
+
+`seoulbeauty-admin-api/.env`: `ADMIN_DOCTORS_WRITE=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_DOCTORS_WRITE=0` + restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
@@ -1327,7 +1349,7 @@ Nothing to add for this API: it is not exposed by Apache. Browsers reach it only
 - Each session lookup refreshes the PHP admin session like a page view does; while the dashboard is open and polling,
   the PHP admin login does not idle out.
 - Hospital answers are not cached by the API: every request reads the database (3 statements for the list, up to 5 for a detail page).
-- The image upload, the document upload, the add-doctors and the treatment image add routes are the exceptions: they require `Content-Type: multipart/form-data` (same marker header and Origin rule).
+- The image upload, the document upload, the add-doctors, the edit-doctor and the treatment image add routes are the exceptions: they require `Content-Type: multipart/form-data` (same marker header and Origin rule).
 - Writing routes require `Content-Type: application/json`, the header `X-Requested-With: admin-next`, and an `Origin` (when sent) equal to the request host (`X-Forwarded-Host`, else `Host`); otherwise `403 {"error":"csrf"}`.
 - Image and photo URLs are returned as stored: either absolute (`https://…`) or relative to the PHP admin directory
   (`uploads/hospitals/<id>/…`). Document files are not served by this API; the PHP admin (`hospital_document.php`) opens them (they can be uploaded, replaced and deleted here: section 11).

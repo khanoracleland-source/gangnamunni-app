@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AdminGuard, adminsEnabled, doctorsEnabled, bookingsEnabled, bookingsWriteEnabled, paymentsEnabled, adminsWriteEnabled, hospitalsDeleteEnabled, hospitalsDocumentsEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsReviewEnabled, hospitalsOrderEnabled, hospitalsTreatmentsEnabled, hospitalApplyEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest, treatmentsEnabled, treatmentsImagesEnabled, treatmentsWriteEnabled, treatmentUnitsEnabled, treatmentUnitsWriteEnabled } from '../admin-auth/admin.guard';
+import { AdminGuard, adminsEnabled, doctorsEnabled, doctorsWriteEnabled, bookingsEnabled, bookingsWriteEnabled, paymentsEnabled, adminsWriteEnabled, hospitalsDeleteEnabled, hospitalsDocumentsEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsReviewEnabled, hospitalsOrderEnabled, hospitalsTreatmentsEnabled, hospitalApplyEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest, treatmentsEnabled, treatmentsImagesEnabled, treatmentsWriteEnabled, treatmentUnitsEnabled, treatmentUnitsWriteEnabled } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
 @UseGuards(AdminGuard)
@@ -10,7 +10,7 @@ export class MeController {
     const { id, username, name, role, hospitalId, scope } = req.admin;
     return { admin: { id, username, name, role, hospitalId, scope }, features: { hospitals: hospitalsEnabled(), hospitalsWrite: hospitalsWriteEnabled(),
       // the routes behind these flags are super-admin only (403 for other roles); the flags only report the switches
-      hospitalsDelete: hospitalsDeleteEnabled(), archive: hospitalsDeleteEnabled(), hospitalsReview: hospitalsReviewEnabled(), hospitalsOrder: hospitalsOrderEnabled(), doctors: doctorsEnabled(),
+      hospitalsDelete: hospitalsDeleteEnabled(), archive: hospitalsDeleteEnabled(), hospitalsReview: hospitalsReviewEnabled(), hospitalsOrder: hospitalsOrderEnabled(), doctors: doctorsEnabled(), doctorsWrite: doctorsWriteEnabled(),
       hospitalsImages: hospitalsImagesEnabled(), hospitalsDocuments: hospitalsDocumentsEnabled(), hospitalsDoctors: hospitalsDoctorsEnabled(),
       hospitalsTreatments: hospitalsTreatmentsEnabled(), hospitalsTreatmentsRemove: hospitalsTreatmentsRemoveEnabled(), hospitalsTreatmentsPrices: hospitalsTreatmentsPricesEnabled(),
       hospitalsTreatmentsQuestions: hospitalsTreatmentsQuestionsEnabled(), hospitalsTreatmentsImages: hospitalsTreatmentsImagesEnabled(),
