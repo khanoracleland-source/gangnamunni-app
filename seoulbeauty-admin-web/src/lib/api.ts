@@ -507,7 +507,7 @@ async function sendJson(method: "PATCH" | "POST" | "PUT" | "DELETE", path: strin
     const d = obj(data);
     if (!res.ok) {
       const fields: Record<string, string> = {};
-      for (const [name, code] of Object.entries(obj(d.fields))) if (typeof code === "string") fields[name] = code;
+      for (const [name, code] of Object.entries({ ...obj(d.errors), ...obj(d.fields) })) if (typeof code === "string") fields[name] = code;
       return {
         ok: false,
         status: res.status,
@@ -2001,4 +2001,104 @@ export async function fetchPaymentsCompare(hospitalId: number, metric: CompareMe
       },
     },
   };
+}
+
+// ───────── Payments: fees, the three sections and the fee rates (ADMIN_PAYMENTS_FEES) ─────────
+
+export type PayMethod = "card" | "bank_transfer" | "";
+export type SectionStage = "held" | "counted" | "received";
+export type BoardPeriod = "week" | "month";
+export type BoardBox = { count: number; amount: number; noFee: number };
+/** The three boxes of one period. A 404 from the server means the fee switch is off: the page keeps its old shape. */
+export type PaymentBoard = { period: BoardPeriod; from: string; to: string; today: string; held: BoardBox; counted: BoardBox; received: BoardBox };
+export type SectionRow = {
+  id: number; bookingId: number; hospitalId: number; hospitalName: string; patientName: string; treatmentName: string; amount: number; status: string; paidAt: string;
+  visitDate: string; visitTime: string; payMethod: PayMethod; feeRateBp: number | null; fee: number | null; settlement: number | null; payoutDate: string | null;
+};
+export type SectionTotals = { payments: number; received: number; fee: number; settlement: number; noFee: number };
+export type PaymentSection = { stage: SectionStage; items: SectionRow[]; total: number; page: number; perPage: number; totalPages: number; totals: SectionTotals; from: string; to: string };
+export type SectionQuery = { stage: SectionStage; hospitalId: number; from: string; to: string; q: string; page: number };
+export type MethodSums = { method: PayMethod; payments: number; received: number; refunded: number; fee: number; settlement: number; noFee: number };
+export type WeekSums = { payoutDate: string; payments: number; fee: number; settlement: number };
+export type PaymentOverview = { methods: MethodSums[]; weeks: WeekSums[]; orderedHeld: { count: number; amount: number } };
+
+const payMethod = (v: unknown): PayMethod => (v === "card" || v === "bank_transfer" ? v : "");
+const boardBox = (v: unknown): BoardBox => ({ count: num(obj(v).count), amount: num(obj(v).amount), noFee: num(obj(v).noFee) });
+
+export async function fetchPaymentBoard(hospitalId: number, period: BoardPeriod, signal?: AbortSignal): Promise<ApiResult<PaymentBoard>> {
+  const p = new URLSearchParams({ period });
+  if (hospitalId > 0) p.set("hospital_id", String(hospitalId));
+  const res = await getJson(`/v1/payments/board?${p}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return { ok: true, data: { period: d.period === "month" ? "month" : "week", from: str(d.from), to: str(d.to), today: str(d.today), held: boardBox(d.held), counted: boardBox(d.counted), received: boardBox(d.received) } };
+}
+
+/** `from` / `to` empty = the server shows the whole current month (the same range as the board's month box). */
+export async function fetchPaymentSection(q: SectionQuery, signal?: AbortSignal): Promise<ApiResult<PaymentSection>> {
+  const p = new URLSearchParams({ stage: q.stage });
+  if (q.hospitalId > 0) p.set("hospital_id", String(q.hospitalId));
+  if (q.from) p.set("from", q.from);
+  if (q.to) p.set("to", q.to);
+  if (q.q.trim()) p.set("q", q.q.trim());
+  if (q.page > 1) p.set("page", String(q.page));
+  const res = await getJson(`/v1/payments/section?${p}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const t = obj(d.totals);
+  const items: SectionRow[] = list(d.items).map((v) => {
+    const r = obj(v);
+    return {
+      id: num(r.id), bookingId: num(r.bookingId), hospitalId: num(r.hospitalId), hospitalName: str(r.hospitalName), patientName: str(r.patientName), treatmentName: str(r.treatmentName),
+      amount: num(r.amount), status: str(r.status), paidAt: str(r.paidAt), visitDate: str(r.visitDate), visitTime: str(r.visitTime), payMethod: payMethod(r.payMethod),
+      feeRateBp: numOrNull(r.feeRateBp), fee: numOrNull(r.fee), settlement: numOrNull(r.settlement), payoutDate: str(r.payoutDate) || null,
+    };
+  }).filter((r) => r.id > 0);
+  return {
+    ok: true,
+    data: {
+      stage: d.stage === "counted" || d.stage === "received" ? d.stage : "held", items, total: num(d.total), page: Math.max(1, num(d.page)), perPage: Math.max(1, num(d.perPage)),
+      totalPages: Math.max(1, num(d.totalPages)), totals: { payments: num(t.payments), received: num(t.received), fee: num(t.fee), settlement: num(t.settlement), noFee: num(t.noFee) }, from: str(d.from), to: str(d.to),
+    },
+  };
+}
+
+/** Per payment method and per payout Sunday, for the hospital and dates chosen (taken from the list answer, first page). */
+export async function fetchPaymentOverview(q: PaymentsRangeQuery, signal?: AbortSignal): Promise<ApiResult<PaymentOverview>> {
+  const qs = paymentsParams(q).toString();
+  const res = await getJson(`/v1/payments${qs ? `?${qs}` : ""}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const methods: MethodSums[] = list(d.methods).map((v) => {
+    const r = obj(v);
+    return { method: payMethod(r.method), payments: num(r.payments), received: num(r.received), refunded: num(r.refunded), fee: num(r.fee), settlement: num(r.settlement), noFee: num(r.noFee) };
+  });
+  const weeks: WeekSums[] = list(d.weeks).map((v) => ({ payoutDate: str(obj(v).payoutDate), payments: num(obj(v).payments), fee: num(obj(v).fee), settlement: num(obj(v).settlement) })).filter((w) => w.payoutDate !== "");
+  return { ok: true, data: { methods, weeks, orderedHeld: { count: num(obj(d.orderedHeld).count), amount: num(obj(d.orderedHeld).amount) } } };
+}
+
+export type FeeRateItem = { id: number; payMethod: PayMethod; rateBp: number; effectiveFrom: string; createdByName: string };
+export type FeeRates = { today: string; current: Partial<Record<"card" | "bank_transfer", { rateBp: number; effectiveFrom: string | null } | null>>; items: FeeRateItem[] };
+
+export async function fetchFeeRates(signal?: AbortSignal): Promise<ApiResult<FeeRates>> {
+  const res = await getJson("/v1/payments/fee-rates", signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const current: FeeRates["current"] = {};
+  for (const m of ["card", "bank_transfer"] as const) {
+    const c = obj(obj(d.current)[m]);
+    current[m] = Object.keys(c).length ? { rateBp: num(c.rateBp), effectiveFrom: str(c.effectiveFrom) || null } : null;
+  }
+  const items: FeeRateItem[] = list(d.items).map((v) => {
+    const r = obj(v);
+    return { id: num(r.id), payMethod: payMethod(r.payMethod), rateBp: num(r.rateBp), effectiveFrom: str(r.effectiveFrom), createdByName: str(r.createdByName) };
+  }).filter((r) => r.id > 0);
+  return { ok: true, data: { today: str(d.today), current, items } };
+}
+/** Super admin only. Both writers answer with the shared write result: a refused field is in `fields`. */
+export async function createFeeRate(input: { payMethod: "card" | "bank_transfer"; rateBp: number; effectiveFrom: string }): Promise<WriteResult<Json>> {
+  return sendJson("POST", "/v1/payments/fee-rates", input);
+}
+export async function deleteFeeRate(id: number): Promise<WriteResult<Json>> {
+  return sendJson("DELETE", `/v1/payments/fee-rates/${id}`);
 }

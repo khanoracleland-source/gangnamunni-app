@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import CompareCharts from "./CompareCharts";
 import { GroupTable, PaymentRows, Tabs, type Tab } from "./PaymentsTables";
+import { PeriodBoard, Sections, Totals } from "./PaymentStages";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
-import { fetchMe, fetchPaymentHospitals, fetchPayments, type ApiResult, type Me, type PaymentList } from "@/lib/api";
+import { fetchMe, fetchPaymentBoard, fetchPaymentHospitals, fetchPayments, type ApiResult, type Me, type PaymentList } from "@/lib/api";
 import { todayIso } from "@/lib/bookings";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { percentOf } from "@/lib/format";
@@ -74,13 +76,32 @@ function Board({ me }: { me: Me }) {
   const [tab, setTab] = useState<Tab>("list");
   const [hospitals, setHospitals] = useState<{ id: number; name: string }[]>([]);
   const [got, setGot] = useState<{ key: string; res: ApiResult<PaymentList> } | null>(null);
+  // null = not known yet; false = the fee switch is off on the server (404): the page keeps its old shape.
+  const [feesOn, setFeesOn] = useState<boolean | null>(null);
+  // The dates are sent to the three sections only after the user chose them; before that the server shows the whole current month.
+  const [datesTouched, setDatesTouched] = useState(false);
 
   const problem = rangeProblem(filters.from, filters.to);
   const query = toQuery(filters, page);
   const key = `${queryKey(query)}#${tick}`;
 
+  // Only a 404 means the fee switch is off. Any other failure (network, 5xx) is tried again a couple of times before the old shape is shown.
+  const [probe, setProbe] = useState(0);
   useEffect(() => {
-    if (problem) return;
+    const c = new AbortController();
+    let timer = 0;
+    void fetchPaymentBoard(0, "week", c.signal).then((res) => {
+      if (c.signal.aborted) return;
+      if (res.ok) setFeesOn(true);
+      else if (res.status === 401) leaveToLogin();
+      else if (res.status === 404 || probe >= 2) setFeesOn(false);
+      else timer = window.setTimeout(() => setProbe((n) => n + 1), 2000);
+    });
+    return () => { c.abort(); window.clearTimeout(timer); };
+  }, [probe]);
+
+  useEffect(() => {
+    if (problem || feesOn !== false) return;
     const c = new AbortController();
     void fetchPayments(query, c.signal).then((res) => {
       if (c.signal.aborted) return;
@@ -95,7 +116,7 @@ function Board({ me }: { me: Me }) {
     return () => c.abort();
     // `query` is rebuilt from `filters` on every render; `key` stands for it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, problem]);
+  }, [key, problem, feesOn]);
 
   useEffect(() => {
     const c = new AbortController();
@@ -117,21 +138,26 @@ function Board({ me }: { me: Me }) {
 
   const set = (patch: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...patch }));
+    if ("from" in patch || "to" in patch) setDatesTouched(true);
     setPage(1);
   };
   const initial = defaultFilters(today);
   const reset = () => {
     setFilters(initial);
+    setDatesTouched(false);
     setQInput("");
     setPage(1);
   };
   const dirty = JSON.stringify(filters) !== JSON.stringify(initial) || qInput !== "";
 
-  const summary = !problem && got?.res.ok ? got.res.data.summary : null;
-  const loading = !problem && got?.key !== key;
-  const failed = !problem && got?.key === key && !got.res.ok;
+  const summary = !problem && feesOn === false && got?.res.ok ? got.res.data.summary : null;
+  const loading = !problem && feesOn === false && got?.key !== key;
+  const failed = !problem && feesOn === false && got?.key === key && !got.res.ok;
   const unavailable = failed && got?.res.ok === false && got.res.status === 503;
   const hospitalName = own ? (hospitals[0]?.name ?? "") : "";
+
+  // With the fee switch on the payments list is replaced by the three sections: only the hospital / treatment totals stay as tabs.
+  const effTab: Tab = feesOn ? (tab === "list" || (own && tab === "hospitals") ? (own ? "treatments" : "hospitals") : tab) : own && tab === "hospitals" ? "list" : tab;
 
   const net = summary ? summary.received - summary.refunded : 0;
   const recPct = summary ? Math.round(percentOf(summary.recognized, net) ?? 0) : 0;
@@ -170,7 +196,16 @@ function Board({ me }: { me: Me }) {
         </Notice>
       ) : null}
 
-      {!problem && got === null ? <p className="muted" role="status">{t("pay.loading")}</p> : null}
+      {!problem && (feesOn === null || (feesOn === false && got === null)) ? <p className="muted" role="status">{t("pay.loading")}</p> : null}
+
+      {feesOn && !problem ? (
+        <>
+          {me.admin.role === "super_admin" ? <p className="pay-rates-link"><Link href="/payments/fee-rates" className="btn btn--ghost btn--sm"><Icon name="gear" size={14} />{t("pay.rates.link")}</Link></p> : null}
+          <PeriodBoard hospitalId={filters.hospitalId} tick={tick} />
+          <Sections filters={{ hospitalId: filters.hospitalId, from: filters.from, to: filters.to, q: filters.q }} datesTouched={datesTouched} own={own} tick={tick} />
+          <Totals hospitalId={filters.hospitalId} from={filters.from} to={filters.to} tick={tick} />
+        </>
+      ) : null}
 
       {summary ? (
         <section className={`pay-money${loading ? " bk-busy" : ""}`} aria-label={t("pay.sum.net")} aria-busy={loading}>
@@ -199,17 +234,17 @@ function Board({ me }: { me: Me }) {
         </section>
       ) : null}
 
-      <CompareCharts hospitalId={filters.hospitalId} />
+      {feesOn !== null ? <CompareCharts hospitalId={filters.hospitalId} /> : null}
 
-      {!problem ? (
+      {!problem && feesOn !== null ? (
         <section className="pay-list">
-          <Tabs tab={own && tab === "hospitals" ? "list" : tab} own={own} onTab={setTab} />
-          <div id="pay-panel" role="tabpanel" aria-labelledby={`pay-tab-${own && tab === "hospitals" ? "list" : tab}`}>
-            {tab !== "list" && filters.q.trim() ? <p className="muted pay-qnote">{t("pay.groupNoQ")}</p> : null}
-            {tab === "list" || (own && tab === "hospitals") ? (
+          <Tabs tab={effTab} own={own} onTab={setTab} withoutList={feesOn} />
+          <div id="pay-panel" role="tabpanel" aria-labelledby={`pay-tab-${effTab}`}>
+            {effTab !== "list" && filters.q.trim() ? <p className="muted pay-qnote">{t("pay.groupNoQ")}</p> : null}
+            {effTab === "list" ? (
               got?.res.ok ? <PaymentRows list={got.res.data} loading={loading} own={own} dirty={dirty} onPage={setPage} onReset={reset} /> : null
             ) : (
-              <GroupTable kind={tab} hospitalId={filters.hospitalId} from={filters.from} to={filters.to} />
+              <GroupTable kind={effTab} hospitalId={filters.hospitalId} from={filters.from} to={filters.to} />
             )}
           </div>
         </section>

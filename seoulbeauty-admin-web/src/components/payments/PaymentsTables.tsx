@@ -15,9 +15,9 @@ import { monthDay, monthDayTime, won, wonOrDash } from "@/lib/payments";
 export type Tab = "list" | "hospitals" | "treatments";
 
 /** The three views of the same filters: the payments, the hospitals and the treatments (hospital accounts have no hospitals view). */
-export function Tabs({ tab, own, onTab }: { tab: Tab; own: boolean; onTab: (t: Tab) => void }) {
+export function Tabs({ tab, own, onTab, withoutList = false }: { tab: Tab; own: boolean; onTab: (t: Tab) => void; withoutList?: boolean }) {
   const t = useT();
-  const tabs: Tab[] = own ? ["list", "treatments"] : ["list", "hospitals", "treatments"];
+  const tabs: Tab[] = (own ? ["list", "treatments"] : ["list", "hospitals", "treatments"]).filter((k) => !(withoutList && k === "list")) as Tab[];
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = tabs.indexOf(tab);
@@ -55,7 +55,7 @@ function Stage({ row }: { row: PaymentRow }) {
   );
 }
 
-function Pager({ list, onPage }: { list: PaymentList; onPage: (n: number) => void }) {
+export function Pager({ list, onPage }: { list: { page: number; perPage: number; total: number; totalPages: number }; onPage: (n: number) => void }) {
   const t = useT();
   const from = (list.page - 1) * list.perPage + 1;
   const to = Math.min(list.page * list.perPage, list.total);
