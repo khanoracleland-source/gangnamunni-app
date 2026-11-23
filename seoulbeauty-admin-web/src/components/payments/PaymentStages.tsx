@@ -28,7 +28,7 @@ function Help({ text, label }: { text: string; label: string }) {
 }
 
 /** This week / this month: how much of the chosen hospital is 보류, 반영 and 입금. */
-export function PeriodBoard({ hospitalId, tick, onLeave }: { hospitalId: number; tick: number; onLeave?: () => void }) {
+export function PeriodBoard({ hospitalId, tick, onLeave, onRange }: { hospitalId: number; tick: number; onLeave?: () => void; onRange?: (r: { from: string; to: string }) => void }) {
   const t = useT();
   const [period, setPeriod] = useState<BoardPeriod>("week");
   const [got, setGot] = useState<{ key: string; res: ApiResult<PaymentBoard> } | null>(null);
@@ -47,6 +47,13 @@ export function PeriodBoard({ hospitalId, tick, onLeave }: { hospitalId: number;
   const loading = got?.key !== key;
   const board = got?.res.ok ? got.res.data : null;
   const failed = got?.key === key && !got.res.ok;
+  const boardFrom = board?.from;
+  const boardTo = board?.to;
+  useEffect(() => {
+    if (boardFrom && boardTo) onRange?.({ from: boardFrom, to: boardTo });
+    // The callback only stores the range.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardFrom, boardTo]);
   const box = (s: SectionStage): BoardBox | null => (board ? board[s] : null);
   return (
     <section className={`pay-board${loading ? " bk-busy" : ""}`} aria-label={t("pay.board.title")} aria-busy={loading}>
@@ -123,15 +130,17 @@ function Head({ stage, own }: { stage: SectionStage; own: boolean }) {
 export type SectionFilters = { hospitalId: number; from: string; to: string; q: string };
 
 /** The three sections: 보류, 반영 and 입금, each a list of bookings with its own columns. Dates are sent only once the user chose them. */
-export function Sections({ filters, datesTouched, own, tick, onLeave }: { filters: SectionFilters; datesTouched: boolean; own: boolean; tick: number; onLeave?: () => void }) {
+export function Sections({ filters, datesTouched, range, own, tick, onLeave }: { filters: SectionFilters; datesTouched: boolean; range: { from: string; to: string } | null; own: boolean; tick: number; onLeave?: () => void }) {
   const t = useT();
   const [stage, setStage] = useState<SectionStage>("held");
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
   const [got, setGot] = useState<{ key: string; res: ApiResult<PaymentSection> } | null>(null);
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
-  const from = datesTouched ? filters.from : "";
-  const to = datesTouched ? filters.to : "";
+  // Until the user picks dates, the lists follow the week or month chosen on the board above.
+  const from = datesTouched ? filters.from : (range?.from ?? "");
+  const to = datesTouched ? filters.to : (range?.to ?? "");
+  const waiting = !datesTouched && !range;
   const key = `${stage}|${filters.hospitalId}|${from}|${to}|${filters.q.trim()}|${page}|${tick}|${retry}`;
 
   // A new filter or section starts again at the first page.
@@ -140,6 +149,7 @@ export function Sections({ filters, datesTouched, own, tick, onLeave }: { filter
   if (seen !== filterKey) { setSeen(filterKey); setPage(1); }
 
   useEffect(() => {
+    if (waiting) return;
     const c = new AbortController();
     void fetchPaymentSection({ stage, hospitalId: filters.hospitalId, from, to, q: filters.q, page }, c.signal).then((res) => {
       if (c.signal.aborted) return;

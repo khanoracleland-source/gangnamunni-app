@@ -77,6 +77,7 @@ function Board({ me }: { me: Me }) {
   const [hospitals, setHospitals] = useState<{ id: number; name: string }[]>([]);
   const [got, setGot] = useState<{ key: string; res: ApiResult<PaymentList> } | null>(null);
   // null = not known yet; false = the fee switch is off on the server (404): the page keeps its old shape.
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null);
   const [feesOn, setFeesOn] = useState<boolean | null>(null);
   // The dates are sent to the three sections only after the user chose them; before that the server shows the whole current month.
   const [datesTouched, setDatesTouched] = useState(false);
@@ -201,8 +202,8 @@ function Board({ me }: { me: Me }) {
       {feesOn && !problem ? (
         <>
           {me.admin.role === "super_admin" ? <p className="pay-rates-link"><Link href="/payments/fee-rates" className="btn btn--ghost btn--sm"><Icon name="gear" size={14} />{t("pay.rates.link")}</Link></p> : null}
-          <PeriodBoard hospitalId={filters.hospitalId} tick={tick} />
-          <Sections filters={{ hospitalId: filters.hospitalId, from: filters.from, to: filters.to, q: filters.q }} datesTouched={datesTouched} own={own} tick={tick} />
+          <PeriodBoard hospitalId={filters.hospitalId} tick={tick} onRange={setRange} />
+          <Sections filters={{ hospitalId: filters.hospitalId, from: filters.from, to: filters.to, q: filters.q }} datesTouched={datesTouched} range={range} own={own} tick={tick} />
           <Totals hospitalId={filters.hospitalId} from={filters.from} to={filters.to} tick={tick} />
         </>
       ) : null}
@@ -234,7 +235,12 @@ function Board({ me }: { me: Me }) {
         </section>
       ) : null}
 
-      {feesOn !== null ? <CompareCharts hospitalId={filters.hospitalId} /> : null}
+      {feesOn ? (
+        <details className="pay-details">
+          <summary>{t("pay.cmp.fold")}</summary>
+          <CompareCharts hospitalId={filters.hospitalId} />
+        </details>
+      ) : feesOn === false ? <CompareCharts hospitalId={filters.hospitalId} /> : null}
 
       {!problem && feesOn !== null ? (
         <section className="pay-list">

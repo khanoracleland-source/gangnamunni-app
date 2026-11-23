@@ -3037,3 +3037,7 @@ html[data-theme="dark"] { --s-done-bg: #2E2040; --s-done: #D7A8EA; --danger-soli
   .pay-seg__btn { flex: 1; }
   .pay-box__value { font-size: 22px; }
 }
+
+/* Fee rates form: the shared .field grows in a column, which stretched the form. */
+.pay-rates-form .field { flex: 0 0 auto; }
+.pay-details[open] > summary { margin-bottom: 12px; }
