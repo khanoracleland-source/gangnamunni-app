@@ -128,6 +128,18 @@ export class HospitalsReviewEnabledGuard implements CanActivate {
   }
 }
 
+/** Changing the display order of hospitals in the app. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
+export const hospitalsOrderEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_ORDER === '1';
+
+/** With the order switch off the move route answers 404 as if it did not exist; nothing else is looked at. */
+@Injectable()
+export class HospitalsOrderEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !hospitalsOrderEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Uploading hospital images. Needs the hospital pages and editing on as well; only the exact value "1" turns it on. */
 export const hospitalsImagesEnabled = (): boolean => hospitalsWriteEnabled() && process.env.ADMIN_HOSPITALS_IMAGES === '1';
 

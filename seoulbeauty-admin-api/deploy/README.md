@@ -1275,6 +1275,26 @@ ADMIN_PAYMENTS_FEES=1
 and in the payment return (`seoulbeauty-api`) `PAYMENTS_RECORD_PAY_METHOD=1` and `PAYMENTS_RECORD_FEE=1` (the PHP page uses `G5_PAYMENTS_RECORD_PAY_METHOD`, `G5_PAYMENTS_RECORD_FEE`, `G5_PAYMENT_FEES_ADMIN`). Then `sudo systemctl restart seoulbeauty-admin-api`.
 Turning it off: `ADMIN_PAYMENTS_FEES=0`, restart (the new routes answer 404, the old answers are unchanged).
 
+## 19. Hospital display order (`ADMIN_HOSPITALS_ORDER`, optional; super admin only)
+
+Adds the "순서 변경" button to `/admin-next/hospitals`. It opens a screen with every active, approved hospital in the order the app shows them
+(`display_order` ascending, hospitals without a place last by id); a hospital is moved by dragging, with the keyboard, to the top, or by typing a place.
+Each move is saved at once and renumbers every active hospital 1..N in one transaction; the first move therefore fixes the order the app already shows, so nothing jumps.
+Needs `ADMIN_HOSPITALS_ENABLED=1` and `ADMIN_HOSPITALS_WRITE=1`, and the grants of sections 11 and 12 (the write user also needs `SELECT (id)`).
+
+Database (as root, once; `display_order` already exists because the app reads it):
+
+```sql
+GRANT SELECT (display_order) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (display_order) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (status, is_active, display_order), UPDATE (display_order) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (status, is_active, display_order), UPDATE (display_order) ON <DB_NAME>.gangnamunni_hospitals TO 'sb_admin_rw'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+`seoulbeauty-admin-api/.env`: `ADMIN_HOSPITALS_ORDER=1`, then `sudo systemctl restart seoulbeauty-admin-api`.
+Rollback: `ADMIN_HOSPITALS_ORDER=0` + restart (the button disappears and both order routes answer 404; stored values stay as they are).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.

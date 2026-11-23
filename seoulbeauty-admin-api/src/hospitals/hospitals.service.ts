@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { hospitalsDocumentsEnabled } from '../admin-auth/admin.guard';
 import { DB, Db } from '../db/db.module';
 import { canWriteDocuments } from './hospitals.documents.logic';
+import { orderBoardQuery, OrderBoard, orderInactiveQuery, toOrderBoard } from './hospitals.order.logic';
 import {
   buildDetail, buildStats, canSee, countQuery, detailOptionalQuery, detailQuery, doctorsQuery, emptyList, groupTreatments, HospitalDetail, HospitalList,
   imagesQuery, listQuery, ListQuery, num, Query, str, revisionsQuery, Scope, seesNothing, statsQuery, toListItem, TreatmentGroup, treatmentOptionsQuery,
@@ -41,6 +42,12 @@ export class HospitalsService {
     if (seesNothing(scope) || (q.pending && scope.scope !== 'all')) return emptyList(scope, q);
     const [stats, count, items] = await Promise.all([this.rows(statsQuery(scope)), this.rows(countQuery(scope, q)), this.rows(listQuery(scope, q))]);
     return { scope: scope.scope, stats: buildStats(stats[0]), total: num(count[0]?.cnt), page: q.page, perPage: q.perPage, items: items.map(toListItem) };
+  }
+
+  /** Super admin's reorder screen: all hospitals that have a place, in the app's order, and how many are switched off. */
+  async orderBoard(): Promise<OrderBoard> {
+    const [rows, inactive] = await Promise.all([this.rows(orderBoardQuery()), this.rows(orderInactiveQuery())]);
+    return toOrderBoard(rows, num(inactive[0]?.cnt));
   }
 
   async treatmentOptions(scope: Scope): Promise<{ groups: TreatmentGroup[] }> {
