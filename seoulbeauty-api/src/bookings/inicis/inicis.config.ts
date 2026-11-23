@@ -73,3 +73,14 @@ export const inicisAllowedFor = (cfg: Pick<InicisConfig, 'mode'>, memberId: stri
   if (memberId === '') return false; // never for an anonymous caller
   return (cfg.mode === 'live' && ids.includes('*')) || ids.includes(memberId);
 };
+
+export type PayMethod = 'card' | 'bank_transfer';
+/** Inicis P_TYPE -> ledger pay_method. Anything that is not a card or a real-time bank transfer stays NULL (unknown), never a guess. */
+export function payMethodFromInicisType(type: unknown): PayMethod | null {
+  const v = typeof type === 'string' ? type.trim().toUpperCase() : '';
+  if (v === 'CARD') return 'card';
+  if (v === 'BANK') return 'bank_transfer';
+  return null;
+}
+/** PAYMENTS_RECORD_PAY_METHOD=1 turns on writing gangnamunni_platform_payments.pay_method (needs the pay_method column). Default off. */
+export const recordPayMethodOn = (env: NodeJS.ProcessEnv = process.env): boolean => (env.PAYMENTS_RECORD_PAY_METHOD ?? '').trim() === '1';

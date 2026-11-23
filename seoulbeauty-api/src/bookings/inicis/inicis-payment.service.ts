@@ -6,7 +6,7 @@ import { kstNow } from '../bookings.logic';
 import { BookingPaymentService, PaymentRefused } from '../booking-payment.service';
 import { MemberNotifyService } from '../../member-notify/member-notify.service';
 import { approve, InicisFetch, InicisUnknownOutcome, netCancel } from './inicis.client';
-import { chkFake, InicisConfig, inicisAllowedFor, inicisConfig, inicisProvider, inicisPublicBase, isIdc } from './inicis.config';
+import { chkFake, InicisConfig, inicisAllowedFor, inicisConfig, inicisProvider, inicisPublicBase, isIdc, payMethodFromInicisType, recordPayMethodOn } from './inicis.config';
 import { PAY_DB } from './pay-db';
 
 export const INICIS_FETCH = Symbol('INICIS_FETCH');
@@ -263,9 +263,10 @@ export class InicisPaymentService {
       await conn.query(
         "INSERT INTO gangnamunni_payment_events (payment_id, provider, provider_event_id, event_type, amount, payload_sha256, provider_occurred_at) VALUES (?, ?, ?, 'payment_verified', ?, ?, ?)",
         [n(order.id), provider, `paid:${tid}`, amount, hash, paidAt]);
+      const payMethod = recordPayMethodOn() ? payMethodFromInicisType(res.P_TYPE) : null;
       const [upd] = (await conn.query(
-        "UPDATE gangnamunni_platform_payments SET provider = ?, provider_transaction_id = ?, verified_amount = ?, verified_at = NOW(), verification_source = 'server_query', status = 'paid', paid_at = ? WHERE id = ? AND status = 'pending'",
-        [provider, tid, amount, paidAt, n(order.id)])) as any;
+        `UPDATE gangnamunni_platform_payments SET provider = ?, provider_transaction_id = ?, verified_amount = ?, verified_at = NOW(), verification_source = 'server_query', status = 'paid', paid_at = ?${payMethod ? ', pay_method = ?' : ''} WHERE id = ? AND status = 'pending'`,
+        payMethod ? [provider, tid, amount, paidAt, payMethod, n(order.id)] : [provider, tid, amount, paidAt, n(order.id)])) as any;
       if (n((upd as any).affectedRows) !== 1) throw new Error('Payment verification update failed.');
       await conn.query(
         "INSERT INTO gangnamunni_payment_status_history (payment_id, old_status, new_status, actor_type, actor_id, reason) VALUES (?, 'pending', 'paid', 'provider', ?, 'Server-to-server verification')",

@@ -126,7 +126,8 @@ function booking_payment_apply_remote(mysqli $db, array $order, array $remote, s
         }
         if ($order['status'] === 'pending') {
             platform_payment_mark_verified($db, $order['merchant_uid'], $provider, $remote['transaction_id'],
-                'paid:' . $remote['transaction_id'], (int)$remote['amount'], $hash, $source, (int)$remote['paid_at'], false);
+                'paid:' . $remote['transaction_id'], (int)$remote['amount'], $hash, $source, (int)$remote['paid_at'], false,
+                isset($remote['pay_method']) ? (string)$remote['pay_method'] : null);
             $order = booking_payment_by_merchant($db, $order['merchant_uid']);
             // pending -> paid in this call: 설정 > 예약 · 결제 알림 "결제가 완료되었어요" (Nest sends its own for the Inicis web flow)
             if (($order['status'] ?? '') === 'paid' && (int)($order['booking_id'] ?? 0) > 0) { $notifyPaidBookingId = (int)$order['booking_id']; $notifyPaidAmount = (int)$order['amount']; }

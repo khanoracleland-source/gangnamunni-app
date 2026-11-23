@@ -55,6 +55,13 @@ function platform_payment_create_booking(mysqli $db, int $booking_id): array {
     }
 }
 
+/** card|bank_transfer when G5_PAYMENTS_RECORD_PAY_METHOD=1 (server switch, default off), otherwise null: the column stays untouched. */
+function platform_payment_method_to_record(?string $pay_method): ?string {
+    if ($pay_method === null || !in_array($pay_method, ['card', 'bank_transfer'], true)) return null;
+    if (!function_exists('booking_payment_setting') || booking_payment_setting('G5_PAYMENTS_RECORD_PAY_METHOD', '0') !== '1') return null;
+    return $pay_method;
+}
+
 function platform_payment_mark_verified(
     mysqli $db,
     string $merchant_uid,
@@ -65,7 +72,8 @@ function platform_payment_mark_verified(
     string $payload_sha256,
     string $source = 'server_query',
     ?int $provider_paid_at = null,
-    bool $manage_transaction = true
+    bool $manage_transaction = true,
+    ?string $pay_method = null
 ): bool {
     if (!booking_payment_is_pg($provider)
         || !in_array($source, ['webhook', 'server_query'], true)
@@ -109,12 +117,18 @@ function platform_payment_mark_verified(
         if (!mysqli_stmt_execute($event)) throw new RuntimeException(mysqli_stmt_error($event));
         mysqli_stmt_close($event);
 
+        // pay_method (card|bank_transfer) is written only when the server switch is on and the value is one of the two known methods.
+        $method = platform_payment_method_to_record($pay_method);
         $update = mysqli_prepare($db,
             "UPDATE gangnamunni_platform_payments
              SET provider=?,provider_transaction_id=?,verified_amount=?,verified_at=NOW(),
-                 verification_source=?,status='paid',paid_at=?
+                 verification_source=?,status='paid',paid_at=?" . ($method !== null ? ",pay_method=?" : "") . "
              WHERE id=? AND status='pending'");
-        mysqli_stmt_bind_param($update, 'ssissi', $provider, $provider_transaction_id, $verified_amount, $source, $paid_at, $payment_id);
+        if ($method !== null) {
+            mysqli_stmt_bind_param($update, 'ssisssi', $provider, $provider_transaction_id, $verified_amount, $source, $paid_at, $method, $payment_id);
+        } else {
+            mysqli_stmt_bind_param($update, 'ssissi', $provider, $provider_transaction_id, $verified_amount, $source, $paid_at, $payment_id);
+        }
         if (!mysqli_stmt_execute($update) || mysqli_stmt_affected_rows($update) !== 1) {
             throw new RuntimeException('Payment verification update failed.');
         }

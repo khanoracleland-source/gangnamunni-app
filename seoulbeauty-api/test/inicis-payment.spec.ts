@@ -116,6 +116,7 @@ describe('Inicis card payment API', () => {
     if (/UPDATE gangnamunni_platform_payments SET provider/.test(sql)) {
       if (st.failUpdate) return [{ affectedRows: 0 }];
       Object.assign(st.order, { provider: args[0], provider_transaction_id: args[1], verified_amount: args[2], status: 'paid', paid_at: args[3] });
+      if (/pay_method = \?/.test(sql)) st.order.pay_method = args[4];
       return [{ affectedRows: 1 }];
     }
     return [{ affectedRows: 1 }];
@@ -146,13 +147,22 @@ describe('Inicis card payment API', () => {
     Object.assign(process.env, { INICIS_TEST_MEMBERS: 'kim, tester2', INICIS_MID: MID, INICIS_HASHKEY: KEY, PG_PAYMENTS_ENABLED: '1', DB_PAY_USER: 'u', DB_PAY_PASSWORD: 'p' });
     delete process.env.INICIS_MODE; delete process.env.INICIS_PUBLIC_BASE;
   });
-  afterEach(() => { for (const k of ['INICIS_LIVE_MEMBERS', 'INICIS_TEST_MEMBERS', 'INICIS_MID', 'INICIS_HASHKEY', 'PG_PAYMENTS_ENABLED', 'DB_PAY_USER', 'DB_PAY_PASSWORD']) { if (env[k] === undefined) delete process.env[k]; else process.env[k] = env[k]; } });
+  afterEach(() => { for (const k of ['PAYMENTS_RECORD_PAY_METHOD', 'INICIS_LIVE_MEMBERS', 'INICIS_TEST_MEMBERS', 'INICIS_MID', 'INICIS_HASHKEY', 'PG_PAYMENTS_ENABLED', 'DB_PAY_USER', 'DB_PAY_PASSWORD']) { if (env[k] === undefined) delete process.env[k]; else process.env[k] = env[k]; } });
   const api = () => request(app.getHttpServer());
   const authed = (r: request.Test) => r.set('Cookie', 'sid=kim').set('X-Requested-With', 'XMLHttpRequest');
   const prepare = (body: object = {}) => authed(api().post('/v1/mypage/bookings/7/payment/inicis/prepare')).send(body);
   const authResult = (over: Record<string, string> = {}) => ({ P_STATUS: '00', P_MID: MID, P_OID: OID, P_AMT: '50000', P_AUTH_TID: 'INIpayTestAUTH1', P_IDCNAME: 'fc', ...over });
   const ret = (body: Record<string, string>) => api().post('/v1/payments/inicis/return').type('form').send(body);
   const wrote = () => st.sql.some((q: any) => /UPDATE gangnamunni_platform_payments/.test(q.sql));
+
+  it('pay_method is written only with PAYMENTS_RECORD_PAY_METHOD=1 and only for CARD / BANK', async () => {
+    const run = async (type: string) => { st = base(); inicisReply = reply(approveOk({ P_TYPE: type })); await ret(authResult()).expect(303); return st.sql.find((q: any) => /UPDATE gangnamunni_platform_payments SET provider/.test(q.sql)); };
+    let q = await run('CARD'); expect(q.sql).not.toMatch(/pay_method/); expect(st.order.pay_method).toBeUndefined(); // switch off: the SQL is the old one
+    process.env.PAYMENTS_RECORD_PAY_METHOD = '1';
+    q = await run('CARD'); expect(st.order.pay_method).toBe('card');
+    q = await run('BANK'); expect(st.order.pay_method).toBe('bank_transfer');
+    q = await run('VBANK'); expect(q.sql).not.toMatch(/pay_method/); expect(st.order.pay_method).toBeUndefined(); // unknown stays NULL
+  });
 
   it('live checkout needs MID + hash key + the payment DB account + PG_PAYMENTS_ENABLED', () => {
     expect(BookingPaymentService.liveAvailable()).toBe(true);
