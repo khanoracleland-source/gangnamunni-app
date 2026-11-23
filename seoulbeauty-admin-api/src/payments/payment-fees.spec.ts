@@ -20,6 +20,9 @@ describe('admin API: payment fee rates', () => {
   let dup = false;
   let rwEmpty = false;
   let missing = false;
+  let target: { id: number; pay_method: string; rate_bp: number; effective_from: string } | null = null;
+  let busy = false;
+  let delAffected = 1;
   const roStub = {
     query: jest.fn(async (sql: string) => {
       if (missing) throw Object.assign(new Error('no table'), { code: 'ER_NO_SUCH_TABLE', errno: 1146 });
@@ -32,6 +35,9 @@ describe('admin API: payment fee rates', () => {
   };
   const rwQuery = async (sql: string, values: unknown[] = []) => {
     rwCalls.push({ sql, values });
+    if (busy) throw Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK', errno: 1213 });
+    if (/^SELECT id, pay_method/.test(sql)) return [target ? [target] : []];
+    if (/^DELETE/.test(sql)) return [{ affectedRows: delAffected }];
     if (/^SELECT effective_from/.test(sql)) return [latest ? [{ effective_from: latest }] : []];
     if (/^INSERT/.test(sql)) { if (dup) throw Object.assign(new Error('dup'), { code: 'ER_DUP_ENTRY', errno: 1062 }); return [{ insertId: 11, affectedRows: 1 }]; }
     return [[]];
@@ -55,7 +61,7 @@ describe('admin API: payment fee rates', () => {
     jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     Object.assign(process.env, { ADMIN_PANEL_ENABLED: '1', ADMIN_HOSPITALS_ENABLED: '1', ADMIN_PAYMENTS_ENABLED: '1', ADMIN_PAYMENTS_FEES: '1' });
-    rwCalls = []; events = []; latest = null; dup = false; rwEmpty = false; missing = false;
+    rwCalls = []; events = []; latest = null; dup = false; rwEmpty = false; missing = false; target = null; busy = false; delAffected = 1;
     @Global() @Module({ providers: [{ provide: DB, useValue: roStub }, { provide: DB_RW, useValue: rwStub }], exports: [DB, DB_RW] }) class TestDbModule {}
     const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, PaymentsModule] }).compile();
     app = mod.createNestApplication();
@@ -90,6 +96,9 @@ describe('admin API: payment fee rates', () => {
     expect(r.body.current.card.rateBp).toBe(143);
     expect(r.body.current.bank_transfer.rateBp).toBe(198);
     expect(r.body.items).toHaveLength(2);
+    expect(r.body.items.every((i: any) => i.createdByName === '')).toBe(true); // login names are hidden from hospital roles
+    const s = await get(SUPER);
+    expect(s.body.items.every((i: any) => i.createdByName === 'boss')).toBe(true);
   });
   it('reading: table missing -> 503 payments_unavailable', async () => {
     missing = true;
@@ -144,5 +153,64 @@ describe('admin API: payment fee rates', () => {
     dup = false; rwEmpty = true;
     const r = await post(good(), SUPER);
     expect(r.status).toBe(503); expect(r.body.error).toBe('write_unavailable');
+  });
+
+  it('writing: a deadlock -> 503 busy (nothing changed), not a 500', async () => {
+    busy = true;
+    const r = await post(good(), SUPER);
+    expect(r.status).toBe(503); expect(r.body.error).toBe('busy');
+  });
+
+  describe('removing a rate that is not in force yet', () => {
+    const del = (id: string, cookie?: string, headers: Record<string, string> = HEADERS) => {
+      let r = request(app.getHttpServer()).delete(`/v1/payments/fee-rates/${id}`);
+      if (cookie) r = r.set('Cookie', cookie);
+      for (const [k, v] of Object.entries(headers)) r = r.set(k, v);
+      return r;
+    };
+    const deletes = () => rwCalls.filter((c) => /^DELETE/.test(c.sql));
+    it('switch off -> 404; CSRF -> 403; no session -> 401; hospital role -> 403; nothing is deleted', async () => {
+      target = { id: 5, pay_method: 'card', rate_bp: 195, effective_from: tomorrow() };
+      expect((await del('5', undefined, { 'X-Requested-With': 'admin-next' })).body.error).toBe('csrf');
+      expect((await del('5')).status).toBe(401);
+      expect((await del('5', HOSPITAL)).status).toBe(403);
+      process.env.ADMIN_PAYMENTS_FEES = '0';
+      expect((await del('5', SUPER)).status).toBe(404);
+      expect(rwCalls).toHaveLength(0);
+    });
+    it('a future rate is deleted with a parameterised statement that also checks the date', async () => {
+      target = { id: 5, pay_method: 'card', rate_bp: 195, effective_from: tomorrow() };
+      const r = await del('5', SUPER);
+      expect(r.status).toBe(200); expect(r.body).toEqual({ ok: true });
+      const d = deletes()[0];
+      expect(d.sql).toMatch(/WHERE id = \? AND effective_from > \?/); expect(d.values[0]).toBe(5);
+      expect(events).toEqual(['BEGIN', 'COMMIT', 'RELEASE']);
+    });
+    it('a rate already in force (or starting today) is never deleted -> 422', async () => {
+      target = { id: 3, pay_method: 'card', rate_bp: 143, effective_from: '2026-01-01' };
+      const r = await del('3', SUPER);
+      expect(r.status).toBe(422); expect(r.body.errors.id).toBe('already_in_force');
+      expect(deletes()).toHaveLength(0); expect(events).toContain('ROLLBACK');
+      target = { id: 3, pay_method: 'card', rate_bp: 143, effective_from: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) };
+      expect((await del('3', SUPER)).status).toBe(422);
+      expect(deletes()).toHaveLength(0);
+    });
+    it('a race (the date check passes, the guarded DELETE touches no row) -> 422; unknown id -> 404; bad id -> 404 without a query', async () => {
+      target = { id: 5, pay_method: 'card', rate_bp: 195, effective_from: tomorrow() };
+      delAffected = 0;
+      expect((await del('5', SUPER)).status).toBe(422);
+      target = null;
+      expect((await del('9', SUPER)).status).toBe(404);
+      rwCalls = [];
+      for (const bad of ['0', 'abc', '1.5', '-2']) expect((await del(bad, SUPER)).status).toBe(404);
+      expect(rwCalls).toHaveLength(0);
+    });
+    it('a deadlock -> 503 busy; no write user -> 503 write_unavailable', async () => {
+      target = { id: 5, pay_method: 'card', rate_bp: 195, effective_from: tomorrow() };
+      busy = true;
+      expect((await del('5', SUPER)).body.error).toBe('busy');
+      busy = false; rwEmpty = true;
+      expect((await del('5', SUPER)).body.error).toBe('write_unavailable');
+    });
   });
 });

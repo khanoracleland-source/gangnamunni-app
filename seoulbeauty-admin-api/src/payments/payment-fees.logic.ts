@@ -5,7 +5,8 @@ export type FeeMethod = (typeof FEE_METHODS)[number];
 /** Basis points of one percent: 143 = 1.43%. */
 export const MAX_RATE_BP = 10000;
 export const FIRST_RATE_FLOOR = '2020-01-01';
-export const MAX_DAYS_AHEAD = 365;
+/** A rate may be dated at most this far ahead: a wrong date can then be corrected (a not-yet-in-force row can be deleted) or waited out quickly. */
+export const MAX_DAYS_AHEAD = 90;
 
 export interface FeeRate { payMethod: FeeMethod; rateBp: number; effectiveFrom: string }
 
@@ -52,3 +53,8 @@ export function orderError(latestFrom: string | null, effectiveFrom: string, tod
   if (effectiveFrom <= today) return 'must_be_future';
   return null;
 }
+
+/** A fee rate id from the address: digits only, positive. */
+export const parseRateId = (raw: unknown): number => (typeof raw === 'string' && /^[1-9]\d{0,17}$/.test(raw) ? Number(raw) : 0);
+/** Only a rate that is not in force yet may be removed: what was ever used for a payment stays. */
+export const removable = (effectiveFrom: string, today: string = seoulToday()): boolean => effectiveFrom > today;
