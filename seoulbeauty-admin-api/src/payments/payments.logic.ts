@@ -44,9 +44,15 @@ const SUMS_SQL = `COUNT(*) AS payments, COALESCE(SUM(p.amount), 0) AS received, 
  * Payout day = the Sunday strictly after the visit date of a completed booking; from that day the settlement is "received", before it "counted".
  */
 export const FEE_RECORDED_SQL = "(p.pay_method IS NOT NULL AND p.pay_method <> '' AND p.fee_rate_bp IS NOT NULL AND p.fee_amount IS NOT NULL)";
+/**
+ * Points that covered part of a price (`points_used`, from the points schema). Read only with ADMIN_PAYMENTS_POINTS=1 (read once at start): the column does not
+ * exist until the points system is deployed, and a missing column must not break the payments screen. Off = 0 points.
+ */
+const POINTS_ON = process.env.ADMIN_PAYMENTS_POINTS === '1';
+const POINTS_SQL = POINTS_ON ? 'COALESCE(p.points_used, 0)' : '0';
 const FEE_NET_SQL = 'GREATEST(0, CAST(p.fee_amount AS SIGNED) - ((CAST(p.refunded_amount AS SIGNED) * CAST(p.fee_rate_bp AS SIGNED)) DIV 10000))';
 const FEE_ROW_SQL = `CASE WHEN p.status = 'refunded' THEN 0 ELSE ${FEE_NET_SQL} END`;
-const SETTLE_ROW_SQL = `CASE WHEN p.status = 'refunded' THEN 0 ELSE (CAST(p.amount AS SIGNED) - CAST(p.refunded_amount AS SIGNED)) - ${FEE_NET_SQL} + CAST(COALESCE(p.points_used, 0) AS SIGNED) END`;
+const SETTLE_ROW_SQL = `CASE WHEN p.status = 'refunded' THEN 0 ELSE (CAST(p.amount AS SIGNED) - CAST(p.refunded_amount AS SIGNED)) - ${FEE_NET_SQL} + CAST(${POINTS_SQL} AS SIGNED) END`;
 export const PAYOUT_SQL = 'DATE_ADD(b.booking_date, INTERVAL (8 - DAYOFWEEK(b.booking_date)) DAY)';
 /** One placeholder: today (Seoul, Y-m-d). */
 export const FEE_SUMS_SQL = `COALESCE(SUM(CASE WHEN ${FEE_RECORDED_SQL} THEN ${FEE_ROW_SQL} ELSE 0 END), 0) AS fee,
@@ -157,7 +163,7 @@ function whereOf(scope: AdminScope, f: PaymentFilters): Query {
 
 const LIST_COLUMNS = `p.id, p.booking_id, p.hospital_id, p.hospital_name, p.patient_name, p.patient_phone, p.treatment_name, p.amount, p.refunded_amount,
   p.status, p.paid_at, p.refunded_at, b.status AS booking_status, b.booking_date, b.booking_time`;
-const FEE_LIST_COLUMNS = ', p.pay_method, p.fee_rate_bp, p.fee_amount, p.points_used';
+const FEE_LIST_COLUMNS = `, p.pay_method, p.fee_rate_bp, p.fee_amount${POINTS_ON ? ', p.points_used' : ''}`;
 
 /** Newest payment first. */
 export function listQuery(scope: AdminScope, f: PaymentFilters, withFees = false): Query {

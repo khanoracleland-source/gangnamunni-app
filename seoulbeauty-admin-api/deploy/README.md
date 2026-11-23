@@ -1261,10 +1261,12 @@ Payments made before the columns exist show no fee or settlement ("—"); nothin
 18.3.1 SQL, in this order (run as the DB admin; the files are in `hairwang_full/gangnamunni/sql/`): `platform_payments_pay_method.sql`, `payment_fee_rates.sql`, `platform_payments_fee.sql`.
 18.3.2 GRANTs (repeat each line for `'127.0.0.1'` and `'localhost'`):
 ```sql
-GRANT SELECT (pay_method, fee_rate_bp, fee_amount, points_used) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (pay_method, fee_rate_bp, fee_amount) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT ON <DB_NAME>.gangnamunni_payment_fee_rates TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT, INSERT, DELETE ON <DB_NAME>.gangnamunni_payment_fee_rates TO 'sb_admin_rw'@'127.0.0.1';
 ```
+Points: the settlement adds the points that covered part of a price (`points_used`). That column exists only after the points schema (`points_v2.sql`) is deployed, so it is read only with `ADMIN_PAYMENTS_POINTS=1`
+(then also `GRANT SELECT (points_used) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_ro'@'127.0.0.1';`). Off = points count as 0.
 The payment return (Nest `DB_PAY_USER`) also needs `SELECT` on `gangnamunni_payment_fee_rates` and the right to write the three new payment columns.
 18.3.3 Enter the first rates (card, bank transfer) in the admin screen `/admin-next/payments/fee-rates` before turning the recording on. Then in `seoulbeauty-admin-api/.env`:
 ```

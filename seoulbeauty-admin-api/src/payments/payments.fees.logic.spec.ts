@@ -80,7 +80,8 @@ describe('queries: switch off is exactly as before, on adds the fee columns with
   });
   it('every operand of the fee and settlement arithmetic is cast to SIGNED (UNSIGNED columns must not overflow on a odd row)', () => {
     const sql = summaryQuery(ALL, range, '2026-11-23').sql;
-    for (const col of ['p.fee_rate_bp', 'COALESCE(p.points_used, 0)', 'p.fee_amount', 'p.refunded_amount']) expect(sql).toContain(`CAST(${col}`);
+    for (const col of ['p.fee_rate_bp', 'p.fee_amount', 'p.refunded_amount']) expect(sql).toContain(`CAST(${col}`);
+    expect(sql).not.toContain('points_used'); // the points column is read only with ADMIN_PAYMENTS_POINTS=1
     expect(sql).toContain("p.pay_method <> ''");
   });
   it('ordered Held: pending payments, test providers out, scoped, not bound to dates', () => {
@@ -140,4 +141,19 @@ describe('sections 보류 / 반영 / 입금 and the board', () => {
   it('toBoard reads the three boxes', () => expect(toBoard({ held_count: '2', held_amount: '90000', counted_count: 1, counted_amount: '49357', received_count: 0, received_amount: 0, counted_no_fee: 1 })).toEqual({
     held: { count: 2, amount: 90000, noFee: 0 }, counted: { count: 1, amount: 49357, noFee: 1 }, received: { count: 0, amount: 0, noFee: 0 },
   }));
+});
+
+describe('points column is read only with ADMIN_PAYMENTS_POINTS=1', () => {
+  it('on: the column is selected and added to the settlement', () => {
+    process.env.ADMIN_PAYMENTS_POINTS = '1';
+    try {
+      jest.isolateModules(() => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const m = require('./payments.logic') as typeof import('./payments.logic');
+        const f = { hospitalId: 0, from: '2026-11-01', to: '2026-11-20' };
+        expect(m.summaryQuery({ scope: 'all', hospitalIds: [] }, f, '2026-11-23').sql).toContain('CAST(COALESCE(p.points_used, 0) AS SIGNED)');
+        expect(m.listQuery({ scope: 'all', hospitalIds: [] }, { ...f, q: '', page: 1 }, true).sql).toContain('p.points_used');
+      });
+    } finally { delete process.env.ADMIN_PAYMENTS_POINTS; }
+  });
 });
