@@ -30,6 +30,14 @@ export class DoctorsController {
     return found;
   }
 
+  /** The reorder list of one hospital (declared before :id). */
+  @Get('order')
+  async order(@Req() req: ScopedAdminRequest, @Query('hospitalId') rawHospital: unknown) {
+    const found = await this.doctors.orderBoard(scopeOfRequest(req), parseHospitalId(typeof rawHospital === 'string' ? rawHospital : ''));
+    if (!found) throw new NotFoundException({ error: 'not_found' });
+    return found;
+  }
+
   @Get(':id')
   async detail(@Req() req: ScopedAdminRequest, @Param('id') rawId: string) {
     const found = await this.doctors.detail(scopeOfRequest(req), parseDoctorId(rawId));

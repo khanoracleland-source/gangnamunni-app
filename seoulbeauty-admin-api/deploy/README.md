@@ -1340,6 +1340,31 @@ FLUSH PRIVILEGES;
 
 `seoulbeauty-admin-api/.env`: `ADMIN_DOCTORS_WRITE=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_DOCTORS_WRITE=0` + restart.
 
+## 22. Doctor display order and permanent delete (`ADMIN_DOCTORS_ORDER`, `ADMIN_DOCTORS_DELETE`, optional)
+
+- `GET /v1/doctors/order?hospitalId=` (read, needs `ADMIN_DOCTORS_ENABLED`): the active doctors of one hospital in the app's order, positions 1..N; `orderable:false` while the `display_order` column does not exist yet.
+- `POST /v1/doctors/:id/order` (`ADMIN_DOCTORS_ORDER=1`; JSON `{"direction":"up"|"down"}` or `{"position":n}`): moves one active doctor and renumbers the active doctors of that hospital 1..N in one transaction (locked, so two moves can not interleave). A hospital account moves only inside its own hospital. A retired doctor: 409 `doctor_resigned`; no column yet: 409 `order_unavailable`.
+- `POST /v1/doctors/:id/delete` (`ADMIN_DOCTORS_DELETE=1`; JSON `{"confirm":true}`; **super admin only**, cannot be undone): only a RETIRED doctor (else 409 `not_resigned`). Bookings and reviews keep their rows, only their `doctor_id` is cleared; assignments and schedules are deleted with the doctor; the picture file is removed after the commit when this panel or the old page wrote it. If another table still points at the doctor the database refuses and nothing changes (409 `has_references`).
+All three need `ADMIN_DOCTORS_WRITE=1`.
+
+Database (as root; the write user, add only what is missing in `SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1'`; only for the switches you turn on):
+
+```sql
+-- order (the column must exist, see section 20)
+GRANT SELECT (name, hospital_id, status, display_order), UPDATE (display_order) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'127.0.0.1';
+-- delete
+GRANT SELECT (name, hospital_id, status, photo_url), DELETE ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (doctor_id), UPDATE (doctor_id) ON <DB_NAME>.gangnamunni_bookings TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (doctor_id), UPDATE (doctor_id) ON <DB_NAME>.hospital_reviews TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (doctor_id), DELETE ON <DB_NAME>.gangnamunni_doctor_treatments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (doctor_id), DELETE ON <DB_NAME>.gangnamunni_doctor_schedules TO 'sb_admin_rw'@'127.0.0.1';
+-- the same for 'sb_admin_rw'@'localhost'
+FLUSH PRIVILEGES;
+```
+
+`DELETE` is a table-level privilege (it can not be limited to columns): grant it only when you really turn the permanent delete on, and revoke it with `ADMIN_DOCTORS_DELETE=0` if it is not used.
+`seoulbeauty-admin-api/.env`: `ADMIN_DOCTORS_ORDER=1` and/or `ADMIN_DOCTORS_DELETE=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: set it to 0 + restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.

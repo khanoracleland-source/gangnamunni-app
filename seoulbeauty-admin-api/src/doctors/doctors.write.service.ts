@@ -6,8 +6,12 @@ import { buildDoctorPhotoPath, DoctorPhotoPath } from '../hospitals/hospitals.do
 import { UploadedPhoto, UploadedPhotos } from '../hospitals/hospitals.doctors.upload';
 import { checkImage, detectImageKind, ImageKind } from '../hospitals/hospitals.images.logic';
 import { canSee, num, Query, Scope, seesNothing, str } from '../hospitals/hospitals.logic';
+import { OrderRow, parseMoveBody, planMove } from '../hospitals/hospitals.order.logic';
 import { FS_UNAVAILABLE, readHead, resolveUploadRoot, rethrowIfWriteUnavailable } from '../hospitals/hospitals.upload.shared';
 import { DoctorDetail, orderColumnQuery } from './doctors.logic';
+import {
+  clearDoctorRefQuery, deleteDoctorQuery, deleteRelationRowsQuery, hasDoctorIdQuery, HISTORY_TABLES, lockDoctorOrderQuery, RELATION_TABLES, setDoctorOrderQuery,
+} from './doctors.order.logic';
 import { DoctorsService } from './doctors.service';
 import {
   assignTreatmentsQuery, deactivateAllAssignmentsQuery, deactivateAssignmentsQuery, DoctorEdit, lockApprovedHospitalQuery, lockDoctorQuery, offeredTreatmentsQuery,
@@ -94,7 +98,7 @@ export class DoctorsWriteService {
       // committed: the new file is now referenced by the row and must survive whatever happens to the read-back below
       written.length = 0;
       if (oldPhoto && root) {
-        const abs = removablePhoto(root, oldPhoto);
+        const abs = removablePhoto(root, oldPhoto, id);
         if (abs) await fs.unlink(abs).catch(() => undefined);
       }
       const detail = await this.doctors.detail(scope, id);
@@ -203,5 +207,95 @@ export class DoctorsWriteService {
     const detail = await this.doctors.detail(scope, id);
     if (!detail) throw new NotFoundException({ error: 'not_found' });
     return detail;
+  }
+  /** Moves one active doctor inside the order of the hospital and renumbers that hospital's active doctors 1..N. */
+  async move(scope: Scope, adminId: number, id: number, body: unknown): Promise<{ ok: true; id: number; position: number; total: number; changed: number }> {
+    const parsed = parseMoveBody(body);
+    const current = await this.currentOf(scope, id);
+    if (!current) throw new NotFoundException({ error: 'not_found' });
+    if (!parsed.ok) throw new BadRequestException({ error: 'invalid', fields: parsed.fields });
+    if (!(await this.hasOrder())) throw new ConflictException({ error: 'order_unavailable' });
+    const conn = await this.connect();
+    try {
+      await conn.beginTransaction();
+      const run: Run = async (q) => {
+        const [rows] = (await conn.query(q.sql, q.values)) as any;
+        return Array.isArray(rows) ? rows : [];
+      };
+      // lock order: the whole set of the hospital first (the doctor's row is part of it), then the row itself; every move takes the locks in this order, so two moves never deadlock
+      const hospitalId = num(current.hospital_id);
+      const rows: OrderRow[] = (await run(lockDoctorOrderQuery(hospitalId))).map((r) => ({
+        id: num(r.id),
+        order: r.display_order === null || r.display_order === undefined ? null : num(r.display_order),
+      }));
+      const locked = (await run(lockDoctorQuery(id)))[0];
+      if (!locked || !canSee(scope, num(locked.hospital_id))) throw new NotFoundException({ error: 'not_found' });
+      // moved to another hospital or retired meanwhile: the set that was locked is not the one this doctor belongs to
+      if (num(locked.hospital_id) !== hospitalId) throw new ConflictException({ error: 'busy' });
+      if (str(locked.status) !== 'active') throw new ConflictException({ error: 'doctor_resigned' });
+      const plan = planMove(rows, id, parsed.move);
+      if (!plan.found) throw new NotFoundException({ error: 'not_found' });
+      if (plan.outOfRange) throw new BadRequestException({ error: 'invalid', fields: { position: 'out_of_range' } });
+      for (const u of plan.updates) await run(setDoctorOrderQuery(u.id, u.position));
+      await conn.commit();
+      if (plan.updates.length > 0) this.log.log(`doctor order: admin=${adminId} doctor=${id} position=${plan.position} changed=${plan.updates.length}`);
+      return { ok: true, id, position: plan.position, total: plan.total, changed: plan.updates.length };
+    } catch (e) {
+      await conn.rollback().catch(() => undefined);
+      if ([1213, 1205].includes((e as { errno?: number })?.errno || 0)) throw new ConflictException({ error: 'busy' });
+      rethrowIfWriteUnavailable(e, this.log);
+      throw e;
+    } finally {
+      conn.release();
+    }
+  }
+
+  /**
+   * Permanent delete of a RETIRED doctor: bookings and reviews keep their rows (the doctor reference is cleared), assignments and schedules go with the doctor.
+   * If something else still points at the doctor the database refuses and nothing changes (409 has_references).
+   */
+  async remove(scope: Scope, adminId: number, id: number): Promise<{ ok: true; id: number; name: string }> {
+    const current = await this.currentOf(scope, id);
+    if (!current) throw new NotFoundException({ error: 'not_found' });
+    const conn = await this.connect();
+    let photoUrl = '';
+    let name = '';
+    try {
+      await conn.beginTransaction();
+      const run: Run = async (q) => {
+        const [rows] = (await conn.query(q.sql, q.values)) as any;
+        return Array.isArray(rows) ? rows : [];
+      };
+      const exec = async (q: Query): Promise<any> => ((await conn.query(q.sql, q.values)) as any)[0];
+      const locked = (await run(lockDoctorQuery(id)))[0];
+      if (!locked || !canSee(scope, num(locked.hospital_id))) throw new NotFoundException({ error: 'not_found' });
+      if (str(locked.status) !== 'resigned') throw new ConflictException({ error: 'not_resigned' });
+      photoUrl = str(locked.photo_url);
+      name = str(locked.name);
+      for (const t of HISTORY_TABLES) if ((await run(hasDoctorIdQuery(t))).length) await exec(clearDoctorRefQuery(t, id));
+      for (const t of RELATION_TABLES) if ((await run(hasDoctorIdQuery(t))).length) await exec(deleteRelationRowsQuery(t, id));
+      const res = await exec(deleteDoctorQuery(id));
+      if (num(res?.affectedRows) !== 1) throw new NotFoundException({ error: 'not_found' });
+      await conn.commit();
+      this.log.log(`doctor deleted: admin=${adminId} doctor=${id}`);
+    } catch (e) {
+      await conn.rollback().catch(() => undefined);
+      if ((e as { errno?: number })?.errno === 1451 || (e as { code?: string })?.code === 'ER_ROW_IS_REFERENCED_2') throw new ConflictException({ error: 'has_references' });
+      rethrowIfWriteUnavailable(e, this.log);
+      throw e;
+    } finally {
+      conn.release();
+    }
+    // the picture goes only after the commit, and only when this panel or the old page wrote it; a missing upload folder never undoes the delete
+    if (photoUrl) {
+      try {
+        const root = await resolveUploadRoot(this.log);
+        const abs = removablePhoto(root, photoUrl, id);
+        if (abs) await fs.unlink(abs).catch(() => undefined);
+      } catch {
+        /* uploads_unavailable already logged */
+      }
+    }
+    return { ok: true, id, name };
   }
 }

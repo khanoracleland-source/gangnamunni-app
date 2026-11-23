@@ -5,6 +5,7 @@ import {
   assignedTreatmentsQuery, buildDetail, buildList, countQuery, detailQuery, DoctorDetail, DoctorList, DoctorListQuery, emptyList, hospitalOptionsQuery,
   hospitalTreatmentOptionsQuery, listQuery, orderColumnQuery, statsQuery, toHospitalOption, toTreatmentOption, treatmentNamesQuery,
 } from './doctors.logic';
+import { DoctorOrderBoard, orderBoardQuery, toOrderBoard } from './doctors.order.logic';
 
 type Row = Record<string, unknown>;
 
@@ -56,5 +57,12 @@ export class DoctorsService {
   async treatmentOptions(scope: Scope, hospitalId: number) {
     if (hospitalId <= 0 || seesNothing(scope) || !canSee(scope, hospitalId)) return null;
     return { items: (await this.rows(hospitalTreatmentOptionsQuery(hospitalId))).map(toTreatmentOption) };
+  }
+
+  /** Active doctors of one hospital in the app's order (null = the hospital is outside the caller's scope). */
+  async orderBoard(scope: Scope, hospitalId: number): Promise<DoctorOrderBoard | null> {
+    if (hospitalId <= 0 || seesNothing(scope) || !canSee(scope, hospitalId)) return null;
+    const withOrder = await this.hasOrder();
+    return toOrderBoard(hospitalId, withOrder, await this.rows(orderBoardQuery(hospitalId, withOrder)));
   }
 }

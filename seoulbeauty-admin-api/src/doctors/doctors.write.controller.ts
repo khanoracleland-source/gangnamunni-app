@@ -1,8 +1,9 @@
-import { Body, Controller, HttpCode, Param, Patch, Post, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
-import { AdminGuard, CsrfGuard, DoctorsWriteEnabledGuard, MultipartCsrfGuard, ScopedAdminRequest } from '../admin-auth/admin.guard';
+import { BadRequestException, Body, Controller, HttpCode, Param, Patch, Post, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AdminGuard, CsrfGuard, DoctorsDeleteEnabledGuard, DoctorsOrderEnabledGuard, DoctorsWriteEnabledGuard, MultipartCsrfGuard, ScopedAdminRequest, SuperAdminRoleGuard } from '../admin-auth/admin.guard';
 import { UploadedPhotos } from '../hospitals/hospitals.doctors.upload';
 import { Scope } from '../hospitals/hospitals.logic';
 import { parseDoctorId } from './doctors.logic';
+import { isDeleteConfirmed } from './doctors.order.logic';
 import { DoctorEditUploadInterceptor } from './doctors.upload';
 import { DoctorsWriteService } from './doctors.write.service';
 
@@ -30,5 +31,22 @@ export class DoctorsWriteController {
   @UseGuards(DoctorsWriteEnabledGuard, CsrfGuard, AdminGuard)
   retire(@Req() req: ScopedAdminRequest, @Param('id') rawId: string) {
     return this.doctors.retire(scopeOfRequest(req), parseDoctorId(rawId));
+  }
+
+  /** Body { direction: "up" | "down" } or { position: n }. The hospital account moves only doctors of its own hospital. */
+  @Post(':id/order')
+  @HttpCode(200)
+  @UseGuards(DoctorsOrderEnabledGuard, CsrfGuard, AdminGuard)
+  move(@Req() req: ScopedAdminRequest, @Param('id') rawId: string, @Body() body: unknown) {
+    return this.doctors.move(scopeOfRequest(req), req.admin.id, parseDoctorId(rawId), body);
+  }
+
+  /** Permanent delete of a retired doctor; super admin only, body { confirm: true }. */
+  @Post(':id/delete')
+  @HttpCode(200)
+  @UseGuards(DoctorsDeleteEnabledGuard, CsrfGuard, AdminGuard, SuperAdminRoleGuard)
+  remove(@Req() req: ScopedAdminRequest, @Param('id') rawId: string, @Body() body: unknown) {
+    if (!isDeleteConfirmed(body)) throw new BadRequestException({ error: 'invalid', fields: { confirm: 'required' } });
+    return this.doctors.remove(scopeOfRequest(req), req.admin.id, parseDoctorId(rawId));
   }
 }

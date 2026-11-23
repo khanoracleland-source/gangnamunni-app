@@ -64,7 +64,7 @@ export function parseEdit(raw: unknown, currentSpecialty: string): EditParse {
 
 /** The doctor row, locked for the rest of the transaction. */
 export const lockDoctorQuery = (id: number): Query => ({
-  sql: `SELECT id, hospital_id, specialty, photo_url, status FROM gangnamunni_doctors WHERE id = ? LIMIT 1 FOR UPDATE`,
+  sql: `SELECT id, hospital_id, name, specialty, photo_url, status FROM gangnamunni_doctors WHERE id = ? LIMIT 1 FOR UPDATE`,
   values: [id],
 });
 
@@ -126,8 +126,10 @@ export const deactivateAllAssignmentsQuery = (doctorId: number): Query => ({
  * A stored photo address this panel (or the old page) wrote itself: only then may the file be removed.
  * Anything else (an https address, a path with "..", another folder) is left alone.
  */
-export function removablePhoto(root: string, url: string): string | null {
-  if (!/^uploads\/(hospitals\/\d{1,10}|doctors)\/doctor_\d{1,10}_[0-9a-f]{8,64}\.(jpg|jpeg|png|webp|gif)$/.test(url)) return null;
+export function removablePhoto(root: string, url: string, doctorId: number): string | null {
+  const m = /^uploads\/(?:hospitals\/\d{1,10}|doctors)\/doctor_(\d{1,10})_[0-9a-f]{8,64}\.(?:jpg|jpeg|png|webp|gif)$/.exec(url);
+  // the file name carries the id of the doctor it was written for: another doctor's picture is never removed
+  if (!m || Number(m[1]) !== doctorId) return null;
   const base = path.resolve(root);
   const abs = path.resolve(base, url);
   return abs.startsWith(base + path.sep) ? abs : null;
