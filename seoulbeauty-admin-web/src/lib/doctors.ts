@@ -2,6 +2,7 @@
 
 import type { DoctorCard, DoctorEditFailure, DoctorListQuery, DoctorStatusFilter, WriteFailure } from "./api";
 import { DOCTOR_PER_PAGE_OPTIONS } from "./api";
+import { PHP_BASE_URL } from "./config";
 import { mediaUrl } from "./hospitals";
 import type { MessageKey } from "./i18n";
 
@@ -43,11 +44,20 @@ export function doctorsHref(q: DoctorListQuery): string {
 
 export const hasDoctorFilters = (q: DoctorListQuery): boolean => q.hospitalId > 0 || q.search !== "" || q.status !== "all";
 
+/** An https address is shown only when it is on the panel's own media host. */
+function sameHost(value: string): boolean {
+  try {
+    return new URL(value).host === new URL(PHP_BASE_URL, "https://invalid.example").host;
+  } catch {
+    return false;
+  }
+}
+
 /** Only the folders the panel itself writes to (and https addresses) are shown as a picture; anything else gives "" and the initials are drawn. */
 export function doctorPhotoUrl(stored: string | null): string {
   const value = (stored ?? "").trim();
   if (value === "") return "";
-  if (/^https:\/\//i.test(value)) return mediaUrl(value);
+  if (/^https:\/\//i.test(value)) return sameHost(value) ? value : "";
   if (/^uploads\/(hospitals\/\d+|doctors)\/[\w.-]+$/.test(value)) return mediaUrl(value);
   return "";
 }

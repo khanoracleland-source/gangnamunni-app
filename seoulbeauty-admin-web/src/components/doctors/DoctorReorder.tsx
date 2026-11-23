@@ -134,6 +134,7 @@ function Board({
   const rows = useRef(new Map<number, HTMLLIElement>());
   const dragRef = useRef<{ id: number; index: number; offset: number; pointerY: number } | null>(null);
   const frame = useRef(0);
+  const mounted = useRef(true);
   const liveTimer = useRef(0);
   const flashTimer = useRef(0);
 
@@ -180,15 +181,16 @@ function Board({
     return () => observer.disconnect();
   }, [phase]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
       window.clearTimeout(liveTimer.current);
       window.clearTimeout(flashTimer.current);
       window.cancelAnimationFrame(frame.current);
       document.body.classList.remove("reo-dragging");
-    },
-    [],
-  );
+    };
+  }, []);
 
   useEffect(() => {
     if (!kb) return;
@@ -255,7 +257,7 @@ function Board({
       tone: "ok",
       message: t("d.ro.moved", { name: item.name, from: String(from), to: String(to) }),
       closeLabel: t("m.close"),
-      action: undo ? undefined : { label: t("d.ro.undo"), onClick: () => void commitRef.current(id, from, true) },
+      action: undo ? undefined : { label: t("d.ro.undo"), onClick: () => { if (mounted.current) void commitRef.current(id, from, true); } },
     });
     const fresh = await fetchDoctorOrder(hospitalId);
     if (fresh.ok) {

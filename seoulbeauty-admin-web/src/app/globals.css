@@ -2630,9 +2630,9 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
   .tbl--adm .adm__acts { width: 180px; }
 }
 
-/* While a dialog is open the page behind it does not scroll (wheel, touch or keys); the dialog itself scrolls and does not pass the scroll on. */
+/* While a dialog is open the page behind it does not scroll (wheel, touch or keys); the dialog itself scrolls and does not pass the scroll on.
+   Only <html> is locked: a locked <body> becomes the scroll container of the sticky sidebar, which then shrinks to the part of the page that is still in view. */
 html:has(dialog[open]) { overflow: hidden; scrollbar-gutter: stable; }
-body:has(dialog[open]) { overflow: hidden; }
 .dialog { overscroll-behavior: contain; }
 
 /* Hospital picker of the admin form: search box, the matches right under it, or the chosen hospital on one line. */

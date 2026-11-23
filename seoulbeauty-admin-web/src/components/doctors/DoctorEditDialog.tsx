@@ -72,6 +72,7 @@ export default function DoctorEditDialog({
   const [saving, setSaving] = useState(false);
   const [retireAsk, setRetireAsk] = useState(false);
   const [deleteAsk, setDeleteAsk] = useState(false);
+  const [discardAsk, setDiscardAsk] = useState(false);
   const [acting, setActing] = useState(false);
   const [actError, setActError] = useState<MessageKey | null>(null);
 
@@ -204,6 +205,11 @@ export default function DoctorEditDialog({
     if (f.field) setErrors({ [f.field]: f.key });
   };
 
+  const requestClose = () => {
+    if (dirty && editable) setDiscardAsk(true);
+    else ref.current?.close();
+  };
+
   const retire = async () => {
     if (!doc || acting) return;
     setActing(true);
@@ -242,6 +248,10 @@ export default function DoctorEditDialog({
 
   const err = (key: keyof DoctorFormErrors) => (errors[key] ? <p className="dc-err" role="alert">{t(errors[key] as MessageKey)}</p> : null);
 
+  const discardSpec: ConfirmSpec | null = discardAsk
+    ? { title: t("d.ed.discard.title"), body: t("d.ed.discard.body"), confirmLabel: t("d.ed.discard.confirm"), cancelLabel: t("d.ed.discard.keep"), focus: "cancel", confirmTone: "reject" }
+    : null;
+
   return (
     <>
       <dialog
@@ -250,6 +260,10 @@ export default function DoctorEditDialog({
         aria-labelledby={titleId}
         onCancel={(e) => {
           if (saving || acting) e.preventDefault();
+          else if (dirty && editable) {
+            e.preventDefault();
+            setDiscardAsk(true);
+          }
         }}
         onClose={onClose}
         onClick={(e) => {
@@ -260,7 +274,7 @@ export default function DoctorEditDialog({
           <div className="dc-dialog__head">
             <h2 id={titleId} className="dialog__title">{t(editable ? "d.ed.title" : "d.ed.titleView")}</h2>
             {resigned ? <Pill tone="off">{t("d.status.resigned")}</Pill> : null}
-            <button type="button" className="ibtn dialog__close" onClick={() => ref.current?.close()} disabled={saving || acting} aria-label={t("m.close")} title={t("m.close")}>
+            <button type="button" className="ibtn dialog__close" onClick={requestClose} disabled={saving || acting} aria-label={t("m.close")} title={t("m.close")}>
               <Icon name="close" />
             </button>
           </div>
@@ -423,7 +437,7 @@ export default function DoctorEditDialog({
 
           <div className="dc-dialog__foot">
             {editable && dirty ? <span className="dc-dirty">{t("d.ed.unsaved")}</span> : null}
-            <button type="button" className="btn btn--ghost" onClick={() => ref.current?.close()} disabled={saving || acting}>{editable ? t("d.ed.cancel") : t("d.ed.close")}</button>
+            <button type="button" className="btn btn--ghost" onClick={requestClose} disabled={saving || acting}>{editable ? t("d.ed.cancel") : t("d.ed.close")}</button>
             {editable ? (
               <button type="submit" className="btn btn--primary" disabled={saving || !dirty || load !== "ready"}>
                 {saving ? t("d.ed.saving") : t("d.ed.save")}
@@ -432,6 +446,11 @@ export default function DoctorEditDialog({
           </div>
         </form>
       </dialog>
+      <ConfirmDialog
+        spec={discardSpec}
+        onConfirm={() => { setDiscardAsk(false); ref.current?.close(); }}
+        onClose={() => setDiscardAsk(false)}
+      />
       <ConfirmDialog
         spec={retireSpec}
         busy={acting}
