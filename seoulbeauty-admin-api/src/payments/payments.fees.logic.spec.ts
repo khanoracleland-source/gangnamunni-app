@@ -107,6 +107,11 @@ describe('sections 보류 / 반영 / 입금 and the board', () => {
     expect(parseBoardQuery({ period: 'year' })).toMatchObject({ error: 'invalid', field: 'period' });
     expect(parseBoardQuery({ hospital_id: 'a' })).toMatchObject({ error: 'invalid', field: 'hospital_id' });
     expect(parseBoardQuery({})).toEqual({ hospitalId: 0, period: 'week' });
+    expect(parseBoardQuery({ from: '2026-11-01', to: '2026-11-30' })).toEqual({ hospitalId: 0, period: 'week', from: '2026-11-01', to: '2026-11-30' });
+    expect(parseBoardQuery({ from: '2026-11-01' })).toMatchObject({ error: 'invalid', field: 'to' });
+    expect(parseBoardQuery({ from: '2026-12-01', to: '2026-11-01' })).toMatchObject({ error: 'invalid', field: 'to' });
+    expect(parseBoardQuery({ from: '2025-01-01', to: '2026-11-01' })).toMatchObject({ error: 'range_too_long' });
+    expect(parseBoardQuery({ from: 'x', to: '2026-11-01' })).toMatchObject({ error: 'invalid', field: 'from' });
   });
   it('every section query keeps placeholders and values in step, scoped and dated by its own day', () => {
     for (const stage of ['held', 'counted', 'received'] as const) {

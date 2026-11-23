@@ -258,7 +258,8 @@ export function parseSectionQuery(raw: Record<string, unknown>, today: string = 
   if ('error' in f) return f;
   return { ...f, stage: st as Stage };
 }
-export interface BoardFilters { hospitalId: number; period: Period }
+/** `from` and `to` (both or neither) replace the week / month bounds with the dates the admin chose. */
+export interface BoardFilters { hospitalId: number; period: Period; from?: string; to?: string }
 export function parseBoardQuery(raw: Record<string, unknown>): BoardFilters | Fail {
   const out: BoardFilters = { hospitalId: 0, period: 'week' };
   if (s(raw.hospital_id).trim() !== '') {
@@ -268,6 +269,15 @@ export function parseBoardQuery(raw: Record<string, unknown>): BoardFilters | Fa
   }
   const pr = s(raw.period).trim();
   if (pr !== '') { if (!(PERIODS as readonly string[]).includes(pr)) return { error: 'invalid', field: 'period' }; out.period = pr as Period; }
+  if (s(raw.from).trim() !== '' || s(raw.to).trim() !== '') {
+    const a = parseDay(raw.from);
+    const b = parseDay(raw.to);
+    if (!a) return { error: 'invalid', field: 'from' };
+    if (!b || a > b) return { error: 'invalid', field: 'to' };
+    if ((utc(b).getTime() - utc(a).getTime()) / 86400000 >= MAX_RANGE_DAYS) return { error: 'range_too_long', field: 'to' };
+    out.from = a;
+    out.to = b;
+  }
   return out;
 }
 /** This week (Mon..Sun) or this month, whole, as Y-m-d bounds. */

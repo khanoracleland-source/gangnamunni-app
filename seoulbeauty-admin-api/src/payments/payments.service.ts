@@ -98,7 +98,7 @@ export class PaymentsService {
     const f = parseBoardQuery(raw);
     if (isFail(f)) throw new BadRequestException(f);
     const today = seoulToday();
-    const { from, to } = periodBounds(f.period, today);
+    const { from, to } = f.from && f.to ? { from: f.from, to: f.to } : periodBounds(f.period, today);
     const rows = await this.run(boardQuery(scope, f, from, to, today));
     return { period: f.period, from, to, today, ...toBoard(rows[0]) };
   }
