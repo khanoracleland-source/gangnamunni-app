@@ -1,10 +1,10 @@
-import { BadRequestException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { AdminScope, paymentsFeesEnabled } from '../admin-auth/admin.guard';
 import { isFail } from '../bookings/bookings.logic';
 import { DB, Db } from '../db/db.module';
 import { isMissingObject } from '../hospitals/hospitals.treatments.logic';
 import {
-  byHospitalQuery, byMethodQuery, orderedHeldQuery, byTreatmentQuery, capped, toFeeSums, weeklyQuery, FeeSums, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
+  boardQuery, byHospitalQuery, byMethodQuery, parseBoardQuery, parseSectionQuery, periodBounds, sectionListQuery, sectionTotalsQuery, toBoard, orderedHeldQuery, byTreatmentQuery, capped, toFeeSums, weeklyQuery, FeeSums, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
   seoulToday, seriesQuery, summaryQuery, Sums, toItem, toSums, weekCompare, PaymentItem,
 } from './payments.logic';
 
@@ -90,5 +90,30 @@ export class PaymentsService {
     ]);
     const norm = (rows: Record<string, unknown>[]) => rows.map((r) => ({ day: String(r.pay_day ?? ''), value: Number(r.value) || 0 }));
     return { metric: f.metric, today: p.today, week: weekCompare(norm(weekRows), p), month: monthCompare(norm(monthRows), p) };
+  }
+
+  /** The three boxes (보류 / 반영 / 입금) for this week or this month. Needs ADMIN_PAYMENTS_FEES=1. */
+  async board(scope: AdminScope, raw: Record<string, unknown>) {
+    if (!paymentsFeesEnabled()) throw new NotFoundException({ error: 'not_found' });
+    const f = parseBoardQuery(raw);
+    if (isFail(f)) throw new BadRequestException(f);
+    const today = seoulToday();
+    const { from, to } = periodBounds(f.period, today);
+    const rows = await this.run(boardQuery(scope, f, from, to, today));
+    return { period: f.period, from, to, today, ...toBoard(rows[0]) };
+  }
+
+  /** One section, a page of rows plus the totals of everything the filters match. Needs ADMIN_PAYMENTS_FEES=1. */
+  async section(scope: AdminScope, raw: Record<string, unknown>) {
+    if (!paymentsFeesEnabled()) throw new NotFoundException({ error: 'not_found' });
+    const today = seoulToday();
+    const f = parseSectionQuery(raw, today);
+    if (isFail(f)) throw new BadRequestException(f);
+    const totalRows = await this.run(sectionTotalsQuery(scope, f, today));
+    const totals = { ...toSums(totalRows[0]), ...toFeeSums(totalRows[0]) };
+    const totalPages = Math.max(1, Math.ceil(totals.payments / PAY_PER_PAGE));
+    const page = Math.min(f.page, totalPages);
+    const rows = await this.run(sectionListQuery(scope, { ...f, page }, today));
+    return { stage: f.stage, items: rows.map((r) => toItem(r, today)), total: totals.payments, page, perPage: PAY_PER_PAGE, totalPages, totals, from: f.from, to: f.to };
   }
 }

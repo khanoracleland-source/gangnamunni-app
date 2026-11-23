@@ -223,6 +223,99 @@ export function orderedHeldQuery(scope: AdminScope, hospitalId: number): Query {
     values: [...TEST_PROVIDERS, ...sc.values],
   };
 }
+// ───────── the three sections: 보류 (held) / 반영 (counted) / 입금 (received) ─────────
+export const STAGES = ['held', 'counted', 'received'] as const;
+export type Stage = (typeof STAGES)[number];
+export const PERIODS = ['week', 'month'] as const;
+export type Period = (typeof PERIODS)[number];
+const LIVE_STATUSES = ['paid', 'partially_refunded'] as const;
+/** Ledger rows of the three sections: real (not test) booking payments to the hospital that are still pending or live (never fully refunded). */
+const STAGE_BASE_SQL = `p.payment_type = 'booking' AND p.funds_recipient = 'hospital' AND (p.provider IS NULL OR p.provider NOT IN (${TEST_PROVIDERS.map(() => '?').join(', ')})) AND p.status IN ('pending', 'paid', 'partially_refunded')`;
+const stageBaseValues = (): unknown[] => [...TEST_PROVIDERS];
+const RECEIVED_COND = `COALESCE(b.status = 'completed' AND ${PAYOUT_SQL} <= ?, 0)`;
+/** held: ordered, payment awaited (dated by the visit day); counted: paid, not paid out yet (dated by the payment day); received: paid out (dated by the payout Sunday). */
+const stageCond = (stage: Stage, today: string): Query => {
+  if (stage === 'held') return { sql: "p.status = 'pending'", values: [] };
+  const live = `p.status IN (${LIVE_STATUSES.map((x) => `'${x}'`).join(', ')})`;
+  return stage === 'received' ? { sql: `${live} AND ${RECEIVED_COND}`, values: [today] } : { sql: `${live} AND NOT ${RECEIVED_COND}`, values: [today] };
+};
+const stageDateSql = (stage: Stage): string => (stage === 'held' ? 'b.booking_date' : stage === 'counted' ? 'DATE(p.paid_at)' : PAYOUT_SQL);
+const STAGE_RANGE = (stage: Stage): string => `${stageDateSql(stage)} >= ? AND ${stageDateSql(stage)} <= ?`;
+
+export interface SectionFilters { stage: Stage; hospitalId: number; from: string; to: string; q: string; page: number }
+export function parseSectionQuery(raw: Record<string, unknown>, today: string = seoulToday()): SectionFilters | Fail {
+  const st = s(raw.stage).trim();
+  if (!(STAGES as readonly string[]).includes(st)) return { error: 'invalid', field: 'stage' };
+  // Without dates a section shows the whole current month (the board's month box), so the box and the list agree even for future visit days.
+  const month = periodBounds('month', today);
+  const f = parsePaymentQuery({ ...raw, from: s(raw.from).trim() === '' ? month.from : raw.from, to: s(raw.to).trim() === '' ? month.to : raw.to }, today);
+  if ('error' in f) return f;
+  return { ...f, stage: st as Stage };
+}
+export interface BoardFilters { hospitalId: number; period: Period }
+export function parseBoardQuery(raw: Record<string, unknown>): BoardFilters | Fail {
+  const out: BoardFilters = { hospitalId: 0, period: 'week' };
+  if (s(raw.hospital_id).trim() !== '') {
+    const id = parsePositiveInt(raw.hospital_id);
+    if (id === null) return { error: 'invalid', field: 'hospital_id' };
+    out.hospitalId = id;
+  }
+  const pr = s(raw.period).trim();
+  if (pr !== '') { if (!(PERIODS as readonly string[]).includes(pr)) return { error: 'invalid', field: 'period' }; out.period = pr as Period; }
+  return out;
+}
+/** This week (Mon..Sun) or this month, whole, as Y-m-d bounds. */
+export function periodBounds(period: Period, today: string): { from: string; to: string } {
+  const p = periodsOf(today);
+  if (period === 'week') return { from: p.week.thisStart, to: addDays(p.week.thisStart, 6) };
+  const [y, m] = [Number(today.slice(0, 4)), Number(today.slice(5, 7))];
+  return { from: p.month.thisStart, to: `${today.slice(0, 7)}-${String(daysInMonth(y, m)).padStart(2, '0')}` };
+}
+
+const sectionWhere = (scope: AdminScope, f: SectionFilters, today: string): Query => {
+  const sc = scopeClause(scope, f.hospitalId, 'p.hospital_id');
+  const c = stageCond(f.stage, today);
+  const parts = [STAGE_BASE_SQL, c.sql, sc.sql, STAGE_RANGE(f.stage)];
+  const values: unknown[] = [...stageBaseValues(), ...c.values, ...sc.values, f.from, f.to];
+  if (f.q) { parts.push("p.patient_name LIKE ? ESCAPE '\\\\'"); values.push(`%${escapeLike(f.q)}%`); }
+  return { sql: parts.join(' AND '), values };
+};
+/** One page of a section, newest date first. The columns are the list's plus the fee ones. */
+export function sectionListQuery(scope: AdminScope, f: SectionFilters, today: string): Query {
+  const w = sectionWhere(scope, f, today);
+  return { sql: `SELECT ${LIST_COLUMNS}${FEE_LIST_COLUMNS} ${FROM_SQL} WHERE ${w.sql} ORDER BY ${stageDateSql(f.stage)} DESC, b.booking_time DESC, p.id DESC LIMIT ? OFFSET ?`, values: [...w.values, PAY_PER_PAGE, (f.page - 1) * PAY_PER_PAGE] };
+}
+/** Count, paid money and (for counted / received) fee and settlement of everything the filters match, not only the page. */
+export function sectionTotalsQuery(scope: AdminScope, f: SectionFilters, today: string): Query {
+  const w = sectionWhere(scope, f, today);
+  return { sql: `SELECT COUNT(*) AS payments, COALESCE(SUM(p.amount), 0) AS received, COALESCE(SUM(p.refunded_amount), 0) AS refunded, 0 AS recognized, 0 AS held, 0 AS stuck, ${FEE_SUMS_SQL} ${FROM_SQL} WHERE ${w.sql}`, values: [today, ...w.values] };
+}
+/** The three boxes above the sections for one period (hospital scope only): count and money of each stage in the period. */
+export function boardQuery(scope: AdminScope, f: BoardFilters, from: string, to: string, today: string): Query {
+  const sc = scopeClause(scope, f.hospitalId, 'p.hospital_id');
+  const select: string[] = [];
+  const values: unknown[] = [];
+  for (const stage of STAGES) {
+    const c = stageCond(stage, today);
+    const cond = `(${c.sql} AND ${STAGE_RANGE(stage)})`;
+    const condValues = [...c.values, from, to];
+    const money = stage === 'held' ? 'p.amount' : `CASE WHEN ${FEE_RECORDED_SQL} THEN ${SETTLE_ROW_SQL} ELSE 0 END`;
+    select.push(`COALESCE(SUM(CASE WHEN ${cond} THEN 1 ELSE 0 END), 0) AS ${stage}_count`, `COALESCE(SUM(CASE WHEN ${cond} THEN ${money} ELSE 0 END), 0) AS ${stage}_amount`);
+    values.push(...condValues, ...condValues);
+    if (stage !== 'held') { select.push(`COALESCE(SUM(CASE WHEN ${cond} AND NOT ${FEE_RECORDED_SQL} THEN 1 ELSE 0 END), 0) AS ${stage}_no_fee`); values.push(...condValues); }
+  }
+  return { sql: `SELECT ${select.join(', ')} ${FROM_SQL} WHERE ${STAGE_BASE_SQL} AND ${sc.sql}`, values: [...values, ...stageBaseValues(), ...sc.values] };
+}
+export interface BoardBox { count: number; amount: number; noFee: number }
+export function toBoard(r: Record<string, unknown> | undefined): Record<Stage, BoardBox> {
+  const n = (k: string): number => Number(r?.[k]) || 0;
+  return {
+    held: { count: n('held_count'), amount: n('held_amount'), noFee: 0 },
+    counted: { count: n('counted_count'), amount: n('counted_amount'), noFee: n('counted_no_fee') },
+    received: { count: n('received_count'), amount: n('received_amount'), noFee: n('received_no_fee') },
+  };
+}
+
 export function hospitalOptionsQuery(scope: AdminScope): Query {
   const sc = scopeClause(scope, 0, 'h.id');
   return { sql: `SELECT h.id, h.name FROM gangnamunni_hospitals h WHERE ${sc.sql} ORDER BY h.name ASC LIMIT 500`, values: sc.values };

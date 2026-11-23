@@ -41,4 +41,18 @@ export class PaymentsController {
   compare(@Req() req: ScopedAdminRequest, @Query() query: Record<string, unknown>) {
     return this.payments.compare(scopeOfReq(req), query);
   }
+
+  /** The three boxes for this week / month (ADMIN_PAYMENTS_FEES=1 only; otherwise 404). */
+  @Get('board')
+  @UseGuards(PaymentsEnabledGuard, AdminGuard)
+  board(@Req() req: ScopedAdminRequest, @Query() query: Record<string, unknown>) {
+    return this.payments.board(scopeOfReq(req), query);
+  }
+
+  /** The rows of one section: stage=held|counted|received (ADMIN_PAYMENTS_FEES=1 only; otherwise 404). */
+  @Get('section')
+  @UseGuards(PaymentsEnabledGuard, AdminGuard)
+  section(@Req() req: ScopedAdminRequest, @Query() query: Record<string, unknown>) {
+    return this.payments.section(scopeOfReq(req), query);
+  }
 }

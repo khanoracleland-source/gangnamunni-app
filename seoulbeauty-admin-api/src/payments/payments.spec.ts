@@ -94,6 +94,25 @@ describe('admin API: payments (read only)', () => {
       for (const p of ['/by-hospital', '/by-treatment']) expect((await get(`/v1/payments${p}`)).body.items[0]).toHaveProperty('settlement');
     } finally { delete process.env.ADMIN_PAYMENTS_FEES; }
   });
+  it('board and section: 404 with the fee switch off; on, they answer and keep placeholders in step', async () => {
+    expect((await get('/v1/payments/board')).status).toBe(404);
+    expect((await get('/v1/payments/section?stage=held')).status).toBe(404);
+    process.env.ADMIN_PAYMENTS_FEES = '1';
+    try {
+      calls.length = 0;
+      const b = await get('/v1/payments/board?period=month');
+      expect(b.status).toBe(200);
+      expect(b.body).toMatchObject({ period: 'month', held: { count: expect.any(Number) }, counted: expect.any(Object), received: expect.any(Object) });
+      const s = await get('/v1/payments/section?stage=received&from=2026-11-01&to=2026-11-30');
+      expect(s.status).toBe(200);
+      expect(s.body).toMatchObject({ stage: 'received', page: 1 });
+      expect((await get('/v1/payments/section?stage=nope')).status).toBe(400);
+      expect((await get('/v1/payments/section')).status).toBe(400);
+      expect((await get('/v1/payments/board?period=year')).status).toBe(400);
+      expect((await get('/v1/payments/board', '')).status).toBe(401);
+      expect(calls.every((c) => (c.sql.match(/\?/g) || []).length === c.values.length)).toBe(true);
+    } finally { delete process.env.ADMIN_PAYMENTS_FEES; }
+  });
   it('a hospital account is held to its own hospital in every query, whatever hospital_id it asks for', async () => {
     for (const path of ['/v1/payments', '/v1/payments?hospital_id=99', '/v1/payments/by-hospital', '/v1/payments/by-treatment', '/v1/payments/compare?metric=held']) {
       calls.length = 0;

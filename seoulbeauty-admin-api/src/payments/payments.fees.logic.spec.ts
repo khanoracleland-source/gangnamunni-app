@@ -1,4 +1,4 @@
-import { orderedHeldQuery, byHospitalQuery, byMethodQuery, byTreatmentQuery, figuresOf, FigureRow, listQuery, nextSunday, summaryQuery, toFeeSums, toItem, weeklyQuery } from './payments.logic';
+import { boardQuery, parseBoardQuery, parseSectionQuery, periodBounds, sectionListQuery, sectionTotalsQuery, toBoard, orderedHeldQuery, byHospitalQuery, byMethodQuery, byTreatmentQuery, figuresOf, FigureRow, listQuery, nextSunday, summaryQuery, toFeeSums, toItem, weeklyQuery } from './payments.logic';
 
 const ALL = { scope: 'all' as const, hospitalIds: [] };
 const range = { hospitalId: 0, from: '2026-11-01', to: '2026-11-20' };
@@ -90,4 +90,54 @@ describe('queries: switch off is exactly as before, on adds the fee columns with
     expect(q.values).toEqual(['mock_booking_payment', 'inicis_test', 12]);
     expect(placeholders(q.sql)).toBe(q.values.length);
   });
+});
+
+describe('sections 보류 / 반영 / 입금 and the board', () => {
+  const today = '2026-11-23';
+  const own = { scope: 'own' as const, hospitalIds: [12] };
+  it('week is Monday..Sunday, month is the whole month', () => {
+    expect(periodBounds('week', '2026-11-23')).toEqual({ from: '2026-11-23', to: '2026-11-29' });
+    expect(periodBounds('week', '2026-11-29')).toEqual({ from: '2026-11-23', to: '2026-11-29' });
+    expect(periodBounds('month', '2026-02-10')).toEqual({ from: '2026-02-01', to: '2026-02-28' });
+  });
+  it('bad stage / period / hospital is a 400, not an SQL error', () => {
+    expect(parseSectionQuery({ stage: 'x' }, today)).toMatchObject({ error: 'invalid', field: 'stage' });
+    expect(parseSectionQuery({}, today)).toMatchObject({ error: 'invalid', field: 'stage' });
+    expect(parseBoardQuery({ period: 'year' })).toMatchObject({ error: 'invalid', field: 'period' });
+    expect(parseBoardQuery({ hospital_id: 'a' })).toMatchObject({ error: 'invalid', field: 'hospital_id' });
+    expect(parseBoardQuery({})).toEqual({ hospitalId: 0, period: 'week' });
+  });
+  it('every section query keeps placeholders and values in step, scoped and dated by its own day', () => {
+    for (const stage of ['held', 'counted', 'received'] as const) {
+      const f = parseSectionQuery({ stage, from: '2026-11-01', to: '2026-11-30', q: '김' }, today);
+      if ('error' in f) throw new Error('parse');
+      for (const q of [sectionListQuery(own, f, today), sectionTotalsQuery(own, f, today)]) {
+        expect(placeholders(q.sql)).toBe(q.values.length);
+        expect(q.values).toContain(12);
+      }
+      const sql = sectionListQuery(own, f, today).sql;
+      expect(sql).toContain(stage === 'held' ? 'b.booking_date >= ?' : stage === 'counted' ? 'DATE(p.paid_at) >= ?' : '8 - DAYOFWEEK(b.booking_date)');
+    }
+    const h = parseSectionQuery({ stage: 'held' }, today);
+    if ('error' in h) throw new Error('parse');
+    expect(sectionListQuery(own, h, today).sql).toContain("p.status = 'pending'");
+    expect(sectionListQuery(own, h, today).sql).toContain('b.booking_time');
+  });
+  it('a section without dates shows the whole current month; counted/received values come in the SQL order', () => {
+    const f = parseSectionQuery({ stage: 'counted' }, '2026-11-23');
+    expect(f).toMatchObject({ from: '2026-11-01', to: '2026-11-30' });
+    if ('error' in f) throw new Error('parse');
+    expect(sectionListQuery(ALL, f, '2026-11-23').values).toEqual(['mock_booking_payment', 'inicis_test', '2026-11-23', '2026-11-01', '2026-11-30', 20, 0]);
+    expect(sectionTotalsQuery(ALL, f, '2026-11-23').values).toEqual(['2026-11-23', 'mock_booking_payment', 'inicis_test', '2026-11-23', '2026-11-01', '2026-11-30']);
+  });
+  it('the board: placeholders in step, hospital scope applied, test providers out', () => {
+    const q = boardQuery(own, { hospitalId: 0, period: 'week' }, '2026-11-23', '2026-11-29', today);
+    expect(placeholders(q.sql)).toBe(q.values.length);
+    expect(q.values).toContain(12);
+    expect(q.values.slice(-3)).toEqual(['mock_booking_payment', 'inicis_test', 12]);
+    expect(q.sql).toContain('p.provider NOT IN');
+  });
+  it('toBoard reads the three boxes', () => expect(toBoard({ held_count: '2', held_amount: '90000', counted_count: 1, counted_amount: '49357', received_count: 0, received_amount: 0, counted_no_fee: 1 })).toEqual({
+    held: { count: 2, amount: 90000, noFee: 0 }, counted: { count: 1, amount: 49357, noFee: 1 }, received: { count: 0, amount: 0, noFee: 0 },
+  }));
 });
