@@ -89,6 +89,7 @@ describe('admin API: payments (read only)', () => {
       expect(on.body.summary).toMatchObject({ payments: 1, held: 180000, fee: 0, settlement: 0, settlementCounted: 0, settlementReceived: 0 });
       expect(Array.isArray(on.body.methods)).toBe(true);
       expect(Array.isArray(on.body.weeks)).toBe(true);
+      expect(on.body.orderedHeld).toMatchObject({ count: expect.any(Number), amount: expect.any(Number) });
       expect(calls.every((c) => (c.sql.match(/\?/g) || []).length === c.values.length)).toBe(true);
       for (const p of ['/by-hospital', '/by-treatment']) expect((await get(`/v1/payments${p}`)).body.items[0]).toHaveProperty('settlement');
     } finally { delete process.env.ADMIN_PAYMENTS_FEES; }

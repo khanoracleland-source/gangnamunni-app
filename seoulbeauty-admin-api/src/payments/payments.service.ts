@@ -4,7 +4,7 @@ import { isFail } from '../bookings/bookings.logic';
 import { DB, Db } from '../db/db.module';
 import { isMissingObject } from '../hospitals/hospitals.treatments.logic';
 import {
-  byHospitalQuery, byMethodQuery, byTreatmentQuery, capped, toFeeSums, weeklyQuery, FeeSums, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
+  byHospitalQuery, byMethodQuery, orderedHeldQuery, byTreatmentQuery, capped, toFeeSums, weeklyQuery, FeeSums, countQuery, hospitalOptionsQuery, listQuery, monthCompare, parseCompareQuery, parsePaymentQuery, parseRangeQuery, PAY_PER_PAGE, periodsOf,
   seoulToday, seriesQuery, summaryQuery, Sums, toItem, toSums, weekCompare, PaymentItem,
 } from './payments.logic';
 
@@ -12,6 +12,8 @@ export interface ListAnswer {
   items: PaymentItem[]; total: number; page: number; perPage: number; totalPages: number; summary: Sums & Partial<FeeSums>; from: string; to: string;
   /** Only with ADMIN_PAYMENTS_FEES=1: per payment method and per payout Sunday (the hospital's week). */
   methods?: (Sums & FeeSums & { method: string })[];
+  /** Treatment booked, payment awaited (a current stock, no fee). */
+  orderedHeld?: { count: number; amount: number };
   weeks?: { payoutDate: string; payments: number; fee: number; settlement: number }[];
 }
 
@@ -48,7 +50,8 @@ export class PaymentsService {
     const answer: ListAnswer = { items: rows.map((r) => toItem(r, today)), total, page, perPage: PAY_PER_PAGE, totalPages, summary: toSums(sumRows[0]), from: f.from, to: f.to };
     if (today) {
       Object.assign(answer.summary, toFeeSums(sumRows[0]));
-      const [methodRows, weekRows] = await Promise.all([this.run(byMethodQuery(scope, f, today)), this.run(weeklyQuery(scope, f))]);
+      const [methodRows, weekRows, heldRows] = await Promise.all([this.run(byMethodQuery(scope, f, today)), this.run(weeklyQuery(scope, f)), this.run(orderedHeldQuery(scope, f.hospitalId))]);
+      answer.orderedHeld = { count: Number(heldRows[0]?.cnt) || 0, amount: Number(heldRows[0]?.amount) || 0 };
       answer.methods = methodRows.map((r) => ({ method: String(r.method ?? ''), ...toSums(r), ...toFeeSums(r) }));
       answer.weeks = weekRows.map((r) => ({ payoutDate: String(r.payout_date ?? ''), payments: Number(r.payments) || 0, fee: Number(r.fee) || 0, settlement: Number(r.settlement) || 0 }));
     }

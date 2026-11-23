@@ -214,6 +214,15 @@ export function weeklyQuery(scope: AdminScope, f: RangeFilters): Query {
     values: [...baseValues(), ...sc.values, f.from, f.to],
   };
 }
+/** Held (the hospital's word): treatment booked, payment still awaited. A current stock, not bound to the dates; no fee is counted for it. Only with the fee switch. */
+export function orderedHeldQuery(scope: AdminScope, hospitalId: number): Query {
+  const sc = scopeClause(scope, hospitalId, 'p.hospital_id');
+  return {
+    sql: `SELECT COUNT(*) AS cnt, COALESCE(SUM(p.amount), 0) AS amount FROM gangnamunni_platform_payments p
+          WHERE p.payment_type = 'booking' AND p.funds_recipient = 'hospital' AND p.status = 'pending' AND (p.provider IS NULL OR p.provider NOT IN (${TEST_PROVIDERS.map(() => '?').join(', ')})) AND ${sc.sql}`,
+    values: [...TEST_PROVIDERS, ...sc.values],
+  };
+}
 export function hospitalOptionsQuery(scope: AdminScope): Query {
   const sc = scopeClause(scope, 0, 'h.id');
   return { sql: `SELECT h.id, h.name FROM gangnamunni_hospitals h WHERE ${sc.sql} ORDER BY h.name ASC LIMIT 500`, values: sc.values };

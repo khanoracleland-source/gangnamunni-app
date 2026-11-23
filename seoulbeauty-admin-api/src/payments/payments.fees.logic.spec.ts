@@ -1,4 +1,4 @@
-import { byHospitalQuery, byMethodQuery, byTreatmentQuery, figuresOf, FigureRow, listQuery, nextSunday, summaryQuery, toFeeSums, toItem, weeklyQuery } from './payments.logic';
+import { orderedHeldQuery, byHospitalQuery, byMethodQuery, byTreatmentQuery, figuresOf, FigureRow, listQuery, nextSunday, summaryQuery, toFeeSums, toItem, weeklyQuery } from './payments.logic';
 
 const ALL = { scope: 'all' as const, hospitalIds: [] };
 const range = { hospitalId: 0, from: '2026-11-01', to: '2026-11-20' };
@@ -82,5 +82,12 @@ describe('queries: switch off is exactly as before, on adds the fee columns with
     const sql = summaryQuery(ALL, range, '2026-11-23').sql;
     for (const col of ['p.fee_rate_bp', 'COALESCE(p.points_used, 0)', 'p.fee_amount', 'p.refunded_amount']) expect(sql).toContain(`CAST(${col}`);
     expect(sql).toContain("p.pay_method <> ''");
+  });
+  it('ordered Held: pending payments, test providers out, scoped, not bound to dates', () => {
+    const q = orderedHeldQuery({ scope: 'own', hospitalIds: [12] }, 0);
+    expect(q.sql).toContain("p.status = 'pending'");
+    expect(q.sql).not.toContain('paid_at');
+    expect(q.values).toEqual(['mock_booking_payment', 'inicis_test', 12]);
+    expect(placeholders(q.sql)).toBe(q.values.length);
   });
 });
