@@ -316,6 +316,18 @@ export class PaymentsEnabledGuard implements CanActivate {
   }
 }
 
+/** Payment fee rates (GET/POST /v1/payments/fee-rates). Needs ADMIN_PAYMENTS_ENABLED=1 as well; the write user DB_RW_* is needed for POST. Only the exact value "1" turns it on. */
+export const paymentsFeesEnabled = (): boolean => paymentsEnabled() && process.env.ADMIN_PAYMENTS_FEES === '1';
+
+/** With ADMIN_PAYMENTS_FEES off the fee rate routes answer 404 as if they did not exist. */
+@Injectable()
+export class PaymentsFeesEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !paymentsFeesEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Registering a hospital by a super admin (/v1/hospital-apply*). Independent of the hospital switches; needs the write user and the upload folder. Only the exact value "1" turns it on. */
 export const hospitalApplyEnabled = (): boolean => process.env.ADMIN_HOSPITAL_APPLY_ENABLED === '1';
 
