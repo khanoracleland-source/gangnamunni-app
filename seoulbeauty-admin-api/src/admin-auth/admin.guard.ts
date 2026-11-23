@@ -293,6 +293,18 @@ export class TreatmentUnitsWriteEnabledGuard implements CanActivate {
   }
 }
 
+/** The doctors pages (/v1/doctors*). Independent of the hospital switches; hospital roles still need ADMIN_HOSPITALS_ENABLED (see scopeOf). Only the exact value "1" turns it on. */
+export const doctorsEnabled = (): boolean => process.env.ADMIN_DOCTORS_ENABLED === '1';
+
+/** With ADMIN_DOCTORS_ENABLED off the doctors routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class DoctorsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !doctorsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Booking management (/v1/bookings*). Independent of the hospital switches; hospital roles still need ADMIN_HOSPITALS_ENABLED (see scopeOf). Only the exact value "1" turns it on. */
 export const bookingsEnabled = (): boolean => process.env.ADMIN_BOOKINGS_ENABLED === '1';
 /** Assigning doctors and moving a booking to its next status. Needs the booking page on as well; only the exact value "1" turns it on. */

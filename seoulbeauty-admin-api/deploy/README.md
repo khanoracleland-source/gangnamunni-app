@@ -1295,6 +1295,29 @@ FLUSH PRIVILEGES;
 `seoulbeauty-admin-api/.env`: `ADMIN_HOSPITALS_ORDER=1`, then `sudo systemctl restart seoulbeauty-admin-api`.
 Rollback: `ADMIN_HOSPITALS_ORDER=0` + restart (the button disappears and both order routes answer 404; stored values stay as they are).
 
+## 20. Doctors pages (`ADMIN_DOCTORS_ENABLED`, optional; super admin and hospital accounts)
+
+`GET /v1/doctors` (list with hospital filter, search, paging), `/v1/doctors/:id`, `/v1/doctors/hospitals` and `/v1/doctors/treatment-options?hospitalId=` for the new doctors screen.
+Read only: a hospital account sees only the doctors of its own hospital (any other id: 404). The list is in the order the app shows doctors (placed ones first, then by name).
+Needs `ADMIN_DOCTORS_ENABLED=1` (hospital accounts also `ADMIN_HOSPITALS_ENABLED=1`). Nothing is written.
+
+Database (as root; the read-only user, add only what is missing in `SHOW GRANTS FOR 'sb_admin_ro'@'127.0.0.1'`):
+
+```sql
+GRANT SELECT (id, hospital_id, name, specialty, experience, qualification, bio, photo_url, status) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_ro'@'127.0.0.1';
+-- only when `SHOW COLUMNS FROM gangnamunni_doctors LIKE 'display_order'` shows the column (a GRANT on a missing column fails as a whole):
+GRANT SELECT (display_order) ON <DB_NAME>.gangnamunni_doctors TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (doctor_id, hospital_id, treatment_id, is_active) ON <DB_NAME>.gangnamunni_doctor_treatments TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (hospital_id, treatment_id, is_active, status) ON <DB_NAME>.gangnamunni_hospital_treatments TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, name, category_id) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, name, sort_order) ON <DB_NAME>.gangnamunni_treatment_categories TO 'sb_admin_ro'@'127.0.0.1';
+-- the same for 'sb_admin_ro'@'localhost'
+FLUSH PRIVILEGES;
+```
+
+`display_order` of the doctors table is added by the old admin page the first time it is opened; until it exists the list is ordered by name and the second `display_order` GRANT must wait. The hospital filter offers approved hospitals only.
+`seoulbeauty-admin-api/.env`: `ADMIN_DOCTORS_ENABLED=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_DOCTORS_ENABLED=0` + restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
