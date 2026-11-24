@@ -1,6 +1,8 @@
 // Pure rules of the content review page: the list address and the tabs. No DOM.
 
-import type { ModerationQuery } from "./api";
+import type { ModerationQuery, ModerationState } from "./api";
+import { mediaUrl } from "./hospitals";
+import type { MessageKey } from "./i18n";
 
 export const MODERATION_SEARCH_MAX = 100;
 export type ModerationTab = "reviews" | "community";
@@ -33,3 +35,15 @@ export function moderationHref(v: ModerationView): string {
 }
 
 export const hasModerationFilters = (v: ModerationView): boolean => v.search !== "" || v.hospitalId > 0;
+
+export const STATE_LABEL: Record<ModerationState, MessageKey> = { pending: "mod.st.pending", approved: "mod.st.ok", rejected: "mod.st.no" };
+export const STATE_TONE: Record<ModerationState, "warn" | "on" | "err"> = { pending: "warn", approved: "on", rejected: "err" };
+export const MODERATION_STATUSES: ModerationState[] = ["pending", "approved", "rejected"];
+
+/** A picture address that is safe to show: a plain http(s) address or a path on this site; a backslash (read as "/" by browsers) is refused. */
+export function imageHref(stored: string): string {
+  const url = mediaUrl(stored);
+  return url === "" || /[\\\s]/.test(url) ? "" : url;
+}
+
+export const PER_PAGE = 20;

@@ -17,7 +17,7 @@ export function Section({ id, title, desc, children }: { id: string; title: stri
   );
 }
 
-export type PillTone = "on" | "off" | "info" | "warn" | "plain";
+export type PillTone = "on" | "off" | "info" | "warn" | "err" | "plain";
 
 /** Small rounded label. The wording always carries the meaning; the colour only repeats it. */
 export function Pill({ tone, children }: { tone: PillTone; children: string }) {

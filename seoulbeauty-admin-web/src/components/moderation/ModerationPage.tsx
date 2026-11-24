@@ -6,14 +6,15 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import { Notice } from "../hospitals/parts";
-import { fetchMe, fetchModerationHospitals, type Me } from "@/lib/api";
+import ReviewsTab from "./ReviewsTab";
+import { fetchMe, fetchModerationHospitals, type DoctorHospitalOption, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { useT } from "@/lib/locale";
 import { moderationHref, parseModerationView, type ModerationTab } from "@/lib/moderation";
 
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "error";
-type State = { phase: Phase; errorKind: ErrorKind; me: Me | null; ownHospital: string };
-const INITIAL: State = { phase: "loading", errorKind: "load", me: null, ownHospital: "" };
+type State = { phase: Phase; errorKind: ErrorKind; me: Me | null; ownHospital: string; hospitals: DoctorHospitalOption[] };
+const INITIAL: State = { phase: "loading", errorKind: "load", me: null, ownHospital: "", hospitals: [] };
 
 /** Reviews and community posts waiting for a decision. A hospital account sees only the reviews of its own hospital, with no community tab. */
 export default function ModerationPage() {
@@ -47,7 +48,7 @@ export default function ModerationPage() {
         return;
       }
       if (me.ok && hospitals.ok) {
-        setState({ phase: "ready", errorKind: "load", me: me.data, ownHospital: me.data.admin.scope === "own" ? (hospitals.data[0]?.name ?? "") : "" });
+        setState({ phase: "ready", errorKind: "load", me: me.data, ownHospital: me.data.admin.scope === "own" ? (hospitals.data[0]?.name ?? "") : "", hospitals: hospitals.data });
         return;
       }
       const kind: ErrorKind = !me.ok
@@ -59,7 +60,7 @@ export default function ModerationPage() {
     return () => controller.abort();
   }, [attempt]);
 
-  const { phase, me, ownHospital } = state;
+  const { phase, me, ownHospital, hospitals } = state;
   const isSuper = me?.admin.scope === "all";
   const view = useMemo(() => parseModerationView(new URLSearchParams(queryString), isSuper), [queryString, isSuper]);
 
@@ -76,12 +77,11 @@ export default function ModerationPage() {
       {phase === "ready" ? (
         <>
           {!isSuper && ownHospital !== "" ? <Notice>{t("mod.scope.own", { name: ownHospital })}</Notice> : null}
-          <div className="mod-tabs" role="tablist" aria-label={t("mod.tabs.label")}>
+          <nav className="mod-tabs" aria-label={t("mod.tabs.label")}>
             {tabs.map((tab) => (
               <Link
                 key={tab}
-                role="tab"
-                aria-selected={view.tab === tab}
+                aria-current={view.tab === tab ? "page" : undefined}
                 className={view.tab === tab ? "mod-tab is-active" : "mod-tab"}
                 href={moderationHref({ ...view, tab, status: "pending", search: "", hospitalId: 0, page: 1 })}
                 replace
@@ -89,10 +89,8 @@ export default function ModerationPage() {
                 {t(tab === "reviews" ? "mod.tab.reviews" : "mod.tab.community")}
               </Link>
             ))}
-          </div>
-          <div role="tabpanel">
-            <p className="mod-soon">{t("mod.soon")}</p>
-          </div>
+          </nav>
+          {view.tab === "reviews" ? <ReviewsTab view={view} hospitals={hospitals} isSuper={isSuper} /> : <p className="mod-soon">{t("mod.soon")}</p>}
         </>
       ) : null}
     </AdminShell>
