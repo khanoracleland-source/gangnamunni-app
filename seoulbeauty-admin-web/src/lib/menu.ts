@@ -68,10 +68,6 @@ const MENU: MenuGroup[] = [
       // 인력 관리(admin_personnel.php): 임시로 메뉴에서 숨김 — 다시 보이려면 아래 줄의 주석을 해제
       // legacy("personnel", "admin_personnel.php", "인력 관리", "Staff", "people"),
       { key: "content_review", label: L("콘텐츠 심사", "Content review"), icon: "shield", status: "new", href: "/moderation", requires: "moderation" },
-      legacy("community_moderation", "admin_community_posts.php", "커뮤니티 심사", "Community post review", "shield"),
-      legacy("reviews", "admin_reviews.php", "리뷰 관리", "Reviews", "star"),
-      legacy("hospital_images", "admin_hospital_images.php", "병원 이미지 관리", "Hospital images", "image"),
-      legacy("ads", "admin_ads.php", "광고 관리", "Ads", "megaphone"),
       legacy("categories", "admin_categories.php", "카테고리 관리", "Categories", "tag"),
       legacy("events", "admin_events.php", "이벤트 관리", "Events", "calendar"),
       legacy("columns", "admin_columns.php", "칼럼/뉴스 관리", "Columns / news", "sheet"),
