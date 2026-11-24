@@ -7,10 +7,11 @@ import Icon from "../Icon";
 import { Notice, Pill } from "../hospitals/parts";
 import HospitalCombo from "../payments/HospitalCombo";
 import Thumbs from "./Thumbs";
-import { fetchModerationReviews, type DoctorHospitalOption, type ModerationPage, type ModerationState, type ReviewItem } from "@/lib/api";
+import { fetchModerationReviews, type DoctorHospitalOption, type ModerationCounts, type ModerationPage, type ModerationState, type ReviewItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatDay, formatNumber } from "@/lib/format";
 import { pageWindow } from "@/lib/hospitals";
+import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 import { hasModerationFilters, MODERATION_SEARCH_MAX, MODERATION_STATUSES, moderationHref, PER_PAGE, STATE_LABEL, STATE_TONE, type ModerationView } from "@/lib/moderation";
 
@@ -54,17 +55,7 @@ export default function ReviewsTab({ view, hospitals, isSuper }: { view: Moderat
   return (
     <>
       <div className="mod-tool">
-        <div className="field mod-seg-wrap">
-          <span className="field__label" id="mod-status-l">{t("mod.st.label")}</span>
-          <div className="seg mod-seg" role="group" aria-labelledby="mod-status-l">
-            {MODERATION_STATUSES.map((s: ModerationState) => (
-              <button key={s} type="button" aria-pressed={view.status === s} onClick={() => view.status !== s && go({ status: s })}>
-                <span>{t(STATE_LABEL[s])}</span>
-                {data ? <span className="mod-seg__n">{formatNumber(data.counts[s])}</span> : null}
-              </button>
-            ))}
-          </div>
-        </div>
+        <StatusSeg status={view.status} counts={data?.counts ?? null} onPick={(status) => go({ status })} />
         <SearchForm key={view.search} initial={view.search} onSearch={(search) => go({ search })} />
         {isSuper ? (
           <div className="mod-combo">
@@ -122,7 +113,7 @@ export default function ReviewsTab({ view, hospitals, isSuper }: { view: Moderat
   );
 }
 
-function SearchForm({ initial, onSearch }: { initial: string; onSearch: (search: string) => void }) {
+export function SearchForm({ initial, placeholderKey = "mod.f.searchPh.rev", onSearch }: { initial: string; placeholderKey?: MessageKey; onSearch: (search: string) => void }) {
   const t = useT();
   const [value, setValue] = useState(initial);
   const submit = (e: FormEvent) => {
@@ -133,7 +124,7 @@ function SearchForm({ initial, onSearch }: { initial: string; onSearch: (search:
     <form className="mod-find" role="search" onSubmit={submit}>
       <label className="field field--grow">
         <span className="field__label">{t("mod.f.search")}</span>
-        <input className="input" type="search" name="search" value={value} maxLength={MODERATION_SEARCH_MAX} placeholder={t("mod.f.searchPh.rev")} autoComplete="off" enterKeyHint="search" onChange={(e) => setValue(e.target.value)} />
+        <input className="input" type="search" name="search" value={value} maxLength={MODERATION_SEARCH_MAX} placeholder={t(placeholderKey)} autoComplete="off" enterKeyHint="search" onChange={(e) => setValue(e.target.value)} />
       </label>
       <button type="submit" className="btn btn--primary">{t("d.f.submit")}</button>
     </form>
@@ -182,7 +173,7 @@ function ReviewCard({ r, showNoBooking }: { r: ReviewItem; showNoBooking: boolea
   );
 }
 
-function Skeleton() {
+export function Skeleton() {
   const t = useT();
   return (
     <ul className="mod-cards" aria-busy="true" aria-label={t("mod.loading")}>
@@ -197,7 +188,7 @@ function Skeleton() {
   );
 }
 
-function Pager({ view, pages }: { view: ModerationView; pages: number }) {
+export function Pager({ view, pages }: { view: ModerationView; pages: number }) {
   const t = useT();
   if (pages <= 1) return null;
   const page = Math.min(view.page, pages);
@@ -221,5 +212,22 @@ function Pager({ view, pages }: { view: ModerationView; pages: number }) {
       ) : null}
       <span className="pager__info">{t("mod.pager.info", { page: formatNumber(page), pages: formatNumber(pages) })}</span>
     </nav>
+  );
+}
+
+export function StatusSeg({ status, counts, onPick }: { status: ModerationState; counts: ModerationCounts | null; onPick: (s: ModerationState) => void }) {
+  const t = useT();
+  return (
+    <div className="field mod-seg-wrap">
+      <span className="field__label" id="mod-status-l">{t("mod.st.label")}</span>
+      <div className="seg mod-seg" role="group" aria-labelledby="mod-status-l">
+        {MODERATION_STATUSES.map((s) => (
+          <button key={s} type="button" aria-pressed={status === s} onClick={() => status !== s && onPick(s)}>
+            <span>{t(STATE_LABEL[s])}</span>
+            {counts ? <span className="mod-seg__n">{formatNumber(counts[s])}</span> : null}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import { Notice } from "../hospitals/parts";
+import PostsTab from "./PostsTab";
 import ReviewsTab from "./ReviewsTab";
 import { fetchMe, fetchModerationHospitals, type DoctorHospitalOption, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
@@ -90,7 +91,7 @@ export default function ModerationPage() {
               </Link>
             ))}
           </nav>
-          {view.tab === "reviews" ? <ReviewsTab view={view} hospitals={hospitals} isSuper={isSuper} /> : <p className="mod-soon">{t("mod.soon")}</p>}
+          {view.tab === "reviews" ? <ReviewsTab view={view} hospitals={hospitals} isSuper={isSuper} /> : <PostsTab view={view} />}
         </>
       ) : null}
     </AdminShell>
