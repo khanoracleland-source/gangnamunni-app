@@ -152,7 +152,7 @@ export function usePostEdit(p: PostItem, o: { reload: () => void; onSettled: () 
 
       <div className="field">
         <label className="field__label" htmlFor={`${uid}-content`}>{t("mod.edit.f.content")}</label>
-        <textarea id={`${uid}-content`} className="input textarea mod-ed__ta" rows={8} value={content} disabled={saving} aria-invalid={shown("content") ? true : undefined} aria-describedby={`${uid}-content-c ${uid}-content-e`} onChange={(e) => { setContent(e.target.value); setFields((f) => ({ ...f, content: "" })); }} />
+        <textarea id={`${uid}-content`} className="input textarea mod-ed__ta" rows={4} value={content} disabled={saving} aria-invalid={shown("content") ? true : undefined} aria-describedby={`${uid}-content-c ${uid}-content-e`} onChange={(e) => { setContent(e.target.value); setFields((f) => ({ ...f, content: "" })); }} />
         <Counter id={`${uid}-content-c`} n={points(content)} max={CONTENT_MAX} />
         <FieldError id={`${uid}-content-e`} code={shown("content") || undefined} />
       </div>
