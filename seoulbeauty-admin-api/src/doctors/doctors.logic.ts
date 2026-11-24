@@ -3,11 +3,18 @@ import { canSee, likeContains, num, positiveInt, Query, Scope, seesNothing, str 
 
 type Row = Record<string, unknown>;
 
-export const PER_PAGE_CHOICES = [10, 20, 50];
-export const DEFAULT_PER_PAGE = 20;
+export const PER_PAGE_CHOICES = [10, 15, 20, 50];
+export const DEFAULT_PER_PAGE = 15;
 export const MAX_PAGE = 100_000;
 export const MAX_SEARCH = 100;
-export type DoctorStatus = 'all' | 'active' | 'resigned';
+export type DoctorStatus = 'all' | 'active' | 'inactive' | 'resigned';
+/** What "inactive" is stored as (the column is an enum); any stored value other than active and resigned (the enum also has 'leave') counts as inactive. */
+export const INACTIVE_STORED = 'vacation';
+/** The three states the panel knows; every stored value other than active and resigned is an inactive doctor. */
+export const statusOf = (stored: unknown): 'active' | 'inactive' | 'resigned' => {
+  const v = str(stored);
+  return v === 'active' ? 'active' : v === 'resigned' ? 'resigned' : 'inactive';
+};
 
 export interface DoctorListQuery {
   /** 0 = every hospital inside the scope. */
@@ -28,7 +35,7 @@ export function normalizeListQuery(q: Record<string, unknown> | undefined | null
   return {
     hospitalId: positiveInt(src.hospitalId),
     search: one(src.search).trim().slice(0, MAX_SEARCH),
-    status: status === 'active' || status === 'resigned' ? status : 'all',
+    status: status === 'active' || status === 'inactive' || status === 'resigned' ? status : 'all',
     page: Math.min(MAX_PAGE, Math.max(1, positiveInt(src.page))),
     perPage: PER_PAGE_CHOICES.includes(perPage) ? perPage : DEFAULT_PER_PAGE,
   };
@@ -52,7 +59,9 @@ function listWhere(s: Scope, q: DoctorListQuery): Query {
     sql += ' AND d.hospital_id = ?';
     values.push(q.hospitalId);
   }
-  if (q.status !== 'all') {
+  if (q.status === 'inactive') {
+    sql += " AND (d.status IS NULL OR d.status NOT IN ('active', 'resigned'))";
+  } else if (q.status !== 'all') {
     sql += ' AND d.status = ?';
     values.push(q.status);
   }
@@ -165,7 +174,7 @@ export interface DoctorListItem {
   specialty: string;
   qualification: string;
   photoUrl: string | null;
-  status: string;
+  status: 'active' | 'inactive' | 'resigned';
   displayOrder: number | null;
   treatments: string[];
 }
@@ -181,7 +190,7 @@ export const toListItem = (r: Row, treatments: string[] = []): DoctorListItem =>
   specialty: str(r.specialty).trim(),
   qualification: str(r.qualification),
   photoUrl: photoOrNull(r.photo_url),
-  status: str(r.status),
+  status: statusOf(r.status),
   displayOrder: placeOrNull(r.display_order),
   treatments,
 });

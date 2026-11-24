@@ -8,10 +8,19 @@ const own = { scope: 'own' as const, hospitalIds: [12] };
 const q = (extra: Record<string, unknown> = {}) => normalizeListQuery(extra);
 
 describe('normalizeListQuery', () => {
+  it('knows the inactive filter and reads every stored state as active, inactive or resigned', () => {
+    expect(q({ status: 'inactive' }).status).toBe('inactive');
+    const l = listQuery(all, q({ status: 'inactive' }), true);
+    expect(l.sql).toContain("d.status IS NULL OR d.status NOT IN ('active', 'resigned')");
+    expect(l.values).not.toContain('inactive');
+    const item = (status: unknown) => toListItem({ id: 1, name: 'a', status }).status;
+    expect([item('active'), item('resigned'), item('vacation'), item('leave'), item(null)]).toEqual(['active', 'resigned', 'inactive', 'inactive', 'inactive']);
+  });
+
   it('has defaults and never throws', () => {
-    expect(q()).toEqual({ hospitalId: 0, search: '', status: 'all', page: 1, perPage: 20 });
-    expect(normalizeListQuery(undefined).perPage).toBe(20);
-    expect(q({ hospitalId: '-3', page: '0', perPage: '7', status: 'x' })).toEqual({ hospitalId: 0, search: '', status: 'all', page: 1, perPage: 20 });
+    expect(q()).toEqual({ hospitalId: 0, search: '', status: 'all', page: 1, perPage: 15 });
+    expect(normalizeListQuery(undefined).perPage).toBe(15);
+    expect(q({ hospitalId: '-3', page: '0', perPage: '7', status: 'x' })).toEqual({ hospitalId: 0, search: '', status: 'all', page: 1, perPage: 15 });
   });
   it('accepts the allowed values', () => {
     expect(q({ hospitalId: '12', page: '3', perPage: '50', status: 'resigned', search: '  kim ' })).toEqual({ hospitalId: 12, search: 'kim', status: 'resigned', page: 3, perPage: 50 });
@@ -33,7 +42,7 @@ describe('list SQL', () => {
     expect(l.sql).toContain('d.hospital_id = ?');
     expect(l.sql).toContain('d.status = ?');
     expect(l.sql).not.toContain('50%');
-    expect(l.values).toEqual([[12], 12, 'active', '%50\\%\\_off%', '%50\\%\\_off%', '%50\\%\\_off%', '%50\\%\\_off%', '%50\\%\\_off%', 0, 20]);
+    expect(l.values).toEqual([[12], 12, 'active', '%50\\%\\_off%', '%50\\%\\_off%', '%50\\%\\_off%', '%50\\%\\_off%', '%50\\%\\_off%', 0, 15]);
     expect(countQuery(own, q()).values).toEqual([[12]]);
   });
   it('shows the app order first when the column exists, else by name', () => {

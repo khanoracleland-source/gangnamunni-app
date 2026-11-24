@@ -8,14 +8,14 @@ import { checkImage, detectImageKind, ImageKind } from '../hospitals/hospitals.i
 import { canSee, num, Query, Scope, seesNothing, str } from '../hospitals/hospitals.logic';
 import { OrderRow, parseMoveBody, planMove } from '../hospitals/hospitals.order.logic';
 import { FS_UNAVAILABLE, readHead, resolveUploadRoot, rethrowIfWriteUnavailable } from '../hospitals/hospitals.upload.shared';
-import { DoctorDetail, orderColumnQuery } from './doctors.logic';
+import { DoctorDetail, orderColumnQuery, statusOf } from './doctors.logic';
 import {
   clearDoctorRefQuery, deleteDoctorQuery, deleteRelationRowsQuery, hasDoctorIdQuery, HISTORY_TABLES, lockDoctorOrderQuery, RELATION_TABLES, setDoctorOrderQuery,
 } from './doctors.order.logic';
 import { DoctorsService } from './doctors.service';
 import {
   assignTreatmentsQuery, deactivateAllAssignmentsQuery, deactivateAssignmentsQuery, DoctorEdit, lockApprovedHospitalQuery, lockDoctorQuery, offeredTreatmentsQuery,
-  parseEdit, removablePhoto, retireDoctorQuery, updateDoctorQuery,
+  parseEdit, removablePhoto, retireDoctorQuery, setActiveQuery, updateDoctorQuery,
 } from './doctors.write.logic';
 
 type Row = Record<string, unknown>;
@@ -208,6 +208,39 @@ export class DoctorsWriteService {
     if (!detail) throw new NotFoundException({ error: 'not_found' });
     return detail;
   }
+  /**
+   * Switches a doctor between active (shown in the app) and inactive (hidden, can be switched back, still editable). Going inactive takes the doctor
+   * out of the display order; the treatments stay assigned. A retired doctor can not be switched (409 doctor_resigned). Repeating a switch changes nothing.
+   */
+  async setActive(scope: Scope, id: number, active: boolean): Promise<DoctorDetail> {
+    if (!(await this.currentOf(scope, id))) throw new NotFoundException({ error: 'not_found' });
+    const withOrder = await this.hasOrder();
+    const conn = await this.connect();
+    try {
+      await conn.beginTransaction();
+      const run: Run = async (q) => {
+        const [rows] = (await conn.query(q.sql, q.values)) as any;
+        return Array.isArray(rows) ? rows : [];
+      };
+      const locked = (await run(lockDoctorQuery(id)))[0];
+      if (!locked || !canSee(scope, num(locked.hospital_id))) throw new NotFoundException({ error: 'not_found' });
+      const state = statusOf(locked.status);
+      if (state === 'resigned') throw new ConflictException({ error: 'doctor_resigned' });
+      if ((state === 'active') !== active) await run(setActiveQuery(id, active, withOrder));
+      await conn.commit();
+      this.log.log(`doctor ${active ? 'activated' : 'deactivated'}: id=${id}`);
+    } catch (e) {
+      await conn.rollback().catch(() => undefined);
+      rethrowIfWriteUnavailable(e, this.log);
+      throw e;
+    } finally {
+      conn.release();
+    }
+    const detail = await this.doctors.detail(scope, id);
+    if (!detail) throw new NotFoundException({ error: 'not_found' });
+    return detail;
+  }
+
   /** Moves one active doctor inside the order of the hospital and renumbers that hospital's active doctors 1..N. */
   async move(scope: Scope, adminId: number, id: number, body: unknown): Promise<{ ok: true; id: number; position: number; total: number; changed: number }> {
     const parsed = parseMoveBody(body);
@@ -232,7 +265,7 @@ export class DoctorsWriteService {
       if (!locked || !canSee(scope, num(locked.hospital_id))) throw new NotFoundException({ error: 'not_found' });
       // moved to another hospital or retired meanwhile: the set that was locked is not the one this doctor belongs to
       if (num(locked.hospital_id) !== hospitalId) throw new ConflictException({ error: 'busy' });
-      if (str(locked.status) !== 'active') throw new ConflictException({ error: 'doctor_resigned' });
+      if (str(locked.status) !== 'active') throw new ConflictException({ error: statusOf(locked.status) === 'resigned' ? 'doctor_resigned' : 'not_active' });
       const plan = planMove(rows, id, parsed.move);
       if (!plan.found) throw new NotFoundException({ error: 'not_found' });
       if (plan.outOfRange) throw new BadRequestException({ error: 'invalid', fields: { position: 'out_of_range' } });

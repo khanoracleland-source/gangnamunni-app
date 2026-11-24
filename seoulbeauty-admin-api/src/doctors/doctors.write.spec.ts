@@ -52,6 +52,7 @@ describe('admin API: doctors (edit, retire)', () => {
       rwCalls.push({ sql, values });
       if (sql.includes('FROM gangnamunni_doctors WHERE id = ? LIMIT 1 FOR UPDATE')) return [doctors.filter((d) => d.id === values[0])];
       if (sql.includes("FROM gangnamunni_hospitals WHERE id = ? AND status = 'approved'")) return [[13, 12].includes(values[0] as number) ? [{ id: values[0] }] : []];
+      if (sql.startsWith('UPDATE gangnamunni_doctors SET status = ?')) { const d = doctors.find((x) => x.id === values[1])!; d.status = values[0] as string; if (sql.includes('display_order = NULL')) d.display_order = null; return [{ affectedRows: 1 }]; }
       if (sql.startsWith('UPDATE gangnamunni_doctors SET status')) { const d = doctors.find((x) => x.id === values[0])!; d.status = 'resigned'; d.display_order = null; return [{ affectedRows: 1 }]; }
       if (sql.startsWith('UPDATE gangnamunni_doctors SET name')) {
         const d = doctors.find((x) => x.id === values[values.length - 1])!;
@@ -236,6 +237,45 @@ describe('admin API: doctors (edit, retire)', () => {
     rwCalls.length = 0;
     expect((await retire(1)).status).toBe(200);
     expect(rwCalls.filter((c) => c.sql.startsWith('UPDATE'))).toHaveLength(0);
+  });
+
+  const toggle = (id: number | string, action: 'activate' | 'deactivate', cookie: string | null = SUPER) => {
+    let r = request(app.getHttpServer()).post(`/v1/doctors/${id}/${action}`).set({ 'X-Requested-With': 'admin-next' }).send({});
+    if (cookie) r = r.set('Cookie', cookie);
+    return r;
+  };
+
+  it('hides a doctor (inactive: out of the order, treatments kept) and shows the doctor again; repeating changes nothing', async () => {
+    const off = await toggle(1, 'deactivate');
+    expect(off.status).toBe(200);
+    expect(off.body.status).toBe('inactive');
+    const upd = rwCalls.find((c) => c.sql.startsWith('UPDATE gangnamunni_doctors SET status = ?'))!;
+    expect(upd.values).toEqual(['vacation', 1]);
+    expect(upd.sql).toContain('display_order = NULL');
+    expect(rwCalls.some((c) => c.sql.startsWith('UPDATE gangnamunni_doctor_treatments'))).toBe(false);
+    rwCalls.length = 0;
+    expect((await toggle(1, 'deactivate')).status).toBe(200);
+    expect(rwCalls.filter((c) => c.sql.startsWith('UPDATE'))).toHaveLength(0);
+    const on = await toggle(1, 'activate');
+    expect(on.body.status).toBe('active');
+    expect(rwCalls.find((c) => c.sql.startsWith('UPDATE gangnamunni_doctors SET status = ?'))!.values).toEqual(['active', 1]);
+  });
+
+  it('an inactive doctor can still be edited and retired; a retired one can not be switched', async () => {
+    await toggle(1, 'deactivate');
+    expect((await patch(1, body({}))).status).toBe(200);
+    expect((await retire(1)).body.status).toBe('resigned');
+    expect((await toggle(1, 'activate')).status).toBe(409);
+    expect((await toggle(3, 'deactivate')).status).toBe(409);
+  });
+
+  it('switching respects the switch, the marker header, the session and the scope', async () => {
+    expect((await toggle(2, 'deactivate', HOSPITAL)).status).toBe(404);
+    expect((await toggle(1, 'deactivate', HOSPITAL)).status).toBe(200);
+    expect((await toggle(1, 'deactivate', null)).status).toBe(401);
+    expect((await request(app.getHttpServer()).post('/v1/doctors/1/deactivate').set('Cookie', SUPER).send({})).status).toBe(403);
+    hasPool = false;
+    expect((await toggle(1, 'activate')).status).toBe(503);
   });
 
   it('retire respects the scope', async () => {

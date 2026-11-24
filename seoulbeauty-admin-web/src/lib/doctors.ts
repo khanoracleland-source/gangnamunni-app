@@ -1,7 +1,7 @@
 // Pure rules of the doctors page: the list address, the photo address, the form checks and the sentences for refused changes. No DOM.
 
 import type { DoctorCard, DoctorEditFailure, DoctorListQuery, DoctorStatusFilter, WriteFailure } from "./api";
-import { DOCTOR_PER_PAGE_OPTIONS } from "./api";
+import { DOCTOR_PER_PAGE } from "./api";
 import { PHP_BASE_URL } from "./config";
 import { mediaUrl } from "./hospitals";
 import type { MessageKey } from "./i18n";
@@ -20,13 +20,12 @@ const positive = (v: string | null): number => (v !== null && /^[1-9]\d{0,9}$/.t
 /** The list state from the address; anything missing or wrong becomes the default. */
 export function parseDoctorQuery(params: { get(name: string): string | null }): DoctorListQuery {
   const status = params.get("status");
-  const perPage = positive(params.get("perPage"));
   return {
     hospitalId: positive(params.get("hospitalId")),
     search: (params.get("search") ?? "").trim().slice(0, DOCTOR_SEARCH_MAX),
-    status: status === "active" || status === "resigned" ? status : "all",
+    status: status === "active" || status === "inactive" || status === "resigned" ? status : "all",
     page: Math.min(100000, positive(params.get("page")) || 1),
-    perPage: (DOCTOR_PER_PAGE_OPTIONS as readonly number[]).includes(perPage) ? perPage : 20,
+    perPage: DOCTOR_PER_PAGE,
   };
 }
 
@@ -37,7 +36,6 @@ export function doctorsHref(q: DoctorListQuery): string {
   if (q.search !== "") params.set("search", q.search);
   if (q.status !== "all") params.set("status", q.status);
   if (q.page > 1) params.set("page", String(q.page));
-  if (q.perPage !== 20) params.set("perPage", String(q.perPage));
   const s = params.toString();
   return s === "" ? "/doctors" : `/doctors?${s}`;
 }
@@ -120,6 +118,7 @@ export function actionFailureKey(f: WriteFailure): MessageKey {
   if (f.status === 409 && f.error === "not_resigned") return "d.e.notResigned";
   if (f.status === 409 && f.error === "has_references") return "d.e.hasRefs";
   if (f.status === 409 && f.error === "doctor_resigned") return "d.e.resigned";
+  if (f.status === 409 && f.error === "not_active") return "d.e.notActive";
   if (f.status === 409 && f.error === "order_unavailable") return "d.e.orderUnavailable";
   if (f.status === 409) return "d.e.busy";
   if (f.status === 503) return "d.e.unavailable";
@@ -127,4 +126,4 @@ export function actionFailureKey(f: WriteFailure): MessageKey {
 }
 
 export const isActiveDoctor = (d: Pick<DoctorCard, "status">): boolean => d.status === "active";
-export const statusLabelKey = (s: DoctorStatusFilter): MessageKey => (s === "active" ? "d.status.active" : s === "resigned" ? "d.status.resigned" : "d.status.all");
+export const statusLabelKey = (s: DoctorStatusFilter): MessageKey => (s === "active" ? "d.status.active" : s === "inactive" ? "d.status.inactive" : s === "resigned" ? "d.status.resigned" : "d.status.all");

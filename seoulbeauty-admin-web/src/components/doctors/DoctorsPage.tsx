@@ -11,7 +11,7 @@ import { showUnitToast } from "../treatment-units/UnitToast";
 import DoctorEditDialog, { type DoctorDialogResult } from "./DoctorEditDialog";
 import DoctorPhoto from "./DoctorPhoto";
 import DoctorReorder from "./DoctorReorder";
-import { DOCTOR_PER_PAGE_OPTIONS, fetchDoctorHospitals, fetchDoctors, fetchMe, type DoctorCard, type DoctorHospitalOption, type DoctorListData, type DoctorListQuery, type DoctorStatusFilter, type Me } from "@/lib/api";
+import { fetchDoctorHospitals, fetchDoctors, fetchMe, type DoctorCard, type DoctorHospitalOption, type DoctorListData, type DoctorListQuery, type DoctorStatusFilter, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { DOCTOR_SEARCH_MAX, doctorsHref, hasDoctorFilters, parseDoctorQuery, statusLabelKey } from "@/lib/doctors";
 import { formatNumber } from "@/lib/format";
@@ -21,7 +21,7 @@ import { useT } from "@/lib/locale";
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "error";
 type State = { phase: Phase; errorKind: ErrorKind; me: Me | null; list: DoctorListData | null; stale: boolean; settled: string };
 const INITIAL: State = { phase: "loading", errorKind: "load", me: null, list: null, stale: false, settled: "" };
-const STATUSES: DoctorStatusFilter[] = ["all", "active", "resigned"];
+const STATUSES: DoctorStatusFilter[] = ["all", "active", "inactive", "resigned"];
 
 /** Every doctor the admin may see: three counts, filters, cards, pages; opens the edit dialog and the order screen. */
 export default function DoctorsPage() {
@@ -108,7 +108,7 @@ export default function DoctorsPage() {
 
   const done = (r: DoctorDialogResult) => {
     setEditId(0);
-    const key = r.kind === "saved" ? "d.ed.saved" : r.kind === "retired" ? "d.rt.done" : "d.dl.done";
+    const key = r.kind === "saved" ? "d.ed.saved" : r.kind === "retired" ? "d.rt.done" : r.kind === "deactivated" ? "d.ac.offDone" : r.kind === "activated" ? "d.ac.onDone" : "d.dl.done";
     showUnitToast({ tone: "ok", message: t(key, { name: r.name }), closeLabel: t("m.close") });
     retry();
   };
@@ -182,14 +182,6 @@ export default function DoctorsPage() {
                     ))}
                   </div>
                 </div>
-                <label className="field field--narrow dc-f-per">
-                  <span className="field__label">{t("d.f.perPage")}</span>
-                  <select className="sel sel--field" value={query.perPage} onChange={(e) => go({ perPage: Number(e.target.value) })}>
-                    {DOCTOR_PER_PAGE_OPTIONS.map((n) => (
-                      <option key={n} value={n}>{t("d.f.perPageValue", { n })}</option>
-                    ))}
-                  </select>
-                </label>
               </div>
 
               <Section id="sec-d-list" title={t("d.list.count", { n: formatNumber(list.total) })} desc="">
@@ -263,13 +255,13 @@ function Card({ d, showHospital, canEdit, onOpen }: { d: DoctorCard; showHospita
   const narrowMore = d.treatments.length - 2;
   const resigned = d.status === "resigned";
   return (
-    <li className={resigned ? "dc-card is-resigned" : "dc-card"}>
+    <li className={resigned ? "dc-card is-resigned" : d.status === "inactive" ? "dc-card is-inactive" : "dc-card"}>
       <div className="dc-card__top">
         <DoctorPhoto name={name} url={d.photoUrl} />
         <div className="dc-card__id">
           <div className="dc-card__nameRow">
             <h3 className="dc-card__name" title={name} translate="no">{name}</h3>
-            <Pill tone={resigned ? "off" : "on"}>{t(resigned ? "d.status.resigned" : "d.status.active")}</Pill>
+            <Pill tone={resigned ? "off" : d.status === "inactive" ? "warn" : "on"}>{t(resigned ? "d.status.resigned" : d.status === "inactive" ? "d.status.inactive" : "d.status.active")}</Pill>
           </div>
           <p className="dc-card__spec">{d.specialty || t("d.card.noSpecialty")}</p>
         </div>

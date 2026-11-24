@@ -12,6 +12,7 @@ import {
   fetchDoctor,
   fetchDoctorTreatmentOptions,
   retireDoctor,
+  setDoctorActive,
   type DoctorFull,
   type DoctorHospitalOption,
   type DoctorTreatmentOption,
@@ -24,7 +25,7 @@ import { useT } from "@/lib/locale";
 type Load = "loading" | "ready" | "error";
 type Opts = { state: "loading" | "ready" | "error"; hospitalId: number; items: DoctorTreatmentOption[] };
 
-export type DoctorDialogResult = { kind: "saved" | "retired" | "deleted"; name: string };
+export type DoctorDialogResult = { kind: "saved" | "retired" | "deleted" | "deactivated" | "activated"; name: string };
 
 /**
  * Edit one doctor in a centred dialog (a bottom sheet on a phone). `features` decide what the dialog may do:
@@ -71,6 +72,7 @@ export default function DoctorEditDialog({
   const [formError, setFormError] = useState<MessageKey | null>(null);
   const [saving, setSaving] = useState(false);
   const [retireAsk, setRetireAsk] = useState(false);
+  const [switchAsk, setSwitchAsk] = useState<"off" | "on" | null>(null);
   const [deleteAsk, setDeleteAsk] = useState(false);
   const [discardAsk, setDiscardAsk] = useState(false);
   const [acting, setActing] = useState(false);
@@ -126,6 +128,7 @@ export default function DoctorEditDialog({
   );
 
   const resigned = doc?.status === "resigned";
+  const inactive = doc?.status === "inactive";
   const editable = canWrite && !resigned && doc !== null;
   const originalHospital = doc?.hospitalId ?? 0;
   const originalIds = useMemo(() => (doc ? doc.treatments.map((x) => x.id) : []), [doc]);
@@ -223,6 +226,20 @@ export default function DoctorEditDialog({
     if (res.status === 401) window.location.assign(PHP_ADMIN_URL);
     else setActError(actionFailureKey(res));
   };
+  const switchActive = async () => {
+    if (!doc || acting || !switchAsk) return;
+    const active = switchAsk === "on";
+    setActing(true);
+    setActError(null);
+    const res = await setDoctorActive(doc.id, active);
+    setActing(false);
+    if (res.ok) {
+      onDone({ kind: active ? "activated" : "deactivated", name: doc.name });
+      return;
+    }
+    if (res.status === 401) window.location.assign(PHP_ADMIN_URL);
+    else setActError(actionFailureKey(res));
+  };
   const remove = async () => {
     if (!doc || acting) return;
     setActing(true);
@@ -240,6 +257,19 @@ export default function DoctorEditDialog({
   const retireSpec: ConfirmSpec | null =
     retireAsk && doc
       ? { title: t("d.rt.title"), name: doc.name, body: t("d.rt.body"), confirmLabel: t("d.rt.confirm"), cancelLabel: t("d.ed.cancel"), focus: "cancel", confirmTone: "reject", busyLabel: t("d.ed.saving") }
+      : null;
+
+  const switchSpec: ConfirmSpec | null =
+    switchAsk && doc
+      ? {
+          title: t(switchAsk === "off" ? "d.ac.offTitle" : "d.ac.onTitle"),
+          name: doc.name,
+          body: t(switchAsk === "off" ? "d.ac.offBody" : "d.ac.onBody"),
+          confirmLabel: t(switchAsk === "off" ? "d.ac.offConfirm" : "d.ac.onConfirm"),
+          cancelLabel: t("d.ed.cancel"),
+          focus: "cancel",
+          busyLabel: t("d.ed.saving"),
+        }
       : null;
 
   const hospitalName = hospitals.find((h) => h.id === hospitalId)?.name ?? doc?.hospitalName ?? "";
@@ -274,6 +304,7 @@ export default function DoctorEditDialog({
           <div className="dc-dialog__head">
             <h2 id={titleId} className="dialog__title">{t(editable ? "d.ed.title" : "d.ed.titleView")}</h2>
             {resigned ? <Pill tone="off">{t("d.status.resigned")}</Pill> : null}
+            {inactive ? <Pill tone="warn">{t("d.status.inactive")}</Pill> : null}
             <button type="button" className="ibtn dialog__close" onClick={requestClose} disabled={saving || acting} aria-label={t("m.close")} title={t("m.close")}>
               <Icon name="close" />
             </button>
@@ -290,6 +321,7 @@ export default function DoctorEditDialog({
             {load === "ready" && doc ? (
               <>
                 {resigned ? <Notice>{t("d.ed.readonly")}</Notice> : null}
+                {inactive ? <Notice>{t("d.ed.inactiveNote")}</Notice> : null}
                 {formError ? <Notice tone="warn" icon="alert">{t(formError)}</Notice> : null}
                 <div className="dc-grid">
                   <div className="dc-col">
@@ -410,7 +442,16 @@ export default function DoctorEditDialog({
                 {canWrite && (!resigned || canDelete) ? (
                   <section className="dc-danger" aria-labelledby={`${titleId}-dz`}>
                     <h3 id={`${titleId}-dz`}>{t("d.dz.title")}</h3>
-                    {actError && !retireAsk && !deleteAsk ? <Notice tone="warn" icon="alert">{t(actError)}</Notice> : null}
+                    {actError && !retireAsk && !deleteAsk && !switchAsk ? <Notice tone="warn" icon="alert">{t(actError)}</Notice> : null}
+                    {!resigned ? (
+                      <div className="dc-danger__row">
+                        <div>
+                          <strong>{t(inactive ? "d.dz.activateTitle" : "d.dz.deactivateTitle")}</strong>
+                          <p className="dc-help">{t(inactive ? "d.dz.activateBody" : "d.dz.deactivateBody")}</p>
+                        </div>
+                        <button type="button" className="btn btn--ghost" disabled={saving || dirty} title={dirty ? t("d.ed.unsaved") : undefined} onClick={() => { setActError(null); setSwitchAsk(inactive ? "on" : "off"); }}>{t(inactive ? "d.dz.activate" : "d.dz.deactivate")}</button>
+                      </div>
+                    ) : null}
                     {!resigned ? (
                       <div className="dc-danger__row">
                         <div>
@@ -452,11 +493,18 @@ export default function DoctorEditDialog({
         onClose={() => setDiscardAsk(false)}
       />
       <ConfirmDialog
+        spec={switchSpec}
+        busy={acting}
+        error={actError && switchAsk ? t(actError) : null}
+        onConfirm={() => void switchActive()}
+        onClose={() => { if (!acting) { setSwitchAsk(null); setActError(null); } }}
+      />
+      <ConfirmDialog
         spec={retireSpec}
         busy={acting}
         error={actError && retireAsk ? t(actError) : null}
         onConfirm={() => void retire()}
-        onClose={() => { if (!acting) setRetireAsk(false); }}
+        onClose={() => { if (!acting) { setRetireAsk(false); setActError(null); } }}
       />
       <DeleteDoctorDialog
         name={deleteAsk && doc ? doc.name : null}

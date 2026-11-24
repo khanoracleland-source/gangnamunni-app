@@ -33,6 +33,22 @@ export class DoctorsWriteController {
     return this.doctors.retire(scopeOfRequest(req), parseDoctorId(rawId));
   }
 
+  /** Hides the doctor from the app (inactive); can be undone with `activate`. */
+  @Post(':id/deactivate')
+  @HttpCode(200)
+  @UseGuards(DoctorsWriteEnabledGuard, CsrfGuard, AdminGuard)
+  deactivate(@Req() req: ScopedAdminRequest, @Param('id') rawId: string) {
+    return this.doctors.setActive(scopeOfRequest(req), parseDoctorId(rawId), false);
+  }
+
+  /** Shows an inactive doctor in the app again (last in the display order). */
+  @Post(':id/activate')
+  @HttpCode(200)
+  @UseGuards(DoctorsWriteEnabledGuard, CsrfGuard, AdminGuard)
+  activate(@Req() req: ScopedAdminRequest, @Param('id') rawId: string) {
+    return this.doctors.setActive(scopeOfRequest(req), parseDoctorId(rawId), true);
+  }
+
   /** Body { direction: "up" | "down" } or { position: n }. The hospital account moves only doctors of its own hospital. */
   @Post(':id/order')
   @HttpCode(200)

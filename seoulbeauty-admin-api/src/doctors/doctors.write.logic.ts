@@ -1,6 +1,7 @@
 /** Pure parts of editing and retiring a doctor: input checks and SQL (every value is a placeholder). */
 import * as path from 'path';
 import { positiveInt, Query } from '../hospitals/hospitals.logic';
+import { INACTIVE_STORED } from './doctors.logic';
 
 export const SPECIALTY_CHOICES = ['피부과 전문의', '성형외과 전문의', '마취통증의학과 전문의', '가정의학과 전문의', '일반의'];
 export const MAX_NAME = 100;
@@ -110,6 +111,12 @@ export function assignTreatmentsQuery(doctorId: number, hospitalId: number, ids:
     values,
   };
 }
+
+/** Switches a doctor between active and inactive; going inactive also takes the doctor out of the display order. Assignments stay as they are. */
+export const setActiveQuery = (id: number, active: boolean, clearOrder: boolean): Query => ({
+  sql: `UPDATE gangnamunni_doctors SET status = ?${!active && clearOrder ? ', display_order = NULL' : ''}, updated_at = NOW() WHERE id = ? LIMIT 1`,
+  values: [active ? 'active' : INACTIVE_STORED, id],
+});
 
 /** Retire: status resigned and out of the display order. */
 export const retireDoctorQuery = (id: number, clearOrder: boolean): Query => ({

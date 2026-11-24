@@ -3199,12 +3199,11 @@ body.reo-dragging { user-select: none; cursor: grabbing; }
 .dc-f-hospital { flex: 0 1 220px; }
 .dc-f-search { display: flex; flex: 1 1 220px; align-items: flex-end; gap: 8px; min-width: 0; }
 .dc-f-status { flex: 0 0 auto; }
-.dc-f-per { flex: 0 0 120px; }
 
 .dc-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
 .dc-cards.is-busy { opacity: 0.6; transition: opacity var(--t-fast) var(--ease); }
 .dc-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); }
-.dc-card.is-resigned .dc-photo { filter: grayscale(1); opacity: 0.75; }
+.dc-card.is-resigned .dc-photo, .dc-card.is-inactive .dc-photo { filter: grayscale(1); opacity: 0.75; }
 .dc-card__top { display: flex; gap: 12px; align-items: center; min-width: 0; }
 .dc-card__id { flex: 1; min-width: 0; }
 .dc-card__nameRow { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -3270,7 +3269,7 @@ body.reo-dragging { user-select: none; cursor: grabbing; }
   .dc-stat { padding: 12px; }
   .dc-stat__label { font-size: 12px; }
   .dc-filters { padding: 12px; gap: 10px; }
-  .dc-f-hospital, .dc-f-search, .dc-f-status, .dc-f-per { flex: 1 1 100%; }
+  .dc-f-hospital, .dc-f-search, .dc-f-status { flex: 1 1 100%; }
   .dc-f-status .seg { display: flex; width: 100%; }
   .dc-f-status .seg button { flex: 1; min-height: 44px; }
   .dc-filters .input, .dc-filters .sel, .dc-dialog .input, .dc-dialog .sel, .dc-dialog textarea, .dc-dialog-del .input { font-size: 16px; min-height: 44px; }

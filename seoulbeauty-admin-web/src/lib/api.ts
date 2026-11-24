@@ -2140,8 +2140,10 @@ export async function deleteFeeRate(id: number): Promise<WriteResult<Json>> {
 
 // ───────── Doctors (all hospitals) ─────────
 
-export const DOCTOR_PER_PAGE_OPTIONS = [10, 20, 50] as const;
-export type DoctorStatusFilter = "all" | "active" | "resigned";
+/** The doctors list always shows this many cards per page. */
+export const DOCTOR_PER_PAGE = 15;
+export type DoctorStatusFilter = "all" | "active" | "inactive" | "resigned";
+export type DoctorStatus = "active" | "inactive" | "resigned";
 export type DoctorListQuery = { hospitalId: number; search: string; status: DoctorStatusFilter; page: number; perPage: number };
 
 export type DoctorCard = {
@@ -2153,7 +2155,7 @@ export type DoctorCard = {
   qualification: string;
   /** As stored; shown only through `doctorPhotoUrl`. */
   photoUrl: string | null;
-  status: "active" | "resigned";
+  status: DoctorStatus;
   /** Place among the active doctors of the hospital (1 = first); null = none yet. */
   displayOrder: number | null;
   treatments: string[];
@@ -2165,7 +2167,7 @@ export type DoctorHospitalOption = { id: number; name: string };
 export type DoctorOrderItem = { id: number; name: string; specialty: string; photoUrl: string | null; position: number };
 export type DoctorOrderBoard = { hospitalId: number; orderable: boolean; total: number; items: DoctorOrderItem[] };
 
-const doctorStatus = (v: unknown): "active" | "resigned" => (v === "resigned" ? "resigned" : "active");
+const doctorStatus = (v: unknown): DoctorStatus => (v === "resigned" ? "resigned" : v === "inactive" ? "inactive" : "active");
 const photoOf = (v: unknown): string | null => (str(v).trim() === "" ? null : str(v));
 
 function doctorCard(raw: unknown): DoctorCard {
@@ -2308,4 +2310,10 @@ export async function moveDoctor(id: number, move: { direction: "up" | "down" } 
 export async function deleteDoctor(id: number): Promise<WriteResult<{ name: string }>> {
   const res = await sendJson("POST", `/v1/doctors/${encodeURIComponent(String(id))}/delete`, { confirm: true });
   return res.ok ? { ok: true, data: { name: str(res.data.name) } } : res;
+}
+
+/** Hides a doctor from the app (inactive) or shows the doctor again. Treatments stay assigned; going inactive clears the place in the order. */
+export async function setDoctorActive(id: number, active: boolean): Promise<WriteResult<DoctorFull>> {
+  const res = await sendJson("POST", `/v1/doctors/${encodeURIComponent(String(id))}/${active ? "activate" : "deactivate"}`, {});
+  return res.ok ? { ok: true, data: doctorFull(res.data) } : res;
 }
