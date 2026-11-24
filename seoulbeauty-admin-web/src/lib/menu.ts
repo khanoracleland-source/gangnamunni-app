@@ -18,7 +18,7 @@ export type MenuItem = {
   /** A page of this panel that only a super admin can open (its API refuses everyone else). */
   superOnly?: boolean;
   /** Shown only to a super admin while the server has this switch on. */
-  requires?: "archive" | "moderation";
+  requires?: "archive" | "moderation" | "banners";
 };
 
 export type MenuGroup = { key: string; label: Label; icon: IconName; items: MenuItem[] };
@@ -68,6 +68,7 @@ const MENU: MenuGroup[] = [
       // 인력 관리(admin_personnel.php): 임시로 메뉴에서 숨김 — 다시 보이려면 아래 줄의 주석을 해제
       // legacy("personnel", "admin_personnel.php", "인력 관리", "Staff", "people"),
       { key: "content_review", label: L("콘텐츠 심사", "Content review"), icon: "shield", status: "new", href: "/moderation", requires: "moderation" },
+      { key: "banners", label: L("배너 관리", "Banners"), icon: "image", status: "new", href: "/banners", superOnly: true, requires: "banners" },
       legacy("categories", "admin_categories.php", "카테고리 관리", "Categories", "tag"),
       legacy("events", "admin_events.php", "이벤트 관리", "Events", "calendar"),
       legacy("columns", "admin_columns.php", "칼럼/뉴스 관리", "Columns / news", "sheet"),
@@ -257,9 +258,10 @@ export function buildMenu(features: Features | null, scope: Scope | null): MenuG
   }
   const showArchive = features?.archive === true && scope === "all";
   const showModeration = features?.moderation === true;
+  const showBanners = features?.banners === true && scope === "all";
   const groups = MENU.map((group) => ({
     ...group,
-    items: group.items.filter((item) => (item.requires !== "archive" || showArchive) && (item.requires !== "moderation" || showModeration)).map((item): MenuItem => {
+    items: group.items.filter((item) => (item.requires !== "archive" || showArchive) && (item.requires !== "moderation" || showModeration) && (item.requires !== "banners" || showBanners)).map((item): MenuItem => {
       const href = routes.get(item.key);
       return href ? { ...item, status: "new", href } : item;
     }),

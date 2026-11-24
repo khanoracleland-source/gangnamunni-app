@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -150,6 +150,8 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         moderationWrite: obj(d.features).moderationWrite === true,
         moderationEdit: obj(d.features).moderationEdit === true,
         moderationDelete: obj(d.features).moderationDelete === true,
+        banners: obj(d.features).banners === true,
+        bannersWrite: obj(d.features).bannersWrite === true,
       },
     },
   };
@@ -2483,4 +2485,145 @@ export async function deleteReview(id: number, revision: string): Promise<WriteR
 /** Same for a community post (super admin only). */
 export async function deletePost(id: number, revision: string): Promise<WriteResult<{ id: number }>> {
   return savedId(await sendJson("DELETE", `/v1/moderation/community/${itemId(id)}`, { revision }));
+}
+
+// ---- banners (home page and my page; super admin only) ---------------------------------------------------------------
+
+export type BannerView = "all" | "visible" | "hidden";
+export type BannerQuery = { view: BannerView; search: string; page: number };
+export type BannerItem = {
+  id: number;
+  title: string;
+  subtitle: string;
+  image: string;
+  mypageImage: string;
+  linkUrl: string;
+  displayOrder: number;
+  hospitalId: number;
+  hospitalName: string;
+  status: string;
+  homeEnabled: boolean;
+  visible: boolean;
+  createdAt: string;
+  revision: string;
+};
+export type BannerCounts = { all: number; visible: number; hidden: number };
+export type BannerPageData = { view: BannerView; page: number; perPage: number; hasMore: boolean; counts: BannerCounts; items: BannerItem[] };
+export type BannerScroll = { enabled: boolean; intervalSeconds: number };
+/** What the banner form sends. `imageUrl` / `mypageImageUrl` are the stored pictures the form keeps; a chosen file replaces them. */
+export type BannerInput = {
+  title: string;
+  subtitle: string;
+  linkUrl: string;
+  displayOrder: string;
+  hospitalId: number;
+  imageUrl: string;
+  mypageImageUrl: string;
+  image: File | null;
+  mypageImage: File | null;
+};
+
+const bannerPath = (id: number): string => `/v1/banners/${encodeURIComponent(String(id))}`;
+
+const bannerItem = (raw: unknown): BannerItem => {
+  const r = obj(raw);
+  return {
+    id: num(r.id),
+    title: str(r.title),
+    subtitle: str(r.subtitle),
+    image: str(r.image),
+    mypageImage: str(r.mypageImage),
+    linkUrl: str(r.linkUrl),
+    displayOrder: num(r.displayOrder),
+    hospitalId: num(r.hospitalId),
+    hospitalName: str(r.hospitalName),
+    status: str(r.status),
+    homeEnabled: r.homeEnabled === true,
+    visible: r.visible === true,
+    createdAt: str(r.createdAt),
+    revision: str(r.revision),
+  };
+};
+
+export async function fetchBanners(q: BannerQuery, signal?: AbortSignal): Promise<ApiResult<BannerPageData>> {
+  const params = new URLSearchParams();
+  params.set("view", q.view);
+  if (q.search !== "") params.set("search", q.search);
+  if (q.page > 1) params.set("page", String(q.page));
+  const res = await getJson(`/v1/banners?${params.toString()}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const c = obj(d.counts);
+  const view: BannerView = d.view === "visible" || d.view === "hidden" ? d.view : "all";
+  return {
+    ok: true,
+    data: { view, page: Math.max(1, num(d.page)), perPage: num(d.perPage) || 20, hasMore: d.hasMore === true, counts: { all: num(c.all), visible: num(c.visible), hidden: num(c.hidden) }, items: list(d.items).map(bannerItem) },
+  };
+}
+
+export async function fetchBannerHospitals(signal?: AbortSignal): Promise<ApiResult<DoctorHospitalOption[]>> {
+  const res = await getJson("/v1/banners/hospitals", signal);
+  if (!res.ok) return res;
+  return { ok: true, data: list(obj(res.data).items).map((x) => ({ id: num(obj(x).id), name: str(obj(x).name) })).filter((x) => x.id > 0) };
+}
+
+const bannerScroll = (raw: unknown): BannerScroll => ({ enabled: obj(raw).enabled === true, intervalSeconds: Math.min(60, Math.max(1, num(obj(raw).intervalSeconds) || 10)) });
+
+export async function fetchBannerScroll(signal?: AbortSignal): Promise<ApiResult<BannerScroll>> {
+  const res = await getJson("/v1/banners/scroll", signal);
+  return res.ok ? { ok: true, data: bannerScroll(res.data) } : res;
+}
+
+export async function saveBannerScroll(value: BannerScroll): Promise<WriteResult<BannerScroll>> {
+  const res = await sendJson("PUT", "/v1/banners/scroll", value);
+  return res.ok ? { ok: true, data: bannerScroll(res.data) } : res;
+}
+
+export async function setBannerHome(id: number, enabled: boolean): Promise<WriteResult<{ id: number; homeEnabled: boolean }>> {
+  const res = await sendJson("POST", `${bannerPath(id)}/home`, { enabled });
+  return res.ok ? { ok: true, data: { id: num(obj(res.data).id), homeEnabled: obj(res.data).homeEnabled === true } } : res;
+}
+
+export async function deleteBanner(id: number, revision: string): Promise<WriteResult<{ id: number }>> {
+  const res = await sendJson("DELETE", bannerPath(id), { revision });
+  return res.ok ? { ok: true, data: { id: num(obj(res.data).id) } } : res;
+}
+
+/** Creates (no `revision`) or edits (with the revision the page was read with) one banner. Multipart: the browser sets Content-Type itself. */
+export async function saveBanner(input: BannerInput, target: { id: number; revision: string } | null): Promise<WriteResult<{ id: number }>> {
+  const body = new FormData();
+  body.append("title", input.title);
+  body.append("subtitle", input.subtitle);
+  body.append("linkUrl", input.linkUrl);
+  body.append("displayOrder", input.displayOrder);
+  body.append("hospitalId", input.hospitalId > 0 ? String(input.hospitalId) : "");
+  body.append("imageUrl", input.imageUrl);
+  body.append("mypageImageUrl", input.mypageImageUrl);
+  if (target) body.append("revision", target.revision);
+  if (input.image) body.append("image", input.image);
+  if (input.mypageImage) body.append("mypageImage", input.mypageImage);
+  const fail = (status: number, d: Record<string, unknown> = {}): WriteFailure => {
+    const fields: Record<string, string> = {};
+    for (const [name, code] of Object.entries(obj(d.fields))) if (typeof code === "string") fields[name] = code;
+    return { ok: false, status, fields, updatedAt: "", error: str(d.error), blockers: [], deletableAfter: "" };
+  };
+  try {
+    const res = await fetch(`${BASE_PATH}/api${target ? bannerPath(target.id) : "/v1/banners"}`, {
+      method: target ? "PATCH" : "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json", "X-Requested-With": "admin-next" },
+      body,
+    });
+    let data: unknown = null;
+    try {
+      data = await res.json();
+    } catch {
+      // An empty or non-JSON body: the status alone says what happened.
+    }
+    const d = obj(data);
+    return res.ok ? { ok: true, data: { id: num(d.id) } } : fail(res.status, d);
+  } catch {
+    return fail(0);
+  }
 }

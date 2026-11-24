@@ -3424,3 +3424,100 @@ body.reo-dragging { user-select: none; cursor: grabbing; }
   .mod-ed__select { width: 100%; min-height: 44px; }
 }
 .mod-ed > .field { flex: none; }
+
+/* banners (home page and my page) */
+.ban-page { display: flex; flex-direction: column; gap: 16px; max-width: 1120px; margin: 0 auto; }
+.ban-scroll { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+.ban-scroll__text { flex: 1 1 260px; min-width: 0; }
+.ban-scroll__title { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }
+.ban-scroll__desc { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.ban-scroll__ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.ban-scroll__on { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); min-height: 32px; }
+.ban-scroll__iv { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.ban-scroll__iv.is-off { opacity: .5; }
+.ban-scroll__num { width: 72px; text-align: right; }
+.ban-scroll__err { flex-basis: 100%; margin: 0; }
+.ban-err { display: flex; align-items: center; gap: 4px; margin: 4px 0 0; font-size: 12px; color: var(--down); }
+.ban-tool .ban-add { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.ban-grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); transition: opacity var(--t-fast) var(--ease); }
+.ban-grid.is-busy { opacity: .6; pointer-events: none; }
+.ban-card { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
+@media (hover: hover) and (min-width: 900px) { .ban-card:hover { border-color: var(--control-line); } }
+.ban-card__img { position: relative; aspect-ratio: 16 / 5; background: var(--surface-2); }
+.ban-card__img img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ban-card.is-off .ban-card__img img { filter: grayscale(.85); opacity: .55; }
+.ban-card.is-off .ban-card__title { color: var(--muted); }
+.ban-card__noimg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.ban-card__order { position: absolute; top: 10px; left: 10px; min-width: 28px; height: 28px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--primary); color: var(--on-primary); font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ban-card__state { position: absolute; top: 10px; right: 10px; }
+.ban-card__body { padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ban-card__title { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ban-card__sub { margin: 0; font-size: 13px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ban-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; min-width: 0; }
+.ban-card__link { flex: 1 1 180px; min-width: 0; font-size: 13px; color: var(--accent-text, var(--ink)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ban-card__link.is-none { color: var(--muted); }
+.ban-card__hosp { display: inline-flex; max-width: 100%; align-items: center; height: 22px; padding: 0 10px; border-radius: var(--r-pill); background: var(--badge-bg); color: var(--badge-on); font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ban-card__hosp.is-solo { background: none; border: 1px dashed var(--control-line); color: var(--muted); }
+.ban-card__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; padding: 8px 12px 8px 16px; border-top: 1px solid var(--line); }
+.ban-card__sw { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px; color: var(--ink); }
+.ban-card__acts { display: flex; gap: 6px; margin-left: auto; }
+.ban-skel { padding: 0 0 14px; gap: 8px; }
+.ban-skel > .mod-skel__line { margin: 0 16px; }
+.ban-skel__img { display: block; aspect-ratio: 16 / 5; background: var(--line); animation: mod-pulse 1.2s ease-in-out infinite; }
+.ban-error { border-color: var(--down); color: var(--down); }
+
+.dialog.ban-dlg { width: min(920px, calc(100% - 32px)); padding: 0; }
+.ban-dlg__box { display: flex; flex-direction: column; max-height: calc(100dvh - 48px); }
+.ban-dlg__head { display: flex; align-items: center; padding: 14px 16px 14px 24px; border-bottom: 1px solid var(--line); }
+.ban-dlg__head .dialog__title { flex: 1; }
+.ban-dlg__head .dialog__close { margin: 0; min-width: 32px; height: 32px; }
+.ban-dlg__body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+.ban-dlg__sum { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--r-md, 8px); background: var(--down-bg); color: var(--down); font-size: 13px; font-weight: 600; }
+.ban-dlg__grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+.ban-pics { display: flex; flex-direction: column; gap: 16px; padding: 16px; border-radius: 12px; background: var(--bg); }
+.ban-pic { display: flex; flex-direction: column; gap: 6px; }
+.ban-pic__zone { position: relative; aspect-ratio: 16 / 5; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px; border: 1.5px dashed var(--control-line); background: var(--surface); color: var(--muted); }
+.ban-pic__zone:not(.is-empty) { border-style: solid; border-color: var(--line); }
+.ban-pic__zone.is-err { border-color: var(--down); background: var(--down-bg); }
+.ban-pic__zone img { width: 100%; height: 100%; object-fit: cover; }
+.ban-pic__zone img.is-dim { opacity: .45; }
+.ban-pic__using { position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; }
+.ban-pic__note, .ban-pics__hint, .ban-form__note { margin: 0; font-size: 12px; color: var(--muted); }
+.ban-pic__acts { display: flex; gap: 6px; }
+.ban-form { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ban-form .field { flex: none; }
+.ban-form__row { display: grid; grid-template-columns: 1fr 140px; gap: 12px; align-items: start; }
+.ban-form__note { margin-top: -10px; }
+.ban-dlg__foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--line); }
+
+@media (max-width: 899px) {
+  .ban-scroll { padding: 12px 16px; }
+  .dialog.ban-dlg { width: min(90vw, 720px); }
+  .ban-dlg__grid { grid-template-columns: 1fr; gap: 16px; }
+}
+@media (max-width: 639px) {
+  .ban-page { gap: 12px; }
+  .ban-grid { grid-template-columns: 1fr; gap: 12px; }
+  .ban-tool .ban-add { margin-left: 0; flex: 1 1 100%; justify-content: center; min-height: 44px; }
+  .ban-card__body { padding: 12px 14px 10px; }
+  .ban-card__foot { padding: 8px 12px 12px; }
+  .ban-card__sw { flex-basis: 100%; min-height: 44px; }
+  .ban-card__acts { flex: 1 1 100%; margin-left: 0; gap: 8px; }
+  .ban-card__acts .btn { flex: 1; min-height: 44px; }
+  .ban-scroll { padding: 12px; }
+  .ban-scroll__num { width: 80px; min-height: 44px; font-size: 16px; }
+  .ban-scroll .btn { min-height: 44px; }
+  .ban-scroll__on { min-height: 44px; }
+  .dialog.ban-dlg { width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border-radius: 0; border: 0; }
+  .ban-dlg__box { height: 100dvh; max-height: none; }
+  .ban-dlg__head { padding: 6px 4px 6px 16px; }
+  .ban-dlg__head .dialog__close { min-width: 44px; height: 44px; }
+  .ban-dlg__body { padding: 16px; }
+  .ban-pics { padding: 12px; }
+  .ban-form__row { grid-template-columns: 1fr; }
+  .ban-dlg__foot { padding: 12px 16px; }
+  .ban-dlg__foot .btn, .ban-pic__acts .btn { flex: 1; min-height: 44px; }
+  .ban-dlg .input { min-height: 44px; font-size: 16px; }
+}
+@media (min-width: 640px) { .ban-form__order .input { max-width: 200px; } }
+@media (prefers-reduced-motion: reduce) { .ban-skel__img { animation: none; } .ban-grid { transition: none; } }
