@@ -245,6 +245,7 @@ describe('Inicis card payment API', () => {
       expect(p).toMatchObject({ P_MID: MID, P_OID: OID, P_AMT: '50000', P_PAY_TYPE: 'CARD', P_DEVICE_TYPE: 'WEB', P_IDCCODE: 'Y', P_CHARSET: 'UTF-8', P_NEXT_URL: 'https://seoulbeauty.app/next/api/v1/payments/inicis/return', P_CLOSE_URL: 'https://seoulbeauty.app/next/mypage/bookings/7/payment' });
       expect(p.P_CHKFAKE).toBe(chkFake('50000', OID, p.P_TIMESTAMP, KEY));
       expect(p.P_TIMESTAMP).toMatch(/^\d{13}$/);
+      expect(p.P_NOTI).toBe(OID); // the mobile result may omit P_OID: the order number comes back in P_NOTI
       expect(r.body.sdkUrl).toBe('https://paypro.inicis.com/std/payment/js/INIPayPro_v2.js');
       expect(JSON.stringify(r.body)).not.toContain(KEY); // the hash key never leaves the server
       expect(wrote()).toBe(false);
@@ -372,6 +373,18 @@ describe('Inicis card payment API', () => {
       st.order.status = 'failed'; expect((await ret(authResult()).expect(303)).headers.location).toContain('pay_error=ORDER_STATE'); st.order.status = 'pending';
       st.booking.status = 'cancelled'; expect((await ret(authResult()).expect(303)).headers.location).toContain('pay_error=BOOKING_NOT_CONFIRMED'); st.booking.status = 'confirmed';
       st.order.points_used = 500; expect((await ret(authResult()).expect(303)).headers.location).toContain('pay_error=POINTS_NOT_SUPPORTED');
+      expect(inicisCalls).toHaveLength(0);
+    });
+    it('mobile result without P_OID: the order is found by P_NOTI', async () => {
+      const { P_OID: _omit, ...noOid } = authResult();
+      const r = await ret({ ...noOid, P_NOTI: OID }).expect(303);
+      expect(r.headers.location).toBe('/next/mypage/bookings/7/payment/success');
+      expect(inicisCalls.length).toBeGreaterThan(0);
+    });
+    it('P_NOTI is only trusted in the order-number format', async () => {
+      const { P_OID: _omit, ...noOid } = authResult();
+      const r = await ret({ ...noOid, P_NOTI: '7' }).expect(303);
+      expect(r.headers.location).toBe('/next/mypage/bookings?pay_error=UNAVAILABLE');
       expect(inicisCalls).toHaveLength(0);
     });
     it('unknown or malformed order ids are not even looked up', async () => {

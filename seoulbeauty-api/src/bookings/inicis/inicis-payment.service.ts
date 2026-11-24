@@ -115,7 +115,7 @@ export class InicisPaymentService {
         P_UNAME: clipBytes((s(b.name) || m.name || '고객').trim(), 30) || '고객',
         P_NEXT_URL: `${publicBase}/api/v1/payments/inicis/return`,
         P_CLOSE_URL: `${publicBase}/mypage/bookings/${id}/payment`,
-        P_CHARSET: 'UTF-8', P_NOTI: String(id), P_TIMESTAMP: timestamp, P_CHKFAKE: chkFake(amount, oid, timestamp, cfg.hashkey),
+        P_CHARSET: 'UTF-8', P_NOTI: oid, P_TIMESTAMP: timestamp, P_CHKFAKE: chkFake(amount, oid, timestamp, cfg.hashkey),
         // iOS card apps come back through the app's URL scheme (manual: P_RESERVED app_scheme).
         P_RESERVED: JSON.stringify(mobile ? { app_scheme: `${cfg.appScheme}://payment` } : {}),
       },
@@ -149,7 +149,9 @@ export class InicisPaymentService {
     const cfg = inicisConfig();
     const prefix = this.base(cfg);
     const str = (k: string) => (typeof body?.[k] === 'string' ? (body[k] as string).slice(0, 500) : '');
-    const oid = str('P_OID');
+    // The mobile authentication result may come back without P_OID: the order number is also sent in P_NOTI (see prepare()).
+    // Only a value in the exact order-number format is used; the ledger still decides everything.
+    const oid = MERCHANT_RE.test(str('P_OID')) ? str('P_OID') : str('P_NOTI');
     const list = (code: string) => noticeUrl(prefix, oid, code);
     if (!cfg || !this.pay?.getConnection || !MERCHANT_RE.test(oid)) return list('UNAVAILABLE');
     const provider = inicisProvider(cfg);
