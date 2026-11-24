@@ -501,6 +501,11 @@ export const moderationEnabled = (): boolean => process.env.ADMIN_MODERATION_ENA
 /** Approving and rejecting. Needs the moderation page on as well; only the exact value "1" turns it on. */
 export const moderationWriteEnabled = (): boolean => moderationEnabled() && process.env.ADMIN_MODERATION_WRITE === '1';
 
+/** Editing a review or post (text, rating, treatments, removing pictures). Needs the moderation page on; only the exact value "1" turns it on. */
+export const moderationEditEnabled = (): boolean => moderationEnabled() && process.env.ADMIN_MODERATION_EDIT === '1';
+/** Deleting a review or post for good. A switch of its own because it cannot be undone; only the exact value "1" turns it on. */
+export const moderationDeleteEnabled = (): boolean => moderationEnabled() && process.env.ADMIN_MODERATION_DELETE === '1';
+
 /** With ADMIN_MODERATION_ENABLED off the moderation routes answer 404 as if they did not exist; PHP is not asked. */
 @Injectable()
 export class ModerationEnabledGuard implements CanActivate {
@@ -515,6 +520,24 @@ export class ModerationEnabledGuard implements CanActivate {
 export class ModerationWriteEnabledGuard implements CanActivate {
   canActivate(): boolean {
     if (!adminPanelEnabled() || !moderationWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the edit switch off the edit routes answer 404 as if they did not exist. */
+@Injectable()
+export class ModerationEditEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !moderationEditEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the delete switch off the delete routes answer 404 as if they did not exist. */
+@Injectable()
+export class ModerationDeleteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !moderationDeleteEnabled()) throw new NotFoundException({ error: 'not_found' });
     return true;
   }
 }

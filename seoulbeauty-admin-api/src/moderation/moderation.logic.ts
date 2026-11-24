@@ -252,3 +252,158 @@ export const decidePostQuery = (id: number, decision: Decision): Query => ({
   sql: "UPDATE gangnamunni_community_posts SET status = ? WHERE id = ? AND status = 'pending' LIMIT 1",
   values: [decision === 'approve' ? 'active' : 'rejected', id],
 });
+
+// ---- editing --------------------------------------------------------------------------------------------------------
+
+export const TITLE_MAX = 100;
+export const CONTENT_MAX = 2000;
+export const TREATMENTS_MAX = 10;
+export const TREATMENT_NAME_MAX = 50;
+export const REMOVE_IMAGES_MAX = 12;
+
+export type FieldErrors = Record<string, string>;
+const CONTROL = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+const length = (v: string): number => Array.from(v).length;
+
+/** A text field: a string, trimmed, line breaks as "\n", no control characters, not empty. The length limit is checked later against the stored value. */
+function cleanText(raw: unknown, name: string, errors: FieldErrors): string {
+  if (typeof raw !== 'string') {
+    errors[name] = 'required';
+    return '';
+  }
+  const v = raw.replace(/\r\n?/g, '\n').trim();
+  if (v === '') errors[name] = 'required';
+  else if (CONTROL.test(v)) errors[name] = 'bad_format';
+  return v;
+}
+
+function stringList(raw: unknown, name: string, max: number, errors: FieldErrors): string[] {
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw) || raw.some((x) => typeof x !== 'string')) {
+    errors[name] = 'invalid';
+    return [];
+  }
+  if (raw.length > max) errors[name] = 'too_many';
+  return raw as string[];
+}
+
+export interface ReviewEdit {
+  title: string;
+  content: string;
+  rating: number;
+  treatments: string[];
+  removeImages: string[];
+}
+export interface PostEdit {
+  category: string;
+  title: string;
+  content: string;
+  removeImages: string[];
+}
+
+export function parseReviewEdit(body: unknown): { value: ReviewEdit; errors: FieldErrors } {
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  const errors: FieldErrors = {};
+  const title = cleanText(b.title, 'title', errors);
+  const content = cleanText(b.content, 'content', errors);
+  const rating = typeof b.rating === 'number' && Number.isInteger(b.rating) && b.rating >= 1 && b.rating <= 5 ? b.rating : 0;
+  if (rating === 0) errors.rating = 'range';
+  const treatments: string[] = [];
+  for (const x of stringList(b.treatments, 'treatments', TREATMENTS_MAX, errors)) {
+    const name = x.trim();
+    if (name === '') continue;
+    // the column keeps the names in one comma separated string, so a comma inside a name would split it
+    if (name.includes(',') || CONTROL.test(name)) errors.treatments = 'bad_format';
+    else if (length(name) > TREATMENT_NAME_MAX) errors.treatments = 'too_long';
+    if (!treatments.includes(name)) treatments.push(name);
+  }
+  const removeImages = stringList(b.removeImages, 'removeImages', REMOVE_IMAGES_MAX, errors);
+  return { value: { title, content, rating, treatments, removeImages }, errors };
+}
+
+export function parsePostEdit(body: unknown): { value: PostEdit; errors: FieldErrors } {
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  const errors: FieldErrors = {};
+  const category = cleanText(b.category, 'category', errors);
+  const title = cleanText(b.title, 'title', errors);
+  const content = cleanText(b.content, 'content', errors);
+  const removeImages = stringList(b.removeImages, 'removeImages', REMOVE_IMAGES_MAX, errors);
+  return { value: { category, title, content, removeImages }, errors };
+}
+
+/** Too long is judged against what is stored: a value that was already there and is unchanged is never refused for its length. */
+export function lengthErrors(next: { title: string; content: string }, current: { title: string; content: string }): FieldErrors {
+  const errors: FieldErrors = {};
+  // the submitted text has its line breaks and edges normalised, so the stored one is compared the same way
+  const same = (x: string): string => x.replace(/\r\n?/g, '\n').trim();
+  if (next.title !== same(current.title) && length(next.title) > TITLE_MAX) errors.title = 'too_long';
+  if (next.content !== same(current.content) && length(next.content) > CONTENT_MAX) errors.content = 'too_long';
+  return errors;
+}
+
+export const treatmentList = (stored: unknown): string[] => str(stored).split(',').map((x) => x.trim()).filter(Boolean);
+
+/** Names a review of this hospital may carry: its own active treatments. */
+export const hospitalTreatmentNamesQuery = (hospitalId: number): Query => ({
+  sql: `SELECT DISTINCT tm.name FROM gangnamunni_hospital_treatments ht JOIN gangnamunni_treatment_master tm ON tm.id = ht.treatment_id
+         WHERE ht.hospital_id = ? AND ht.is_active = 1 AND ht.status = 'active' ORDER BY tm.name ASC LIMIT 500`,
+  values: [hospitalId],
+});
+
+export const postCategoriesQuery = (): Query => ({
+  sql: "SELECT DISTINCT category FROM gangnamunni_community_posts WHERE category <> '' ORDER BY category ASC LIMIT 100",
+  values: [],
+});
+
+export const updateReviewQuery = (id: number, e: ReviewEdit): Query => ({
+  sql: 'UPDATE hospital_reviews SET title = ?, content = ?, rating = ?, treatments = ?, updated_at = NOW() WHERE id = ? LIMIT 1',
+  values: [e.title, e.content, e.rating, e.treatments.join(', '), id],
+});
+
+export const deleteReviewImagesByUrlQuery = (reviewId: number, urls: string[]): Query => ({
+  sql: 'DELETE FROM review_images WHERE review_id = ? AND image_url IN (?)',
+  values: [reviewId, urls],
+});
+
+/** The stored list with the removed pictures taken out; an entry matches by its stored text or by its safe address. */
+export function remainingPhotos(raw: unknown, remove: string[]): string[] | null {
+  try {
+    const v = JSON.parse(str(raw) || '[]');
+    if (!Array.isArray(v)) return null;
+    const gone = new Set(remove);
+    return v.filter((x) => typeof x === 'string').filter((x: string) => !gone.has(x) && !gone.has(safeImageUrl(x)));
+  } catch {
+    return null;
+  }
+}
+
+export const updatePostQuery = (id: number, e: PostEdit, photos: string[] | null): Query =>
+  photos === null
+    ? { sql: 'UPDATE gangnamunni_community_posts SET category = ?, title = ?, content = ? WHERE id = ? LIMIT 1', values: [e.category, e.title, e.content, id] }
+    : { sql: 'UPDATE gangnamunni_community_posts SET category = ?, title = ?, content = ?, photos = ? WHERE id = ? LIMIT 1', values: [e.category, e.title, e.content, JSON.stringify(photos), id] };
+
+// ---- deleting -------------------------------------------------------------------------------------------------------
+
+/**
+ * What hangs on a review, removed before the review itself. The picture rows come first and are required; the others belong to features that may not exist
+ * on every server, so a missing table is skipped (and only a missing table).
+ */
+export const reviewDeleteSteps = (id: number): { required: boolean; q: Query }[] => [
+  { required: true, q: { sql: 'DELETE FROM review_images WHERE review_id = ?', values: [id] } },
+  { required: false, q: { sql: 'DELETE FROM review_ai_logs WHERE review_id = ?', values: [id] } },
+  { required: false, q: { sql: 'DELETE FROM review_reports WHERE review_id = ?', values: [id] } },
+  { required: false, q: { sql: 'DELETE FROM review_likes WHERE review_id = ?', values: [id] } },
+  { required: false, q: { sql: 'DELETE FROM review_comments WHERE review_id = ?', values: [id] } },
+  { required: false, q: { sql: "DELETE FROM gangnamunni_content_reports WHERE content_type = 'review' AND content_id = ?", values: [id] } },
+];
+export const deleteReviewQuery = (id: number): Query => ({ sql: 'DELETE FROM hospital_reviews WHERE id = ? LIMIT 1', values: [id] });
+
+/** What hangs on a community post: threads and likes of its comments, the comments, the post's likes and the reports about it. */
+export const postDeleteSteps = (id: number): { required: boolean; q: Query }[] => [
+  { required: false, q: { sql: 'DELETE t FROM gangnamunni_community_comment_threads t JOIN gangnamunni_community_comments c ON c.id = t.comment_id WHERE c.post_id = ?', values: [id] } },
+  { required: false, q: { sql: 'DELETE cl FROM gangnamunni_community_comment_likes cl JOIN gangnamunni_community_comments c ON c.id = cl.comment_id WHERE c.post_id = ?', values: [id] } },
+  { required: false, q: { sql: 'DELETE FROM gangnamunni_community_comments WHERE post_id = ?', values: [id] } },
+  { required: false, q: { sql: 'DELETE FROM gangnamunni_community_likes WHERE post_id = ?', values: [id] } },
+  { required: false, q: { sql: "DELETE FROM gangnamunni_content_reports WHERE content_type = 'community' AND content_id = ?", values: [id] } },
+];
+export const deletePostQuery = (id: number): Query => ({ sql: 'DELETE FROM gangnamunni_community_posts WHERE id = ? LIMIT 1', values: [id] });
