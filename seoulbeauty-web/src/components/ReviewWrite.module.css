@@ -43,7 +43,6 @@
 .error { color: #AC1830; font-size: 14px; margin: 8px 0; }
 .submit { width: 100%; padding: 14px 0; background: #AC1830; color: #fff; font-size: 16px; font-weight: 600; margin-top: 8px; }
 .submit:disabled { opacity: 0.6; }
-.modal { position: fixed; inset: 0; z-index: 80; background: rgba(0, 0, 0, 0.45); display: flex; align-items: flex-end; justify-content: center; }
 .sheet { width: 100%; max-width: 640px; display: flex; flex-direction: column; padding: 0 20px 4px; box-sizing: border-box; }
 .sheet h2 { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
 .dlist { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }

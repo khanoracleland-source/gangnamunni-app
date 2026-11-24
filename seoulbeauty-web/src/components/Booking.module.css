@@ -163,11 +163,8 @@
 .stdBody { padding: 0 20px; }
 .stdBody .sheetBody { overflow-y: auto; overscroll-behavior: contain; padding: 0 0 14px; }
 .stdBody .sheetIcon { font-size: 28px; color: #fff; font-weight: 700; }
-.doneBody { padding: 30px 20px; display: flex; flex-direction: column; gap: 12px; }
+.doneBody { padding: 30px 20px; display: flex; flex-direction: column; gap: 14px; }
 .doneTitle { font-size: 22px; font-weight: 700; text-align: center; margin: 0; line-height: 1.4; }
-.doneBody .sheetIcon { color: #fff; font-size: 26px; font-weight: 700; }
-.doneBody .waitTime { font-size: 16px; font-weight: 700; margin-top: 4px; line-height: 1.5; }
-.doneBody .alertCopy { font-size: 13px; color: #555; line-height: 1.6; margin-top: 4px; }
 .cxSheet { padding: 10px 20px 26px; text-align: center; }
 .cxTitle { margin: 24px 0 0; font-size: 22px; font-weight: 700; line-height: 1.4; letter-spacing: -.04em; }
 .cxSub { margin: 6px 0 0; font-size: 16px; color: #4A4446; }

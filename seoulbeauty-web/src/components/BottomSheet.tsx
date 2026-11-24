@@ -12,7 +12,8 @@ import styles from "./BottomSheet.module.css";
  *  - rendered in a portal on <body> above the floating tab bar (z 1000); dim rgba(26,23,24,.45); radius 16 16 0 0; width ≤ 640
  *  - the grip is always drawn; `dismissible={false}` (a request is running) only makes dim tap, Esc and drag inert until it ends
  * `onClose` runs after the slide-out. A parent closes it with the animation through the ref: `ref.current?.close()`;
- * a button that also does something (navigate, save, delete) uses `ref.current?.closeThen(fn)`: the sheet slides down, then `onClose`, then `fn`.
+ * a button that also does something (navigate, save, delete) uses `ref.current?.closeThen(fn)`: the sheet slides down, then `onClose`, then `fn`;
+ * while it is sliding out a second `closeThen` is ignored — the first button pressed wins.
  */
 export type BottomSheetHandle = { close: (ms?: number) => void; closeThen: (after: () => void) => void };
 const DURATION = 400;
@@ -44,7 +45,7 @@ const BottomSheet = forwardRef<BottomSheetHandle, { open: boolean; onClose: () =
     };
     const closeRef = useRef(close);
     useEffect(() => { closeRef.current = close; });
-    useImperativeHandle(ref, () => ({ close: (ms?: number) => closeRef.current(ms), closeThen: (after: () => void) => { afterRef.current = after; closeRef.current(); } }), []);
+    useImperativeHandle(ref, () => ({ close: (ms?: number) => closeRef.current(ms), closeThen: (after: () => void) => { if (closing.current) return; afterRef.current = after; closeRef.current(); } }), []);
 
     useEffect(() => {
       if (!open) return;

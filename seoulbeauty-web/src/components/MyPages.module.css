@@ -114,9 +114,7 @@
 .bkHintLink img { width: 20px; height: 20px; margin-top: 1px; flex-shrink: 0; object-fit: contain; display: block; }
 .bkHintX { width: 18px; height: 18px; padding: 0; margin-top: 1px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #4A4446; cursor: pointer; }
 .bkEmpty { padding: 70px 20px; text-align: center; color: #777; line-height: 1.7; }
-.bkDim { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,.5); display: flex; align-items: flex-end; justify-content: center; }
-.bkSheet { width: 100%; max-width: 640px; box-sizing: border-box; padding: 28px 20px 24px; background: #fff; border-radius: 16px 16px 0 0; text-align: center; }
-.bkSheetIcon { width: 40px; height: 40px; margin: 0 auto 12px; border-radius: 20px; background: #AC1830; color: #fff; font-size: 24px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.bkSheetIcon { width: 40px; height: 40px; margin: 0 auto 12px; border-radius: 50%; background: #AC1830; color: #fff; font-size: 24px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .bkSheetTitle { font-size: 20px; font-weight: 700; line-height: 1.4; }
 .bkSheetDesc { margin-top: 10px; font-size: 15px; color: #4A4446; line-height: 1.6; }
 .bkSheetActions { display: flex; gap: 8px; margin-top: 20px; }
@@ -199,7 +197,6 @@
 .pfDiscard { display: block; width: 100%; height: 44px; margin-top: 8px; font-size: 15px; color: #666; }
 .pfDanger { display: block; width: 100%; height: 48px; margin-top: 8px; border-radius: 8px; background: #d93025; color: #fff; font-size: 16px; font-weight: 700; }
 .pfDanger:disabled, .pfDiscard:disabled { opacity: .6; }
-.pfModal { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 70; }
 .pfModalBox { width: 100%; max-width: 640px; box-sizing: border-box; background: #fff; border-radius: 16px 16px 0 0; padding: 4px 16px 0; }
 .pfModalBox h2 { margin: 0 0 8px; font-size: 18px; text-align: center; }
 .pfModalBox p { margin: 0 0 20px; font-size: 14px; color: #777; text-align: center; }
