@@ -498,11 +498,23 @@ export class SuperAdminRoleGuard implements CanActivate {
 
 /** Review and community post moderation (/v1/moderation*). Independent of the other switches; hospital roles still need ADMIN_HOSPITALS_ENABLED (see scopeOf). Only the exact value "1" turns it on. */
 export const moderationEnabled = (): boolean => process.env.ADMIN_MODERATION_ENABLED === '1';
+/** Approving and rejecting. Needs the moderation page on as well; only the exact value "1" turns it on. */
+export const moderationWriteEnabled = (): boolean => moderationEnabled() && process.env.ADMIN_MODERATION_WRITE === '1';
+
 /** With ADMIN_MODERATION_ENABLED off the moderation routes answer 404 as if they did not exist; PHP is not asked. */
 @Injectable()
 export class ModerationEnabledGuard implements CanActivate {
   canActivate(): boolean {
     if (!adminPanelEnabled() || !moderationEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the write switch off the approve and reject routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class ModerationWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !moderationWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
     return true;
   }
 }

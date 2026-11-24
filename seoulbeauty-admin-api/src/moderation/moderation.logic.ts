@@ -20,6 +20,15 @@ export function normalizeModerationQuery(q: Record<string, unknown> | undefined 
   return { status, search, hospitalId: parseHospitalId(get('hospitalId')), page };
 }
 
+/** Id of /v1/moderation/<kind>/:id, or 0 when it is not a plain positive integer. */
+export const parseItemId = (raw: unknown): number => (typeof raw === 'string' && /^[1-9]\d{0,9}$/.test(raw) ? positiveInt(raw) : 0);
+
+/** The revision the page was read with; any other shape is refused. */
+export const parseRevision = (body: unknown): string | null => {
+  const v = body && typeof body === 'object' ? (body as Record<string, unknown>).revision : undefined;
+  return typeof v === 'string' && /^[a-f0-9]{64}$/.test(v) ? v : null;
+};
+
 const sha = (parts: unknown[]): string => createHash('sha256').update(JSON.stringify(parts)).digest('hex');
 
 /** Only a plain https/http address or a path on this site is ever shown as a picture. */
@@ -210,3 +219,26 @@ export function toPostItem(r: Row) {
   };
 }
 export type PostItem = ReturnType<typeof toPostItem>;
+
+// ---- decisions ------------------------------------------------------------------------------------------------------
+
+export type Decision = 'approve' | 'reject';
+
+export const lockReviewQuery = (id: number): Query => ({
+  sql: 'SELECT id, hospital_id, booking_id, review_status, is_active, title, content, rating, treatments, doctor_name, updated_at FROM hospital_reviews WHERE id = ? LIMIT 1 FOR UPDATE',
+  values: [id],
+});
+
+export const decideReviewQuery = (id: number, decision: Decision): Query => ({
+  sql: "UPDATE hospital_reviews SET review_status = 'published', is_active = ?, updated_at = NOW() WHERE id = ? AND review_status = 'pending' LIMIT 1",
+  values: [decision === 'approve' ? 1 : 0, id],
+});
+
+/** Same figures the old panel keeps on the hospital row: the number of active reviews and their average. */
+export const recalcHospitalQuery = (hospitalId: number): Query => ({
+  sql: `UPDATE gangnamunni_hospitals SET
+          review_count = (SELECT COUNT(*) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1),
+          rating = (SELECT COALESCE(AVG(LEAST(5, GREATEST(1, rating))), 0) FROM hospital_reviews WHERE hospital_id = ? AND is_active = 1)
+        WHERE id = ?`,
+  values: [hospitalId, hospitalId, hospitalId],
+});
