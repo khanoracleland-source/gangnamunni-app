@@ -8,6 +8,7 @@ import { Notice, Pill } from "../hospitals/parts";
 import HospitalCombo from "../payments/HospitalCombo";
 import DetailDialog, { Gallery } from "./DetailDialog";
 import { DecisionActions, DecisionButtons, useDecision } from "./useDecision";
+import { useReviewEdit } from "./useReviewEdit";
 import { fetchModerationReviews, type DoctorHospitalOption, type ModerationCounts, type ModerationPage, type ModerationState, type ReviewItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatDay, formatNumber } from "@/lib/format";
@@ -20,7 +21,7 @@ type Phase = "loading" | "ready" | "error";
 type State = { phase: Phase; data: ModerationPage<ReviewItem> | null; stale: boolean; settled: string };
 
 /** The reviews waiting for a decision (and the decided ones): status, search, hospital, cards, pages. Approve / reject only with the write switch. */
-export default function ReviewsTab({ view, hospitals, isSuper, canDecide }: { view: ModerationView; hospitals: DoctorHospitalOption[]; isSuper: boolean; canDecide: boolean }) {
+export default function ReviewsTab({ view, hospitals, isSuper, canDecide, canEdit }: { view: ModerationView; hospitals: DoctorHospitalOption[]; isSuper: boolean; canDecide: boolean; canEdit: boolean }) {
   const t = useT();
   const router = useRouter();
   const [state, setState] = useState<State>({ phase: "loading", data: null, stale: false, settled: "" });
@@ -119,7 +120,7 @@ export default function ReviewsTab({ view, hospitals, isSuper, canDecide }: { vi
         </>
       ) : null}
       {decision.dialog}
-      {detail ? <ReviewDetail r={detail} showNoBooking={isSuper} decision={canDecide && detail.state === "pending" ? decision : null} onClose={() => setDetail(null)} /> : null}
+      {detail ? <ReviewDetail r={detail} showNoBooking={isSuper} decision={canDecide && detail.state === "pending" ? decision : null} canEdit={canEdit} reload={retry} onClose={() => setDetail(null)} /> : null}
     </>
   );
 }
@@ -245,10 +246,19 @@ export function StatusSeg({ status, counts, onPick }: { status: ModerationState;
   );
 }
 
-function ReviewDetail({ r, showNoBooking, decision, onClose }: { r: ReviewItem; showNoBooking: boolean; decision: ReturnType<typeof useDecision> | null; onClose: () => void }) {
+function ReviewDetail({ r, showNoBooking, decision, canEdit, reload, onClose }: { r: ReviewItem; showNoBooking: boolean; decision: ReturnType<typeof useDecision> | null; canEdit: boolean; reload: () => void; onClose: () => void }) {
   const t = useT();
+  const edit = useReviewEdit(r, { reload, onSettled: onClose });
+  const manage = canEdit ? <button type="button" id={edit.openerId} className="btn btn--ghost" onClick={edit.start} disabled={decision?.busy === true}>{t("mod.act.edit")}</button> : null;
+  if (edit.editing) {
+    return (
+      <DetailDialog title={t("mod.edit.title.rev")} onClose={onClose} foot={edit.foot} locked={edit.saving} guard={edit.dirty}>
+        {edit.body}
+      </DetailDialog>
+    );
+  }
   return (
-    <DetailDialog title={t("mod.detail.title.rev")} onClose={onClose} decide={decision ? <DecisionButtons busy={decision.busy} onApprove={() => decision.approve(r)} onReject={() => decision.askReject(r)} /> : null}>
+    <DetailDialog title={t("mod.detail.title.rev")} onClose={onClose} manage={manage} decide={decision ? <DecisionButtons busy={decision.busy} onApprove={() => decision.approve(r)} onReject={() => decision.askReject(r)} /> : null}>
       <div className="mod-card__head">
         <Pill tone={STATE_TONE[r.state]}>{t(STATE_LABEL[r.state])}</Pill>
         {r.hasBooking ? <Pill tone="info">{t("mod.badge.booked")}</Pill> : showNoBooking ? <Pill tone="off">{t("mod.badge.unbooked")}</Pill> : null}

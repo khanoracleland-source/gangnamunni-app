@@ -6,7 +6,7 @@ import { useT } from "@/lib/locale";
 import { imageHref } from "@/lib/moderation";
 
 /** A read-only window with everything of one item. Native <dialog>: Esc, focus trap and return of focus come with it. Mount it only while open. */
-export default function DetailDialog({ title, onClose, manage, decide, children }: { title: string; onClose: () => void; manage?: ReactNode; decide?: ReactNode; children: ReactNode }) {
+export default function DetailDialog({ title, onClose, manage, decide, foot, locked = false, guard = false, children }: { title: string; onClose: () => void; manage?: ReactNode; decide?: ReactNode; foot?: ReactNode; locked?: boolean; guard?: boolean; children: ReactNode }) {
   const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -16,7 +16,9 @@ export default function DetailDialog({ title, onClose, manage, decide, children 
     if (dialog && !dialog.open) dialog.showModal();
   }, []);
 
-  const close = () => ref.current?.close();
+  const close = () => {
+    if (!locked) ref.current?.close();
+  };
 
   return (
     <dialog
@@ -24,25 +26,35 @@ export default function DetailDialog({ title, onClose, manage, decide, children 
       className="dialog mod-detail"
       aria-labelledby={titleId}
       onClose={onClose}
+      onCancel={(e) => {
+        // Esc while a save is running, or while there are unsaved changes, must not drop the window.
+        if (locked || guard) e.preventDefault();
+      }}
       onClick={(e) => {
         // A click on the backdrop lands on the <dialog> element itself.
-        if (e.target === e.currentTarget) close();
+        if (e.target === e.currentTarget && !guard) close();
       }}
     >
       <div className="dialog__box">
         <div className="dialog__head">
           <h2 id={titleId} className="dialog__title">{title}</h2>
-          <button type="button" className="ibtn dialog__close" onClick={close} aria-label={t("m.close")} title={t("m.close")}>
+          <button type="button" className="ibtn dialog__close" onClick={close} disabled={locked} aria-label={t("m.close")} title={t("m.close")}>
             <Icon name="close" />
           </button>
         </div>
         <div className="mod-detail__body" tabIndex={0} role="region" aria-labelledby={titleId}>{children}</div>
         <div className="dialog__foot mod-detail__foot">
-          {manage ? <div className="mod-detail__manage" role="group" aria-label={t("mod.detail.manage")}>{manage}</div> : null}
-          <div className="mod-detail__end">
-            {decide}
-            <button type="button" className="btn btn--ghost" onClick={close}>{t("m.close")}</button>
-          </div>
+          {foot ? (
+            <div className="mod-detail__end">{foot}</div>
+          ) : (
+            <>
+              {manage ? <div className="mod-detail__manage" role="group" aria-label={t("mod.detail.manage")}>{manage}</div> : null}
+              <div className="mod-detail__end">
+                {decide}
+                <button type="button" className="btn btn--ghost" onClick={close}>{t("m.close")}</button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </dialog>
