@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -146,6 +146,8 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         bookings: obj(d.features).bookings === true,
         bookingsWrite: obj(d.features).bookingsWrite === true,
         payments: obj(d.features).payments === true,
+        moderation: obj(d.features).moderation === true,
+        moderationWrite: obj(d.features).moderationWrite === true,
       },
     },
   };
@@ -2316,4 +2318,128 @@ export async function deleteDoctor(id: number): Promise<WriteResult<{ name: stri
 export async function setDoctorActive(id: number, active: boolean): Promise<WriteResult<DoctorFull>> {
   const res = await sendJson("POST", `/v1/doctors/${encodeURIComponent(String(id))}/${active ? "activate" : "deactivate"}`, {});
   return res.ok ? { ok: true, data: doctorFull(res.data) } : res;
+}
+
+// ---- content review (reviews and community posts waiting for a decision) ------------------------------------------------
+
+export type ModerationState = "pending" | "approved" | "rejected";
+export type ModerationCounts = Record<ModerationState, number>;
+export type ReviewItem = {
+  id: number;
+  hospitalId: number;
+  hospitalName: string;
+  author: string;
+  title: string;
+  content: string;
+  rating: number;
+  treatments: string[];
+  doctorName: string;
+  hasBooking: boolean;
+  state: ModerationState;
+  createdAt: string;
+  images: string[];
+  /** Sent back with the decision, so an item edited in the meantime is never decided blind. */
+  revision: string;
+};
+export type PostItem = {
+  id: number;
+  category: string;
+  author: string;
+  title: string;
+  content: string;
+  images: string[];
+  state: ModerationState;
+  createdAt: string;
+  revision: string;
+};
+export type ModerationPage<T> = { status: ModerationState; page: number; perPage: number; hasMore: boolean; counts: ModerationCounts; items: T[] };
+export type ModerationQuery = { status: ModerationState; search: string; hospitalId: number; page: number };
+export type ModerationDecision = "approve" | "reject";
+
+const moderationState = (v: unknown): ModerationState => (v === "approved" || v === "rejected" ? v : "pending");
+
+function moderationParams(q: ModerationQuery, withHospital: boolean): string {
+  const params = new URLSearchParams();
+  params.set("status", q.status);
+  if (q.search !== "") params.set("search", q.search);
+  if (withHospital && q.hospitalId > 0) params.set("hospitalId", String(q.hospitalId));
+  if (q.page > 1) params.set("page", String(q.page));
+  return params.toString();
+}
+
+function moderationPage<T>(raw: unknown, map: (r: unknown) => T): ModerationPage<T> {
+  const d = obj(raw);
+  const c = obj(d.counts);
+  return {
+    status: moderationState(d.status),
+    page: Math.max(1, num(d.page)),
+    perPage: num(d.perPage) || 20,
+    hasMore: d.hasMore === true,
+    counts: { pending: num(c.pending), approved: num(c.approved), rejected: num(c.rejected) },
+    items: list(d.items).map(map),
+  };
+}
+
+const reviewItem = (raw: unknown): ReviewItem => {
+  const r = obj(raw);
+  return {
+    id: num(r.id),
+    hospitalId: num(r.hospitalId),
+    hospitalName: str(r.hospitalName),
+    author: str(r.author),
+    title: str(r.title),
+    content: str(r.content),
+    rating: Math.min(5, Math.max(0, num(r.rating))),
+    treatments: list(r.treatments).map(str).filter((x) => x !== ""),
+    doctorName: str(r.doctorName),
+    hasBooking: r.hasBooking === true,
+    state: moderationState(r.state),
+    createdAt: str(r.createdAt),
+    images: list(r.images).map(str).filter((x) => x !== ""),
+    revision: str(r.revision),
+  };
+};
+
+const postItem = (raw: unknown): PostItem => {
+  const r = obj(raw);
+  return {
+    id: num(r.id),
+    category: str(r.category),
+    author: str(r.author),
+    title: str(r.title),
+    content: str(r.content),
+    images: list(r.images).map(str).filter((x) => x !== ""),
+    state: moderationState(r.state),
+    createdAt: str(r.createdAt),
+    revision: str(r.revision),
+  };
+};
+
+export async function fetchModerationReviews(q: ModerationQuery, signal?: AbortSignal): Promise<ApiResult<ModerationPage<ReviewItem>>> {
+  const res = await getJson(`/v1/moderation/reviews?${moderationParams(q, true)}`, signal);
+  return res.ok ? { ok: true, data: moderationPage(res.data, reviewItem) } : res;
+}
+
+/** Super admin only: a hospital account is answered 403. */
+export async function fetchModerationPosts(q: ModerationQuery, signal?: AbortSignal): Promise<ApiResult<ModerationPage<PostItem>>> {
+  const res = await getJson(`/v1/moderation/community?${moderationParams(q, false)}`, signal);
+  return res.ok ? { ok: true, data: moderationPage(res.data, postItem) } : res;
+}
+
+export async function fetchModerationHospitals(signal?: AbortSignal): Promise<ApiResult<DoctorHospitalOption[]>> {
+  const res = await getJson("/v1/moderation/hospitals", signal);
+  if (!res.ok) return res;
+  return { ok: true, data: list(obj(res.data).items).map((x) => ({ id: num(obj(x).id), name: str(obj(x).name) })).filter((x) => x.id > 0) };
+}
+
+/** Approve or reject one pending review. 409 "changed" = edited meanwhile, 409 "already_done" = decided by someone else. */
+export async function decideReview(id: number, decision: ModerationDecision, revision: string): Promise<WriteResult<{ id: number; state: ModerationState }>> {
+  const res = await sendJson("POST", `/v1/moderation/reviews/${encodeURIComponent(String(id))}/${decision}`, { revision });
+  return res.ok ? { ok: true, data: { id: num(obj(res.data).id), state: moderationState(obj(res.data).state) } } : res;
+}
+
+/** Same for a community post (super admin only). */
+export async function decidePost(id: number, decision: ModerationDecision, revision: string): Promise<WriteResult<{ id: number; state: ModerationState }>> {
+  const res = await sendJson("POST", `/v1/moderation/community/${encodeURIComponent(String(id))}/${decision}`, { revision });
+  return res.ok ? { ok: true, data: { id: num(obj(res.data).id), state: moderationState(obj(res.data).state) } } : res;
 }

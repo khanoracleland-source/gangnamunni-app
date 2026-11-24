@@ -3310,3 +3310,18 @@ body.reo-dragging { user-select: none; cursor: grabbing; }
   .reo-row.dc-row .dc-ctl { grid-column: 2 / -1; }
   .dc-pick__acts .btn { flex: 1; min-height: 44px; }
 }
+
+/* ---- content review (콘텐츠 심사) ---- */
+.mod-tabs { display: flex; gap: 0; margin: 0 0 var(--s-4, 16px); border-bottom: 1px solid var(--line); }
+.mod-tab { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 var(--s-4, 16px); margin-bottom: -1px; border-bottom: 3px solid transparent; color: var(--muted); font-size: 15px; font-weight: 600; text-decoration: none; transition: color var(--t-fast, 120ms) var(--ease, ease); }
+.mod-tab:hover { color: var(--ink); }
+.mod-tab.is-active { color: var(--ink); border-bottom-color: var(--accent); }
+.mod-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.mod-tab__cnt { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 20px; padding: 0 6px; border-radius: var(--r-pill); background: var(--badge-bg); color: var(--badge-on); font-size: 12px; font-weight: 700; }
+.mod-soon { margin: 0; color: var(--muted); font-size: 14px; }
+@media (max-width: 639px) {
+  .mod-tab { flex: 1; padding: 0 var(--s-2, 8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mod-tab { transition: none; }
+}
