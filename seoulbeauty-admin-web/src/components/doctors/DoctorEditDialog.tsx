@@ -5,6 +5,7 @@ import Icon from "../Icon";
 import ConfirmDialog, { type ConfirmSpec } from "../hospitals/ConfirmDialog";
 import { Notice, Pill } from "../hospitals/parts";
 import DeleteDoctorDialog from "./DeleteDoctorDialog";
+import HospitalCombo from "../payments/HospitalCombo";
 import DoctorPhoto from "./DoctorPhoto";
 import {
   deleteDoctor,
@@ -355,21 +356,29 @@ export default function DoctorEditDialog({
                       {err("name")}
                     </label>
 
-                    <label className="field">
-                      <span className="field__label">{t("d.ed.hospital")}</span>
+                    <div className="dc-hosp">
                       {isSuper && editable ? (
-                        <select className="sel sel--field" value={hospitalId} disabled={saving} aria-invalid={errors.hospitalId ? true : undefined} onChange={(e) => changeHospital(Number(e.target.value) || 0)}>
-                          {hospitals.some((h) => h.id === hospitalId) ? null : <option value={hospitalId}>{hospitalName}</option>}
-                          {hospitals.map((h) => (
-                            <option key={h.id} value={h.id}>{h.name}</option>
-                          ))}
-                        </select>
+                        <HospitalCombo
+                          hospitals={originalHospital <= 0 || hospitals.some((h) => h.id === originalHospital) ? hospitals : [{ id: originalHospital, name: doc.hospitalName }, ...hospitals]}
+                          value={hospitalId}
+                          onChange={changeHospital}
+                          label={t("d.ed.hospital")}
+                          placeholder={t("d.hc.search")}
+                          clearLabel={t("d.hc.clear")}
+                          noneLabel={t("d.hc.none")}
+                          allLabel={null}
+                          disabled={saving}
+                          invalid={!!errors.hospitalId}
+                        />
                       ) : (
-                        <input className="input" value={hospitalName} disabled readOnly />
+                        <label className="field">
+                          <span className="field__label">{t("d.ed.hospital")}</span>
+                          <input className="input" value={hospitalName} disabled readOnly />
+                        </label>
                       )}
-                      {isSuper && editable && hospitalId !== originalHospital ? <p className="dc-help">{t("d.ed.hospitalMove")}</p> : null}
+                      {isSuper && editable && hospitalId !== originalHospital && hospitalId > 0 ? <p className="dc-move" role="status">{t("d.ed.hospitalMove")}</p> : null}
                       {err("hospitalId")}
-                    </label>
+                    </div>
 
                     <label className="field">
                       <span className="field__label">{t("d.ed.specialty")}</span>

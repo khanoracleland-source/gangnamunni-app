@@ -10,6 +10,7 @@ import { Notice, Pill, Section } from "../hospitals/parts";
 import { showUnitToast } from "../treatment-units/UnitToast";
 import DoctorEditDialog, { type DoctorDialogResult } from "./DoctorEditDialog";
 import DoctorPhoto from "./DoctorPhoto";
+import HospitalCombo from "../payments/HospitalCombo";
 import DoctorReorder from "./DoctorReorder";
 import { fetchDoctorHospitals, fetchDoctors, fetchMe, type DoctorCard, type DoctorHospitalOption, type DoctorListData, type DoctorListQuery, type DoctorStatusFilter, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
@@ -160,16 +161,19 @@ export default function DoctorsPage() {
             <>
               <div className="dc-filters">
                 {isSuper ? (
-                  <label className="field dc-f-hospital">
-                    <span className="field__label">{t("d.f.hospital")}</span>
-                    <select className="sel sel--field" value={query.hospitalId} onChange={(e) => go({ hospitalId: Number(e.target.value) || 0 })}>
-                      <option value={0}>{t("d.f.hospitalAll")}</option>
-                      {query.hospitalId > 0 && !hospitals.some((h) => h.id === query.hospitalId) ? <option value={query.hospitalId}>#{query.hospitalId}</option> : null}
-                      {hospitals.map((h) => (
-                        <option key={h.id} value={h.id}>{h.name}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="dc-f-hospital">
+                    <HospitalCombo
+                      key={hospitals.length}
+                      hospitals={hospitals}
+                      value={query.hospitalId}
+                      onChange={(id) => { if (id !== query.hospitalId) go({ hospitalId: id }); }}
+                      label={t("d.f.hospital")}
+                      placeholder={t("d.hc.searchAll")}
+                      clearLabel={t("d.hc.clear")}
+                      noneLabel={t("d.hc.none")}
+                      allLabel={t("d.f.hospitalAll")}
+                    />
+                  </div>
                 ) : null}
                 <SearchForm key={query.search} initial={query.search} onSearch={(search) => go({ search })} />
                 <div className="field dc-f-status">

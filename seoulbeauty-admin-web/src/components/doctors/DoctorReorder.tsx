@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import Icon from "../Icon";
 import { showUnitToast } from "../treatment-units/UnitToast";
+import HospitalCombo from "../payments/HospitalCombo";
 import DoctorPhoto from "./DoctorPhoto";
 import { fetchDoctorOrder, moveDoctor, type DoctorHospitalOption, type DoctorOrderItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
@@ -74,15 +75,17 @@ export default function DoctorReorder({
       <div className="reo dc-pick">
         <p className="reo-help">{t("d.ro.pickDesc")}</p>
         <div className="dc-pick__box">
-          <label className="field">
-            <span className="field__label">{t("d.ro.pickLabel")}</span>
-            <select className="sel sel--field" value={pick} onChange={(e) => setPick(Number(e.target.value) || 0)}>
-              <option value={0}>{t("d.ro.pickNone")}</option>
-              {hospitals.map((h) => (
-                <option key={h.id} value={h.id}>{h.name}</option>
-              ))}
-            </select>
-          </label>
+          <HospitalCombo
+            key={hospitals.length}
+            hospitals={hospitals}
+            value={pick}
+            onChange={setPick}
+            label={t("d.ro.pickLabel")}
+            placeholder={t("d.hc.search")}
+            clearLabel={t("d.hc.clear")}
+            noneLabel={t("d.hc.none")}
+            allLabel={null}
+          />
           <div className="dc-pick__acts">
             <button type="button" className="btn btn--primary" disabled={pick <= 0} onClick={() => setHospitalId(pick)}>{t("d.ro.pickGo")}</button>
             <button type="button" className="btn btn--ghost" onClick={onExit}>{t("d.ro.back")}</button>
