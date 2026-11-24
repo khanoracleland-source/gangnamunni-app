@@ -1,7 +1,8 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { AdminRequest, BannersEnabledGuard, BannersWriteEnabledGuard, CsrfGuard, SuperAdminGuard } from '../admin-auth/admin.guard';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { AdminRequest, BannersEnabledGuard, BannersWriteEnabledGuard, CsrfGuard, MultipartCsrfGuard, SuperAdminGuard } from '../admin-auth/admin.guard';
 import { FieldErrors, normalizeBannerQuery, parseBannerId, parseHomeSwitch, parseRevision, parseScroll } from './banners.logic';
 import { BannersService } from './banners.service';
+import { BannerUploadInterceptor, UploadedBannerImages } from './banners.upload';
 
 function revisionOf(body: unknown): string {
   const revision = parseRevision(body);
@@ -26,6 +27,13 @@ export class BannersController {
   @UseGuards(BannersEnabledGuard, SuperAdminGuard)
   list(@Query() query: Record<string, unknown>) {
     return this.banners.list(normalizeBannerQuery(query));
+  }
+
+  /** Hospitals a banner can be linked to. */
+  @Get('hospitals')
+  @UseGuards(BannersEnabledGuard, SuperAdminGuard)
+  hospitals() {
+    return this.banners.hospitals();
   }
 
   @Get('scroll')
@@ -58,5 +66,23 @@ export class BannersController {
   @UseGuards(BannersWriteEnabledGuard, CsrfGuard, SuperAdminGuard)
   remove(@Req() req: AdminRequest, @Param('id') rawId: string, @Body() body: unknown) {
     return this.banners.remove(req.admin.id, parseBannerId(rawId), revisionOf(body));
+  }
+
+  /** Multipart form: title, subtitle, linkUrl, displayOrder, hospitalId, imageUrl, mypageImageUrl and the files image / mypageImage. The new banner is visible at once. */
+  @Post()
+  @HttpCode(201)
+  @UseGuards(BannersWriteEnabledGuard, MultipartCsrfGuard, SuperAdminGuard)
+  @UseInterceptors(BannerUploadInterceptor)
+  create(@Req() req: AdminRequest, @Body() body: unknown, @UploadedFiles() files: UploadedBannerImages) {
+    return this.banners.create(req.admin.id, req.admin.name, body, files);
+  }
+
+  /** Same form as create plus the field `revision` of the banner as it was read. */
+  @Patch(':id')
+  @HttpCode(200)
+  @UseGuards(BannersWriteEnabledGuard, MultipartCsrfGuard, SuperAdminGuard)
+  @UseInterceptors(BannerUploadInterceptor)
+  edit(@Req() req: AdminRequest, @Param('id') rawId: string, @Body() body: unknown, @UploadedFiles() files: UploadedBannerImages) {
+    return this.banners.edit(req.admin.id, parseBannerId(rawId), body, files);
   }
 }

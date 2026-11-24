@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { isOwnBannerImage } from './banners.image';
 import { likeContains, MAX_PAGE, MAX_SEARCH_LENGTH, num, positiveInt, Query, str } from '../hospitals/hospitals.logic';
 
 export const PER_PAGE = 20;
@@ -231,3 +232,110 @@ export const upsertSettingQuery = (key: string, value: string): Query => ({
 export const deleteBannerQuery = (id: number): Query => ({ sql: 'DELETE FROM gangnamunni_ads WHERE id = ?', values: [id] });
 
 export const deleteHomeKeyQuery = (id: number): Query => ({ sql: 'DELETE FROM gangnamunni_settings WHERE setting_key = ?', values: [homeKey(id)] });
+
+// ---- create / edit --------------------------------------------------------------------------------------------------
+
+export const TEXT_MAX = 255;
+export const LINK_MAX = 500;
+export const ORDER_MAX = 99999;
+
+export interface BannerForm {
+  title: string;
+  subtitle: string | null;
+  linkUrl: string;
+  displayOrder: number;
+  hospitalId: number | null;
+  /** The picture address the form keeps or types ("" = none); an uploaded file overrides it. */
+  imageUrl: string;
+  mypageImageUrl: string;
+}
+
+const cps = (s: string): number => Array.from(s).length;
+const CONTROL = /[\u0000-\u001f\u007f]/;
+
+/** A picture address a form may keep or type: one of our own uploads/ads files, or a http(s) address. "" means none. */
+const formImage = (raw: string): string | null => {
+  const s = raw.trim();
+  if (s === '') return '';
+  if (/^https?:\/\/[^/?#\s]/i.test(s)) return storedImage(s) || null;
+  return isOwnBannerImage(s) ? s : null;
+};
+
+/** The text fields of the multipart form. Every value must be a string; the picture files are checked by the service. */
+export function parseBannerForm(body: unknown): { value: BannerForm; errors: FieldErrors } {
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  const errors: FieldErrors = {};
+  const text = (k: string): string => {
+    const v = b[k];
+    if (v === undefined || v === null) return '';
+    if (typeof v !== 'string') {
+      errors[k] = 'invalid';
+      return '';
+    }
+    return v.trim();
+  };
+  const title = text('title');
+  if (!errors.title) {
+    if (title === '') errors.title = 'required';
+    else if (cps(title) > TEXT_MAX) errors.title = 'too_long';
+    else if (CONTROL.test(title)) errors.title = 'invalid';
+  }
+  const subtitle = text('subtitle');
+  if (!errors.subtitle) {
+    if (cps(subtitle) > TEXT_MAX) errors.subtitle = 'too_long';
+    else if (CONTROL.test(subtitle)) errors.subtitle = 'invalid';
+  }
+  const link = text('linkUrl');
+  if (!errors.linkUrl && link !== '') {
+    if (cps(link) > LINK_MAX) errors.linkUrl = 'too_long';
+    else if (safeLink(link) === '') errors.linkUrl = 'bad_url';
+  }
+  const orderRaw = text('displayOrder');
+  let displayOrder = 0;
+  if (!errors.displayOrder && orderRaw !== '') {
+    if (/^\d{1,5}$/.test(orderRaw) && Number(orderRaw) <= ORDER_MAX) displayOrder = Number(orderRaw);
+    else errors.displayOrder = 'range';
+  }
+  const hospRaw = text('hospitalId');
+  let hospitalId: number | null = null;
+  if (!errors.hospitalId && hospRaw !== '' && hospRaw !== '0') {
+    if (/^[1-9]\d{0,9}$/.test(hospRaw)) hospitalId = Number(hospRaw);
+    else errors.hospitalId = 'invalid';
+  }
+  const image = (k: string): string => {
+    const raw = text(k);
+    if (errors[k]) return '';
+    const v = formImage(raw);
+    if (v === null) {
+      errors[k] = 'invalid_image';
+      return '';
+    }
+    return v;
+  };
+  const imageUrl = image('imageUrl');
+  const mypageImageUrl = image('mypageImageUrl');
+  return { value: { title, subtitle: subtitle === '' ? null : subtitle, linkUrl: link, displayOrder, hospitalId, imageUrl, mypageImageUrl }, errors };
+}
+
+export const hospitalExistsQuery = (id: number): Query => ({ sql: `SELECT id FROM gangnamunni_hospitals WHERE id = ? AND status = 'approved' LIMIT 1`, values: [id] });
+
+/** Super admin creates a banner: it is approved and active at once, so the site shows it. */
+export const insertBannerQuery = (f: BannerForm, image: string, mypage: string, reviewer: string): Query => ({
+  sql: `INSERT INTO gangnamunni_ads (hospital_id, title, subtitle, image_url, mypage_image_url, link_url, display_order, ad_type, is_active, status, reviewed_by, reviewed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'banner', 1, 'approved', ?, NOW())`,
+  values: [f.hospitalId, f.title, f.subtitle, image, mypage, f.linkUrl, f.displayOrder, reviewer],
+});
+
+/** Edit keeps status and is_active as they are. */
+export const updateBannerQuery = (id: number, f: BannerForm, image: string, mypage: string): Query => ({
+  sql: `UPDATE gangnamunni_ads SET hospital_id = ?, title = ?, subtitle = ?, image_url = ?, mypage_image_url = ?, link_url = ?, display_order = ? WHERE id = ?`,
+  values: [f.hospitalId, f.title, f.subtitle, image, mypage, f.linkUrl, f.displayOrder, id],
+});
+
+/** How many banners still use one of these picture addresses. */
+export const imageUsersQuery = (url: string): Query => ({
+  sql: 'SELECT COUNT(*) AS c FROM gangnamunni_ads WHERE image_url = ? OR mypage_image_url = ?',
+  values: [url, url],
+});
+
+export const reviewerName = (name: unknown): string => Array.from(str(name).trim() || 'super_admin').slice(0, 100).join('');
