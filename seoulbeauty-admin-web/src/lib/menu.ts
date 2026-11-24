@@ -65,7 +65,8 @@ const MENU: MenuGroup[] = [
       legacy("hospitals", "admin_hospitals.php", "병원 관리", "Hospitals", "hospital"),
       { key: "hospital_archive", label: L("삭제 병원 보관함", "Archive"), icon: "collection", status: "new", href: "/hospital-archive", superOnly: true, requires: "archive" },
       legacy("doctors", "admin_doctors.php", "의사 관리", "Doctors", "people"),
-      legacy("personnel", "admin_personnel.php", "인력 관리", "Staff", "people"),
+      // 인력 관리(admin_personnel.php): 임시로 메뉴에서 숨김 — 다시 보이려면 아래 줄의 주석을 해제
+      // legacy("personnel", "admin_personnel.php", "인력 관리", "Staff", "people"),
       legacy("community_moderation", "admin_community_posts.php", "커뮤니티 심사", "Community post review", "shield"),
       legacy("reviews", "admin_reviews.php", "리뷰 관리", "Reviews", "star"),
       legacy("hospital_images", "admin_hospital_images.php", "병원 이미지 관리", "Hospital images", "image"),

@@ -495,3 +495,14 @@ export class SuperAdminRoleGuard implements CanActivate {
     return true;
   }
 }
+
+/** Review and community post moderation (/v1/moderation*). Independent of the other switches; hospital roles still need ADMIN_HOSPITALS_ENABLED (see scopeOf). Only the exact value "1" turns it on. */
+export const moderationEnabled = (): boolean => process.env.ADMIN_MODERATION_ENABLED === '1';
+/** With ADMIN_MODERATION_ENABLED off the moderation routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class ModerationEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !moderationEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}

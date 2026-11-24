@@ -15,6 +15,7 @@ import { TreatmentsModule } from './treatments/treatments.module';
 import { TreatmentUnitsModule } from './treatment-units/treatment-units.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ModerationModule } from './moderation/moderation.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -35,6 +36,7 @@ import { HealthController } from './health/health.controller';
     TreatmentUnitsModule,
     BookingsModule,
     PaymentsModule,
+    ModerationModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
