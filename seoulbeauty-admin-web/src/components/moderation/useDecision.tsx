@@ -12,9 +12,10 @@ type Kind = "review" | "post";
 /**
  * Approve / reject one pending item. "승인" goes straight through; "반려" first asks in a dialog.
  * `reload` fetches the list again after every answer, so a decided item leaves the pending list
- * and the counts follow. `dialog` is the confirmation to render once next to the list.
+ * and the counts follow. `onSettled` runs when an item is settled (closes the detail window that started it).
+ * `dialog` is the confirmation to render once next to the list.
  */
-export function useDecision(kind: Kind, reload: () => void): {
+export function useDecision(kind: Kind, reload: () => void, onSettled?: () => void): {
   busy: boolean;
   approve: (item: DecisionTarget) => void;
   askReject: (item: DecisionTarget) => void;
@@ -39,6 +40,7 @@ export function useDecision(kind: Kind, reload: () => void): {
       if (res.ok) {
         toast("ok", decision === "approve" ? "mod.toast.approved" : "mod.toast.rejected");
         reload();
+        onSettled?.();
         return true;
       }
       if (res.status === 401) {
@@ -55,6 +57,7 @@ export function useDecision(kind: Kind, reload: () => void): {
         return false;
       }
       reload();
+      onSettled?.();
       return true;
     } finally {
       lock.current = false;
@@ -101,13 +104,22 @@ export function useDecision(kind: Kind, reload: () => void): {
   return { busy: working, approve, askReject, dialog };
 }
 
-/** The two buttons under a pending card. */
-export function DecisionActions({ busy, onApprove, onReject }: { busy: boolean; onApprove: () => void; onReject: () => void }) {
+/** The reject and approve buttons, for the foot of the detail window. */
+export function DecisionButtons({ busy, onApprove, onReject }: { busy: boolean; onApprove: () => void; onReject: () => void }) {
   const t = useT();
   return (
-    <div className="mod-acts">
+    <>
       <button type="button" className="btn btn--ghost btn--reject" onClick={onReject} disabled={busy}>{t("mod.act.reject")}</button>
       <button type="button" className="btn btn--primary" onClick={onApprove} disabled={busy}>{t("mod.act.approve")}</button>
+    </>
+  );
+}
+
+/** The two buttons under a pending card. */
+export function DecisionActions({ busy, onApprove, onReject }: { busy: boolean; onApprove: () => void; onReject: () => void }) {
+  return (
+    <div className="mod-acts">
+      <DecisionButtons busy={busy} onApprove={onApprove} onReject={onReject} />
     </div>
   );
 }

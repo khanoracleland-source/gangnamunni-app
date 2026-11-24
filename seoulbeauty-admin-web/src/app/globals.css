@@ -3380,3 +3380,13 @@ body.reo-dragging { user-select: none; cursor: grabbing; }
 .mod-gallery__list a { display: block; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
 .mod-gallery__list a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .mod-gallery__list img { display: block; width: 100%; height: auto; max-height: 360px; object-fit: contain; }
+
+/* content review: actions in the detail window */
+.mod-detail__foot { justify-content: space-between; align-items: center; }
+.mod-detail__manage, .mod-detail__end { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mod-detail__end { margin-left: auto; justify-content: flex-end; }
+@media (max-width: 639px) {
+  .mod-detail__foot { flex-direction: column; align-items: stretch; }
+  .mod-detail__manage, .mod-detail__end { width: 100%; margin-left: 0; }
+  .mod-detail__foot .btn { flex: 1 1 0; min-height: 44px; }
+}

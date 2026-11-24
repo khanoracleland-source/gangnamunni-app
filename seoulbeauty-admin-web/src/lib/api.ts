@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -148,6 +148,8 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         payments: obj(d.features).payments === true,
         moderation: obj(d.features).moderation === true,
         moderationWrite: obj(d.features).moderationWrite === true,
+        moderationEdit: obj(d.features).moderationEdit === true,
+        moderationDelete: obj(d.features).moderationDelete === true,
       },
     },
   };
@@ -2442,4 +2444,43 @@ export async function decideReview(id: number, decision: ModerationDecision, rev
 export async function decidePost(id: number, decision: ModerationDecision, revision: string): Promise<WriteResult<{ id: number; state: ModerationState }>> {
   const res = await sendJson("POST", `/v1/moderation/community/${encodeURIComponent(String(id))}/${decision}`, { revision });
   return res.ok ? { ok: true, data: { id: num(obj(res.data).id), state: moderationState(obj(res.data).state) } } : res;
+}
+
+/** What a review edit sends: the whole editable state (title, text, rating, treatment names) plus the picture links to drop. The author is never editable. */
+export type ReviewEditInput = { title: string; content: string; rating: number; treatments: string[]; removeImages: string[] };
+export type PostEditInput = { category: string; title: string; content: string; removeImages: string[] };
+
+/** The treatments a hospital offers: the names the review edit form may add. */
+export async function fetchReviewTreatmentOptions(hospitalId: number, signal?: AbortSignal): Promise<ApiResult<string[]>> {
+  const res = await getJson(`/v1/moderation/hospitals/${encodeURIComponent(String(hospitalId))}/treatments`, signal);
+  return res.ok ? { ok: true, data: list(obj(res.data).items).map(str).filter((x) => x !== "") } : res;
+}
+
+/** The categories posts use today: the select of the post edit form (super admin only). */
+export async function fetchPostCategories(signal?: AbortSignal): Promise<ApiResult<string[]>> {
+  const res = await getJson("/v1/moderation/community/categories", signal);
+  return res.ok ? { ok: true, data: list(obj(res.data).items).map(str).filter((x) => x !== "") } : res;
+}
+
+const itemId = (id: number): string => encodeURIComponent(String(id));
+const savedId = (res: WriteResult<Json>): WriteResult<{ id: number }> => (res.ok ? { ok: true, data: { id: num(obj(res.data).id) } } : res);
+
+/** Saves a review edit. 409 "changed" = edited meanwhile; 400 "invalid" carries per-field codes in `fields`. */
+export async function editReview(id: number, revision: string, edit: ReviewEditInput): Promise<WriteResult<{ id: number }>> {
+  return savedId(await sendJson("PATCH", `/v1/moderation/reviews/${itemId(id)}`, { revision, ...edit }));
+}
+
+/** Same for a community post (super admin only). */
+export async function editPost(id: number, revision: string, edit: PostEditInput): Promise<WriteResult<{ id: number }>> {
+  return savedId(await sendJson("PATCH", `/v1/moderation/community/${itemId(id)}`, { revision, ...edit }));
+}
+
+/** Removes a review for good, with its pictures, likes, comments and reports. Points are not touched. */
+export async function deleteReview(id: number, revision: string): Promise<WriteResult<{ id: number }>> {
+  return savedId(await sendJson("DELETE", `/v1/moderation/reviews/${itemId(id)}`, { revision }));
+}
+
+/** Same for a community post (super admin only). */
+export async function deletePost(id: number, revision: string): Promise<WriteResult<{ id: number }>> {
+  return savedId(await sendJson("DELETE", `/v1/moderation/community/${itemId(id)}`, { revision }));
 }

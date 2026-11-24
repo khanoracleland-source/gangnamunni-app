@@ -6,7 +6,7 @@ import { useT } from "@/lib/locale";
 import { imageHref } from "@/lib/moderation";
 
 /** A read-only window with everything of one item. Native <dialog>: Esc, focus trap and return of focus come with it. Mount it only while open. */
-export default function DetailDialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export default function DetailDialog({ title, onClose, manage, decide, children }: { title: string; onClose: () => void; manage?: ReactNode; decide?: ReactNode; children: ReactNode }) {
   const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -37,8 +37,12 @@ export default function DetailDialog({ title, onClose, children }: { title: stri
           </button>
         </div>
         <div className="mod-detail__body" tabIndex={0} role="region" aria-labelledby={titleId}>{children}</div>
-        <div className="dialog__foot">
-          <button type="button" className="btn btn--ghost" onClick={close}>{t("m.close")}</button>
+        <div className="dialog__foot mod-detail__foot">
+          {manage ? <div className="mod-detail__manage" role="group" aria-label={t("mod.detail.manage")}>{manage}</div> : null}
+          <div className="mod-detail__end">
+            {decide}
+            <button type="button" className="btn btn--ghost" onClick={close}>{t("m.close")}</button>
+          </div>
         </div>
       </div>
     </dialog>

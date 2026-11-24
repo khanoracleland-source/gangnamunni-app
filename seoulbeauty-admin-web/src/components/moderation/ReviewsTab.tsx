@@ -7,7 +7,7 @@ import Icon from "../Icon";
 import { Notice, Pill } from "../hospitals/parts";
 import HospitalCombo from "../payments/HospitalCombo";
 import DetailDialog, { Gallery } from "./DetailDialog";
-import { DecisionActions, useDecision } from "./useDecision";
+import { DecisionActions, DecisionButtons, useDecision } from "./useDecision";
 import { fetchModerationReviews, type DoctorHospitalOption, type ModerationCounts, type ModerationPage, type ModerationState, type ReviewItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatDay, formatNumber } from "@/lib/format";
@@ -49,8 +49,8 @@ export default function ReviewsTab({ view, hospitals, isSuper, canDecide }: { vi
 
   const go = (patch: Partial<ModerationView>) => router.push(moderationHref({ ...view, page: 1, ...patch }));
   const retry = () => setAttempt((n) => n + 1);
-  const decision = useDecision("review", retry);
   const [detail, setDetail] = useState<ReviewItem | null>(null);
+  const decision = useDecision("review", retry, () => setDetail(null));
   const { phase, data, stale } = state;
   const total = data ? data.counts[view.status] : 0;
   const pages = Math.ceil(total / PER_PAGE);
@@ -119,7 +119,7 @@ export default function ReviewsTab({ view, hospitals, isSuper, canDecide }: { vi
         </>
       ) : null}
       {decision.dialog}
-      {detail ? <ReviewDetail r={detail} showNoBooking={isSuper} onClose={() => setDetail(null)} /> : null}
+      {detail ? <ReviewDetail r={detail} showNoBooking={isSuper} decision={canDecide && detail.state === "pending" ? decision : null} onClose={() => setDetail(null)} /> : null}
     </>
   );
 }
@@ -245,10 +245,10 @@ export function StatusSeg({ status, counts, onPick }: { status: ModerationState;
   );
 }
 
-function ReviewDetail({ r, showNoBooking, onClose }: { r: ReviewItem; showNoBooking: boolean; onClose: () => void }) {
+function ReviewDetail({ r, showNoBooking, decision, onClose }: { r: ReviewItem; showNoBooking: boolean; decision: ReturnType<typeof useDecision> | null; onClose: () => void }) {
   const t = useT();
   return (
-    <DetailDialog title={t("mod.detail.title.rev")} onClose={onClose}>
+    <DetailDialog title={t("mod.detail.title.rev")} onClose={onClose} decide={decision ? <DecisionButtons busy={decision.busy} onApprove={() => decision.approve(r)} onReject={() => decision.askReject(r)} /> : null}>
       <div className="mod-card__head">
         <Pill tone={STATE_TONE[r.state]}>{t(STATE_LABEL[r.state])}</Pill>
         {r.hasBooking ? <Pill tone="info">{t("mod.badge.booked")}</Pill> : showNoBooking ? <Pill tone="off">{t("mod.badge.unbooked")}</Pill> : null}
