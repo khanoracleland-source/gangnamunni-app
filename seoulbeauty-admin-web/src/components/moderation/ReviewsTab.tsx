@@ -6,7 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Icon from "../Icon";
 import { Notice, Pill } from "../hospitals/parts";
 import HospitalCombo from "../payments/HospitalCombo";
-import Thumbs from "./Thumbs";
+import DetailDialog, { Gallery } from "./DetailDialog";
 import { DecisionActions, useDecision } from "./useDecision";
 import { fetchModerationReviews, type DoctorHospitalOption, type ModerationCounts, type ModerationPage, type ModerationState, type ReviewItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
@@ -50,6 +50,7 @@ export default function ReviewsTab({ view, hospitals, isSuper, canDecide }: { vi
   const go = (patch: Partial<ModerationView>) => router.push(moderationHref({ ...view, page: 1, ...patch }));
   const retry = () => setAttempt((n) => n + 1);
   const decision = useDecision("review", retry);
+  const [detail, setDetail] = useState<ReviewItem | null>(null);
   const { phase, data, stale } = state;
   const total = data ? data.counts[view.status] : 0;
   const pages = Math.ceil(total / PER_PAGE);
@@ -110,7 +111,7 @@ export default function ReviewsTab({ view, hospitals, isSuper, canDecide }: { vi
           ) : (
             <ul className={busy ? "mod-cards is-busy" : "mod-cards"}>
               {data.items.map((r) => (
-                <ReviewCard key={r.id} r={r} showNoBooking={isSuper} decision={canDecide ? decision : null} />
+                <ReviewCard key={r.id} r={r} showNoBooking={isSuper} decision={canDecide ? decision : null} onOpen={() => setDetail(r)} />
               ))}
             </ul>
           )}
@@ -118,6 +119,7 @@ export default function ReviewsTab({ view, hospitals, isSuper, canDecide }: { vi
         </>
       ) : null}
       {decision.dialog}
+      {detail ? <ReviewDetail r={detail} showNoBooking={isSuper} onClose={() => setDetail(null)} /> : null}
     </>
   );
 }
@@ -152,16 +154,18 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-function ReviewCard({ r, showNoBooking, decision }: { r: ReviewItem; showNoBooking: boolean; decision: ReturnType<typeof useDecision> | null }) {
+function ReviewCard({ r, showNoBooking, decision, onOpen }: { r: ReviewItem; showNoBooking: boolean; decision: ReturnType<typeof useDecision> | null; onOpen: () => void }) {
   const t = useT();
   return (
-    <li className="mod-card mod-card--review">
+    <li className="mod-card mod-card--review is-clickable" onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a") && !window.getSelection()?.toString()) onOpen(); }}>
       <div className="mod-card__head">
         <Pill tone={STATE_TONE[r.state]}>{t(STATE_LABEL[r.state])}</Pill>
         {r.hasBooking ? <Pill tone="info">{t("mod.badge.booked")}</Pill> : showNoBooking ? <Pill tone="off">{t("mod.badge.unbooked")}</Pill> : null}
         <span className="mod-card__date">{formatDay(r.createdAt)}</span>
       </div>
-      <h3 className="mod-card__title" title={r.title}>{r.title}</h3>
+      <h3 className="mod-card__title" title={r.title}>
+        <button type="button" className="mod-card__open" aria-haspopup="dialog" onClick={onOpen}>{r.title}</button>
+      </h3>
       <Stars n={r.rating} />
       <p className="mod-card__body">{r.content}</p>
       {r.treatments.length > 0 ? (
@@ -171,7 +175,7 @@ function ReviewCard({ r, showNoBooking, decision }: { r: ReviewItem; showNoBooki
           ))}
         </ul>
       ) : null}
-      <Thumbs images={r.images} />
+      {r.images.length > 0 ? <p className="mod-photos"><Icon name="image" size={14} />{t("mod.img.count", { n: r.images.length })}</p> : null}
       <ul className="mod-facts">
         <li title={r.hospitalName}><Icon name="hospital" size={14} /><span className="mod-facts__v">{r.hospitalName}</span></li>
         {r.doctorName !== "" ? <li><Icon name="people" size={14} /><span>{t("mod.doctor")}</span> <b>{r.doctorName}</b></li> : null}
@@ -238,5 +242,34 @@ export function StatusSeg({ status, counts, onPick }: { status: ModerationState;
         ))}
       </div>
     </div>
+  );
+}
+
+function ReviewDetail({ r, showNoBooking, onClose }: { r: ReviewItem; showNoBooking: boolean; onClose: () => void }) {
+  const t = useT();
+  return (
+    <DetailDialog title={t("mod.detail.title.rev")} onClose={onClose}>
+      <div className="mod-card__head">
+        <Pill tone={STATE_TONE[r.state]}>{t(STATE_LABEL[r.state])}</Pill>
+        {r.hasBooking ? <Pill tone="info">{t("mod.badge.booked")}</Pill> : showNoBooking ? <Pill tone="off">{t("mod.badge.unbooked")}</Pill> : null}
+        <span className="mod-card__date">{formatDay(r.createdAt)}</span>
+      </div>
+      <h3 className="mod-detail__title">{r.title}</h3>
+      <Stars n={r.rating} />
+      <p className="mod-detail__text">{r.content}</p>
+      {r.treatments.length > 0 ? (
+        <ul className="mod-chips">
+          {r.treatments.map((x, i) => (
+            <li key={`${i}-${x}`} className="mod-chip">{x}</li>
+          ))}
+        </ul>
+      ) : null}
+      <ul className="mod-facts">
+        <li><Icon name="hospital" size={14} /><span className="mod-facts__v mod-facts__v--wrap">{r.hospitalName}</span></li>
+        {r.doctorName !== "" ? <li><Icon name="people" size={14} /><span>{t("mod.doctor")}</span> <b>{r.doctorName}</b></li> : null}
+        <li title={t("mod.author.locked")}><Icon name="lock" size={14} /><span>{t("mod.author")}</span> <b translate="no">{r.author}</b></li>
+      </ul>
+      <Gallery images={r.images} />
+    </DetailDialog>
   );
 }

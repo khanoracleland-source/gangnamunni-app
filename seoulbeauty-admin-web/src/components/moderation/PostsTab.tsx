@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Icon from "../Icon";
 import { Notice, Pill } from "../hospitals/parts";
 import { Pager, SearchForm, Skeleton, StatusSeg } from "./ReviewsTab";
-import Thumbs from "./Thumbs";
+import DetailDialog, { Gallery } from "./DetailDialog";
 import { DecisionActions, useDecision } from "./useDecision";
 import { fetchModerationPosts, type ModerationPage, type PostItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
@@ -47,6 +47,7 @@ export default function PostsTab({ view, canDecide }: { view: ModerationView; ca
   const go = (patch: Partial<ModerationView>) => router.push(moderationHref({ ...view, page: 1, ...patch }));
   const retry = () => setAttempt((n) => n + 1);
   const decision = useDecision("post", retry);
+  const [detail, setDetail] = useState<PostItem | null>(null);
   const { data, failed, stale } = state;
   const total = data ? data.counts[view.status] : 0;
   const pages = Math.ceil(total / PER_PAGE);
@@ -86,7 +87,7 @@ export default function PostsTab({ view, canDecide }: { view: ModerationView; ca
           ) : (
             <ul className={busy ? "mod-cards is-busy" : "mod-cards"}>
               {data.items.map((p) => (
-                <PostCard key={p.id} p={p} decision={canDecide ? decision : null} />
+                <PostCard key={p.id} p={p} decision={canDecide ? decision : null} onOpen={() => setDetail(p)} />
               ))}
             </ul>
           )}
@@ -94,26 +95,48 @@ export default function PostsTab({ view, canDecide }: { view: ModerationView; ca
         </>
       ) : null}
       {decision.dialog}
+      {detail ? <PostDetail p={detail} onClose={() => setDetail(null)} /> : null}
     </>
   );
 }
 
-function PostCard({ p, decision }: { p: PostItem; decision: ReturnType<typeof useDecision> | null }) {
+function PostCard({ p, decision, onOpen }: { p: PostItem; decision: ReturnType<typeof useDecision> | null; onOpen: () => void }) {
   const t = useT();
   return (
-    <li className="mod-card mod-card--post">
+    <li className="mod-card mod-card--post is-clickable" onClick={(e) => { if (!(e.target as HTMLElement).closest("button, a") && !window.getSelection()?.toString()) onOpen(); }}>
       <div className="mod-card__head">
         <Pill tone={STATE_TONE[p.state]}>{t(STATE_LABEL[p.state])}</Pill>
         {p.category !== "" ? <Pill tone="plain">{p.category}</Pill> : null}
         <span className="mod-card__date">{formatDay(p.createdAt)}</span>
       </div>
-      <h3 className="mod-card__title" title={p.title}>{p.title}</h3>
+      <h3 className="mod-card__title" title={p.title}>
+        <button type="button" className="mod-card__open" aria-haspopup="dialog" onClick={onOpen}>{p.title}</button>
+      </h3>
       <p className="mod-card__body">{p.content}</p>
-      <Thumbs images={p.images} />
+      {p.images.length > 0 ? <p className="mod-photos"><Icon name="image" size={14} />{t("mod.img.count", { n: p.images.length })}</p> : null}
       <ul className="mod-facts">
         <li title={t("mod.author.locked")}><Icon name="lock" size={14} /><span>{t("mod.author")}</span> <b translate="no">{p.author}</b></li>
       </ul>
       {p.state !== "pending" ? <p className="mod-done">{t("mod.handled")}</p> : decision ? <DecisionActions busy={decision.busy} onApprove={() => decision.approve(p)} onReject={() => decision.askReject(p)} /> : null}
     </li>
+  );
+}
+
+function PostDetail({ p, onClose }: { p: PostItem; onClose: () => void }) {
+  const t = useT();
+  return (
+    <DetailDialog title={t("mod.detail.title.post")} onClose={onClose}>
+      <div className="mod-card__head">
+        <Pill tone={STATE_TONE[p.state]}>{t(STATE_LABEL[p.state])}</Pill>
+        {p.category !== "" ? <Pill tone="plain">{p.category}</Pill> : null}
+        <span className="mod-card__date">{formatDay(p.createdAt)}</span>
+      </div>
+      <h3 className="mod-detail__title">{p.title}</h3>
+      <p className="mod-detail__text">{p.content}</p>
+      <ul className="mod-facts">
+        <li title={t("mod.author.locked")}><Icon name="lock" size={14} /><span>{t("mod.author")}</span> <b translate="no">{p.author}</b></li>
+      </ul>
+      <Gallery images={p.images} />
+    </DetailDialog>
   );
 }

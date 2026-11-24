@@ -3348,10 +3348,6 @@ body.reo-dragging { user-select: none; cursor: grabbing; }
 .mod-stars__n { font-size: 12px; color: var(--muted); letter-spacing: 0; }
 .mod-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .mod-chip { padding: 2px 10px; border-radius: var(--r-pill); background: var(--badge-bg); color: var(--badge-on); font-size: 12px; overflow-wrap: anywhere; }
-.mod-thumbs { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; }
-.mod-thumb { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--badge-bg); color: var(--muted); font-size: 13px; }
-.mod-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-a.mod-thumb:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .mod-facts { list-style: none; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--line); display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 .mod-facts li { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .mod-facts b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
@@ -3363,8 +3359,24 @@ a.mod-thumb:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
 @media (max-width: 639px) {
   .mod-find { flex-basis: 100%; }
   .mod-find .btn, .mod-seg button { min-height: 44px; }
-  .mod-thumb { width: 72px; height: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .mod-skel__line { animation: none; } .mod-cards { transition: none; } }
 .mod-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; padding-top: 4px; }
 @media (max-width: 639px) { .mod-acts .btn { flex: 1; min-height: 44px; } }
+
+/* content review: card opens a detail window */
+.mod-card.is-clickable { cursor: pointer; transition: border-color var(--t-fast) var(--ease); }
+.mod-card.is-clickable:hover { border-color: var(--muted); }
+.mod-card__open { all: unset; display: inline; cursor: pointer; overflow-wrap: anywhere; }
+.mod-card__open:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+.mod-photos { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--muted); }
+.dialog.mod-detail { width: min(720px, calc(100% - 32px)); }
+.mod-detail__body { display: flex; flex-direction: column; gap: 12px; max-height: calc(100dvh - 220px); overflow-y: auto; padding-right: 4px; }
+.mod-detail__title { margin: 0; font-size: 18px; line-height: 1.4; color: var(--ink); overflow-wrap: anywhere; }
+.mod-detail__text { margin: 0; font-size: 15px; line-height: 1.7; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.mod-detail__h { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.mod-facts__v--wrap { white-space: normal; overflow: visible; }
+.mod-gallery__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
+.mod-gallery__list a { display: block; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+.mod-gallery__list a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mod-gallery__list img { display: block; width: 100%; height: auto; max-height: 360px; object-fit: contain; }
