@@ -5,7 +5,7 @@ import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { DB } from '../db/db.module';
 import { ModerationModule } from './moderation.module';
-import { normalizeModerationQuery, reviewRevision, safeImageUrl, toReviewItem } from './moderation.logic';
+import { normalizeModerationQuery, postRevision, reviewRevision, safeImageUrl, toPostItem, toReviewItem } from './moderation.logic';
 
 const SUPER = 'PHPSESSID=super';
 const HOSPITAL = 'PHPSESSID=hospital12';
@@ -28,6 +28,8 @@ describe('admin API: moderation (review list)', () => {
         return [[row]];
       }
       if (sql.includes('FROM review_images')) return [[{ review_id: 1, image_url: '/uploads/a.jpg' }, { review_id: 1, image_url: 'javascript:alert(1)' }]];
+      if (sql.includes('FROM gangnamunni_community_posts p') && sql.includes('SUM(')) return [[{ pending: 1, approved: 0, rejected: 0 }]];
+      if (sql.includes('FROM gangnamunni_community_posts p')) return [[{ id: 9, category: '자유', author_name: 'Han', title: 'P', content: 'body', photos: '["/u/a.png","javascript:x"]', status: 'pending', created_at: '2026-11-20 09:00:00' }]];
       if (sql.includes('FROM gangnamunni_hospitals')) return [[{ id: 12, name: 'A' }]];
       throw new Error(`unexpected ro sql: ${sql}`);
     }),
@@ -109,6 +111,21 @@ describe('admin API: moderation (review list)', () => {
     expect(q.sql).not.toContain('50');
   });
 
+  it('lists community posts for a super admin only; a hospital account gets 403 and the database is not reached', async () => {
+    expect((await get('/v1/moderation/community', HOSPITAL)).status).toBe(403);
+    expect(roCalls).toHaveLength(0);
+    expect((await get('/v1/moderation/community', null)).status).toBe(401);
+    const res = await get('/v1/moderation/community?status=approved&search=a_b');
+    expect(res.status).toBe(200);
+    expect(res.body.counts).toEqual({ pending: 1, approved: 0, rejected: 0 });
+    expect(res.body.items[0]).toMatchObject({ id: 9, author: 'Han', state: 'pending', images: ['/u/a.png'] });
+    const q = roCalls.find((c) => c.sql.includes('FROM gangnamunni_community_posts p') && !c.sql.includes('SUM('))!;
+    expect(q.sql).toContain('p.status = ?');
+    expect(q.values).toEqual(expect.arrayContaining(['active', '%a\\_b%']));
+    process.env.ADMIN_MODERATION_ENABLED = '0';
+    expect((await get('/v1/moderation/community')).status).toBe(404);
+  });
+
   it('lists the hospitals of the caller', async () => {
     expect((await get('/v1/moderation/hospitals')).body).toEqual({ items: [{ id: 12, name: 'A' }] });
   });
@@ -131,6 +148,12 @@ describe('moderation logic', () => {
     expect(toReviewItem({ ...base, review_status: 'published', is_active: 1 }, []).state).toBe('approved');
     expect(toReviewItem({ ...base, review_status: 'published', is_active: 0 }, []).state).toBe('rejected');
     expect(toReviewItem({ ...base, review_status: 'pending', is_active: 0 }, []).rating).toBe(5);
+  });
+  it('maps a community post and changes its revision with the content', () => {
+    const row = { id: 1, category: 'c', title: 't', content: 'b', photos: 'not json', status: 'rejected', author_name: 'x' };
+    expect(toPostItem(row)).toMatchObject({ state: 'rejected', images: [], author: 'x' });
+    expect(toPostItem({ ...row, status: 'active' }).state).toBe('approved');
+    expect(postRevision(row)).not.toBe(postRevision({ ...row, content: 'c' }));
   });
   it('changes the revision when the content changes', () => {
     const r = { hospital_id: 1, title: 'a', content: 'b', rating: 5, treatments: '', doctor_name: '', updated_at: 't' };

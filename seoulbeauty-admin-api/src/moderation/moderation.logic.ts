@@ -144,3 +144,69 @@ export function toPage<T>(q: ModerationQuery, counts: Counts, rows: T[]): Modera
 }
 
 export const emptyPage = <T>(q: ModerationQuery): ModerationPage<T> => toPage<T>(q, { pending: 0, approved: 0, rejected: 0 }, []);
+
+// ---- community posts (gangnamunni_community_posts) ------------------------------------------------------------------
+
+export const POST_STATE_VALUE: Record<ModerationState, string> = { pending: 'pending', approved: 'active', rejected: 'rejected' };
+
+function postWhere(q: ModerationQuery, withStatus: boolean): Query {
+  let sql = '1 = 1';
+  const values: unknown[] = [];
+  if (withStatus) {
+    sql += ' AND p.status = ?';
+    values.push(POST_STATE_VALUE[q.status]);
+  }
+  if (q.search) {
+    const like = likeContains(q.search);
+    sql += ' AND (p.title LIKE ? OR p.content LIKE ? OR p.author_name LIKE ? OR p.category LIKE ?)';
+    values.push(like, like, like, like);
+  }
+  return { sql, values };
+}
+
+export function postCountsQuery(q: ModerationQuery): Query {
+  const w = postWhere(q, false);
+  return {
+    sql: `SELECT SUM(CASE WHEN p.status = 'pending' THEN 1 ELSE 0 END) AS pending,
+                 SUM(CASE WHEN p.status = 'active' THEN 1 ELSE 0 END) AS approved,
+                 SUM(CASE WHEN p.status = 'rejected' THEN 1 ELSE 0 END) AS rejected
+            FROM gangnamunni_community_posts p WHERE ${w.sql}`,
+    values: w.values,
+  };
+}
+
+export function postListQuery(q: ModerationQuery): Query {
+  const w = postWhere(q, true);
+  return {
+    sql: `SELECT p.id, p.category, p.author_name, p.title, p.content, p.photos, p.status, p.created_at
+            FROM gangnamunni_community_posts p WHERE ${w.sql} ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?`,
+    values: [...w.values, PER_PAGE + 1, (q.page - 1) * PER_PAGE],
+  };
+}
+
+export function photosOf(raw: unknown): string[] {
+  try {
+    const v = JSON.parse(str(raw) || '[]');
+    return Array.isArray(v) ? v.map(safeImageUrl).filter((x) => x !== '').slice(0, 12) : [];
+  } catch {
+    return [];
+  }
+}
+
+export const postRevision = (r: Row): string => sha([str(r.category), str(r.title), str(r.content), str(r.photos)]);
+
+export function toPostItem(r: Row) {
+  const status = str(r.status);
+  return {
+    id: num(r.id),
+    category: str(r.category),
+    author: str(r.author_name),
+    title: str(r.title),
+    content: str(r.content),
+    images: photosOf(r.photos),
+    state: (status === 'active' ? 'approved' : status === 'rejected' ? 'rejected' : 'pending') as ModerationState,
+    createdAt: str(r.created_at),
+    revision: postRevision(r),
+  };
+}
+export type PostItem = ReturnType<typeof toPostItem>;
