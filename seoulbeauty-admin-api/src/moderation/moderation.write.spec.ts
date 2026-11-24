@@ -5,7 +5,7 @@ import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { DB, DB_RW } from '../db/db.module';
 import { ModerationModule } from './moderation.module';
-import { parsePostEdit, parseReviewEdit, postRevision, remainingPhotos, reviewRevision } from './moderation.logic';
+import { parsePostEdit, parseReviewEdit, photosOf, postRevision, remainingPhotos, reviewRevision } from './moderation.logic';
 
 const SUPER = 'PHPSESSID=super';
 const HOSPITAL = 'PHPSESSID=hospital12';
@@ -337,6 +337,19 @@ describe('admin API: moderation (edit and delete)', () => {
       expect(remainingPhotos('{"a":1}', ['/a'])).toBeNull();
       expect(remainingPhotos('oops', ['/a'])).toBeNull();
       expect(remainingPhotos(null, ['/a'])).toEqual([]);
+    });
+    it('reads the pictures column as text or as a list the driver already decoded, with the same revision either way for the same list', () => {
+      const list = ['/hairwang/a.jpg', '/hairwang/b.jpg'];
+      expect(photosOf(JSON.stringify(list))).toEqual(list);
+      expect(photosOf(list)).toEqual(list);
+      expect(photosOf(Buffer.from(JSON.stringify(list)))).toEqual(list);
+      expect(photosOf(['javascript:x', 5, '/ok.png'])).toEqual(['/ok.png']);
+      expect(photosOf(null)).toEqual([]);
+      expect(photosOf({ not: 'a list' })).toEqual([]);
+      expect(remainingPhotos(list, ['/hairwang/a.jpg'])).toEqual(['/hairwang/b.jpg']);
+      const row = { category: 'c', title: 't', content: 'x' };
+      expect(postRevision({ ...row, photos: list })).toBe(postRevision({ ...row, photos: list }));
+      expect(postRevision({ ...row, photos: list })).not.toBe(postRevision({ ...row, photos: ['/hairwang/b.jpg'] }));
     });
   });
 });

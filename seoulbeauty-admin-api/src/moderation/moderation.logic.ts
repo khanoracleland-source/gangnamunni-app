@@ -193,16 +193,25 @@ export function postListQuery(q: ModerationQuery): Query {
   };
 }
 
-export function photosOf(raw: unknown): string[] {
+/** The pictures column holds a JSON list. The driver hands it over as text or, for a column the server marks as JSON, already as a list; null when it is neither. */
+export function photoList(raw: unknown): unknown[] | null {
+  if (Array.isArray(raw)) return raw;
   try {
     const v = JSON.parse(str(raw) || '[]');
-    return Array.isArray(v) ? v.map(safeImageUrl).filter((x) => x !== '').slice(0, 12) : [];
+    return Array.isArray(v) ? v : null;
   } catch {
-    return [];
+    return null;
   }
 }
 
-export const postRevision = (r: Row): string => sha([str(r.category), str(r.title), str(r.content), str(r.photos)]);
+export function photosOf(raw: unknown): string[] {
+  const v = photoList(raw);
+  return v ? v.map((x) => safeImageUrl(x)).filter((x) => x !== '').slice(0, 12) : [];
+}
+
+const photosText = (raw: unknown): string => (Array.isArray(raw) ? JSON.stringify(raw) : str(raw));
+
+export const postRevision = (r: Row): string => sha([str(r.category), str(r.title), str(r.content), photosText(r.photos)]);
 
 export function toPostItem(r: Row) {
   const status = str(r.status);
@@ -367,14 +376,10 @@ export const deleteReviewImagesByUrlQuery = (reviewId: number, urls: string[]): 
 
 /** The stored list with the removed pictures taken out; an entry matches by its stored text or by its safe address. */
 export function remainingPhotos(raw: unknown, remove: string[]): string[] | null {
-  try {
-    const v = JSON.parse(str(raw) || '[]');
-    if (!Array.isArray(v)) return null;
-    const gone = new Set(remove);
-    return v.filter((x) => typeof x === 'string').filter((x: string) => !gone.has(x) && !gone.has(safeImageUrl(x)));
-  } catch {
-    return null;
-  }
+  const v = photoList(raw);
+  if (!v) return null;
+  const gone = new Set(remove);
+  return v.filter((x): x is string => typeof x === 'string').filter((x) => !gone.has(x) && !gone.has(safeImageUrl(x)));
 }
 
 export const updatePostQuery = (id: number, e: PostEdit, photos: string[] | null): Query =>
