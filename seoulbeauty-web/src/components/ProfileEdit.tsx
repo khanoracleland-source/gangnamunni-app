@@ -34,6 +34,7 @@ function Form({ data }: { data: MyProfile }) {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<Err>(null);
   const [leave, setLeave] = useState(false);
+  const leaveRef = useRef<BottomSheetHandle>(null);
   const [edit, setEdit] = useState<Field | null>(null);
   const [draft, setDraft] = useState("");
   const sheetRef = useRef<BottomSheetHandle>(null);
@@ -186,14 +187,14 @@ function Form({ data }: { data: MyProfile }) {
       </BottomSheet>
 
       {leave && (
-        <div className={mp.pfModal} role="presentation" onClick={() => setLeave(false)}>
-          <div className={mp.pfModalBox} role="dialog" aria-modal="true" aria-labelledby="pf-leave" onClick={(e) => e.stopPropagation()}>
+        <BottomSheet ref={leaveRef} open onClose={() => setLeave(false)} label="변경사항 저장 확인">
+          <div className={mp.pfModalBox}>
             <h2 id="pf-leave">변경사항을 저장하지 않았어요</h2>
             <p>저장하지 않고 나가면 선택한 사진이 사라져요.</p>
-            <button type="button" className={mp.pfSave} onClick={async () => { setLeave(false); if (await save(vals)) router.push("/mypage"); }}>저장</button>
-            <button type="button" className={mp.pfDiscard} onClick={() => router.push("/mypage")}>저장하지 않고 나가기</button>
+            <button type="button" className={mp.pfSave} onClick={() => leaveRef.current?.closeThen(async () => { if (await save(vals)) router.push("/mypage"); })}>저장</button>
+            <button type="button" className={mp.pfDiscard} onClick={() => leaveRef.current?.closeThen(() => router.push("/mypage"))}>저장하지 않고 나가기</button>
           </div>
-        </div>
+        </BottomSheet>
       )}
     </div>
   );

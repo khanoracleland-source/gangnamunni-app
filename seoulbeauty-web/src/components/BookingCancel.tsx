@@ -2,10 +2,11 @@
 import Loading from "./Loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type CancelWarn } from "@/lib/api";
 import { formatDateTime } from "@/lib/booking";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import LoginPrompt from "./LoginPrompt";
 import { CANCEL_REASONS } from "./MyBookings";
 import styles from "./Booking.module.css";
@@ -17,6 +18,9 @@ export default function BookingCancel({ id, reason }: { id: number; reason: stri
   const router = useRouter();
   const qc = useQueryClient();
   const { data, error, refetch } = useQuery({ queryKey: qk.bookingCancelInfo(id), queryFn: () => api.bookingCancelInfo(id), staleTime: 0, gcTime: 0, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  const warnRef = useRef<BottomSheetHandle>(null);
+  const policyRef = useRef<BottomSheetHandle>(null);
+  const afterWarn = useRef<(() => void) | null>(null);
   const [choice, custom0] = reason.split(": ", 2);
   const [custom, setCustom] = useState(custom0 ?? "");
   const [agree, setAgree] = useState(false);
@@ -98,10 +102,9 @@ export default function BookingCancel({ id, reason }: { id: number; reason: stri
             {!data.windowClosed && <button type="button" className={styles.cxBtn} disabled={busy} onClick={() => finalize()}>{busy ? "요청 중..." : "예약 취소 요청"}</button>}
             {err && <p className={styles.cxErr} role="alert">{err}</p>}
           </main>
-          {warn && (
-            <div className={styles.overlay} onClick={() => setWarn(null)}>
-              <section className={styles.sheet} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-                <div className={styles.handle} />
+          <BottomSheet ref={warnRef} open={!!warn} onClose={() => { setWarn(null); const f = afterWarn.current; afterWarn.current = null; f?.(); }} label="취소 횟수 안내">
+            {warn && (
+              <div className={styles.stdBody}>
                 <div className={styles.sheetBody}>
                   <span className={styles.sheetIcon} aria-hidden="true">!</span>
                   <h2 className={styles.sheetTitle}>{warn.will_block ? "이번 취소로 예약이 제한돼요" : "취소 횟수를 확인해 주세요"}</h2>
@@ -112,27 +115,24 @@ export default function BookingCancel({ id, reason }: { id: number; reason: stri
                   </p>
                 </div>
                 <div className={styles.actions}>
-                  <button type="button" className={styles.act} onClick={() => { setAcked(true); setWarn(null); void finalize(true); }}>계속 취소</button>
-                  <button type="button" className={`${styles.act} ${styles.actPri}`} onClick={() => setWarn(null)}>돌아가기</button>
+                  <button type="button" className={styles.act} onClick={() => { afterWarn.current = () => { setAcked(true); void finalize(true); }; warnRef.current?.close(); }}>계속 취소</button>
+                  <button type="button" className={`${styles.act} ${styles.actPri}`} onClick={() => warnRef.current?.close()}>돌아가기</button>
                 </div>
-              </section>
-            </div>
-          )}
-          {policy && (
-            <div className={styles.overlay} onClick={() => setPolicy(false)}>
-              <section className={styles.sheet} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-                <div className={styles.handle} />
-                <div className={styles.sheetBody}>
-                  <h2 className={styles.sheetTitle}>취소 및 환불 규정을 확인해주세요</h2>
-                  <div className={styles.policyBody}>
-                    <p>결제된 예약은 취소 완료 후 관리자 확인을 거쳐 환불 처리됩니다.</p>
-                    <ul><li>환불 가능 금액은 실제 결제 내역 기준으로 계산됩니다.</li><li>환불 완료 전까지 관리자 화면에는 환불 안됨 상태로 표시됩니다.</li><li>결제 없이 계속한 예약에는 환불할 결제 금액이 없습니다.</li></ul>
-                  </div>
+              </div>
+            )}
+          </BottomSheet>
+          <BottomSheet ref={policyRef} open={policy} onClose={() => setPolicy(false)} label="취소 및 환불 규정">
+            <div className={styles.stdBody}>
+              <div className={styles.sheetBody}>
+                <h2 className={styles.sheetTitle}>취소 및 환불 규정을 확인해주세요</h2>
+                <div className={styles.policyBody}>
+                  <p>결제된 예약은 취소 완료 후 관리자 확인을 거쳐 환불 처리됩니다.</p>
+                  <ul><li>환불 가능 금액은 실제 결제 내역 기준으로 계산됩니다.</li><li>환불 완료 전까지 관리자 화면에는 환불 안됨 상태로 표시됩니다.</li><li>결제 없이 계속한 예약에는 환불할 결제 금액이 없습니다.</li></ul>
                 </div>
-                <div className={styles.actions}><button type="button" className={`${styles.act} ${styles.actPri}`} onClick={() => setPolicy(false)}>확인</button></div>
-              </section>
+              </div>
+              <div className={styles.actions}><button type="button" className={`${styles.act} ${styles.actPri}`} onClick={() => policyRef.current?.close()}>확인</button></div>
             </div>
-          )}
+          </BottomSheet>
         </>
       )}
     </div>

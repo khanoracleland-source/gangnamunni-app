@@ -104,7 +104,7 @@
 
 /* message sheets (05-11 / 05-12 layout) */
 .sheetBody { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px 8px; }
-.sheetIcon { width: 48px; height: 48px; margin: 0 auto; border-radius: 12px; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+.sheetIcon { width: 48px; height: 48px; margin: 0 auto; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; }
 .sheetTitle { margin: 0; font-size: calc(22px * var(--fs-scale)); font-weight: 700; text-align: center; line-height: 1.35; }
 .sheetDesc { margin: 0; font-size: calc(15px * var(--fs-scale)); color: #4A4446; text-align: center; line-height: 1.5; }
 .actions { display: flex; gap: 10px; margin-top: 4px; }
@@ -159,12 +159,10 @@
 .head { position: sticky; top: 0; z-index: 10; height: 56px; display: flex; align-items: center; justify-content: center; background: #fff; }
 .head .back { position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border: 0; background: none; font-size: 22px; color: #000; cursor: pointer; display: flex; align-items: center; justify-content: center; text-decoration: none; }
 .title { font-size: 18px; font-weight: 700; }
-.overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; background: rgba(26,23,24,.45); animation: fade .18s ease-out; }
-.sheet { width: 100%; max-width: 640px; max-height: 88%; display: flex; flex-direction: column; background: #fff; border-radius: 16px 16px 0 0; padding: 0 20px calc(20px + var(--sab)); animation: up .4s cubic-bezier(.2,.8,.2,1); }
 .handle { width: 40px; height: 4px; border-radius: 2px; background: #1A1718; margin: 10px auto 16px; flex-shrink: 0; }
-.sheet .sheetBody { overflow-y: auto; overscroll-behavior: contain; padding: 0 0 14px; }
-.sheet .sheetIcon { font-size: 28px; color: #fff; font-weight: 700; }
-.sheet .actions { flex-shrink: 0; }
+.stdBody { padding: 0 20px; }
+.stdBody .sheetBody { overflow-y: auto; overscroll-behavior: contain; padding: 0 0 14px; }
+.stdBody .sheetIcon { font-size: 28px; color: #fff; font-weight: 700; }
 .doneBody { padding: 30px 20px; display: flex; flex-direction: column; gap: 12px; }
 .doneTitle { font-size: 22px; font-weight: 700; text-align: center; margin: 0; line-height: 1.4; }
 .doneBody .sheetIcon { color: #fff; font-size: 26px; font-weight: 700; }

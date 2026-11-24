@@ -1,6 +1,7 @@
 "use client";
 import Loading from "./Loading";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,6 +25,7 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const delRef = useRef<BottomSheetHandle>(null);
   const say = useToast();
   const tab = useSearchParams().get("tab") === "done" ? "done" : "writable";
   const { data, error, refetch } = useQuery({ queryKey: qk.myReviews, queryFn: () => api.myReviews(), initialData: initial, retry: false, enabled: !anon });
@@ -106,14 +108,14 @@ export default function MyReviews({ initial, anon }: { initial?: Data; anon?: bo
         </>
       )}
       {confirm !== null && (
-        <div className={styles.pfModal} role="presentation" onClick={() => !busy && setConfirm(null)}>
-          <div className={styles.pfModalBox} role="dialog" aria-modal="true" aria-labelledby="rv-del" onClick={(e) => e.stopPropagation()}>
+        <BottomSheet ref={delRef} open onClose={() => setConfirm(null)} label="후기 삭제" dismissible={!busy}>
+          <div className={styles.pfModalBox}>
             <h2 id="rv-del">후기를 삭제할까요?</h2>
             <p>삭제한 후기는 다시 복구할 수 없어요.</p>
-            <button type="button" className={styles.pfDiscard} disabled={busy} onClick={() => setConfirm(null)}>취소</button>
-            <button type="button" className={styles.pfDanger} disabled={busy} onClick={remove}>{busy ? "삭제 중…" : "삭제할게요"}</button>
+            <button type="button" className={styles.pfDiscard} disabled={busy} onClick={() => delRef.current?.close()}>취소</button>
+            <button type="button" className={styles.pfDanger} disabled={busy} onClick={() => delRef.current?.closeThen(remove)}>{busy ? "삭제 중…" : "삭제할게요"}</button>
           </div>
-        </div>
+        </BottomSheet>
       )}
     </div>
   );

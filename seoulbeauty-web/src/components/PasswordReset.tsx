@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { useMe } from "@/lib/me";
-import BottomSheet from "./BottomSheet";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import checkIcon from "@/assets/icons/login-check.png";
 import styles from "./PasswordReset.module.css";
 
@@ -35,6 +35,7 @@ export default function PasswordReset() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const sending = useRef(false);
+  const doneRef = useRef<BottomSheetHandle>(null);
 
   useEffect(() => { if (me.data?.loggedIn) router.replace("/"); }, [me.data, router]);
   const goBack = () => { if (ticket) { setTicket(null); setPw(""); setPw2(""); setError(""); } else if (window.history.length > 1) router.back(); else router.push("/password-lost"); };
@@ -124,12 +125,12 @@ export default function PasswordReset() {
         <button type="submit" className={`${styles.submit} ${saveReady ? styles.on : ""}`} disabled={!saveReady}>{busy ? "변경 중…" : "변경하기"}</button>
       </div>
 
-      <BottomSheet open={done} onClose={() => router.replace("/login")} label="비밀번호 변경 완료">
+      <BottomSheet ref={doneRef} open={done} onClose={() => router.replace("/login")} label="비밀번호 변경 완료">
         <div className={styles.sent}>
           <div className={styles.sentIco}>{/* eslint-disable-line @next/next/no-img-element */}<img src={checkIcon.src} alt="" /></div>
           <h2 className={styles.sentTitle}>비밀번호가 변경되었어요</h2>
           <p className={styles.sentText}>새 비밀번호로 다시 로그인해주세요</p>
-          <button type="button" className={styles.ok} onClick={() => router.replace("/login")}>로그인하기</button>
+          <button type="button" className={styles.ok} onClick={() => doneRef.current?.close()}>로그인하기</button>
         </div>
       </BottomSheet>
     </form>

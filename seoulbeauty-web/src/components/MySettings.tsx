@@ -147,7 +147,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
         <div className={styles.sheet}>
           <h2 className={styles.sheetTitle}>잠시 로그아웃하시겠어요?</h2>
           <div className={styles.sheetBtns}>
-            <button type="button" className={styles.sheetBtn} onClick={signOut}>로그아웃</button>
+            <button type="button" className={styles.sheetBtn} onClick={() => sheetRef.current?.closeThen(signOut)}>로그아웃</button>
             <button type="button" className={`${styles.sheetBtn} ${styles.sheetBtnPri}`} onClick={() => sheetRef.current?.close()}>아니오</button>
           </div>
         </div>

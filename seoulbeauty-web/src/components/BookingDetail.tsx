@@ -2,8 +2,9 @@
 import Loading from "./Loading";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import { api, ApiError, qk, type BookingCancelDetail, type BookingDetail as Detail, type BookingRequestDetail } from "@/lib/api";
 import LoginPrompt from "./LoginPrompt";
 import SupportHeader from "./SupportHeader";
@@ -23,6 +24,9 @@ export default function BookingDetail({ id, initial, anon }: { id: number; initi
   // booking_request_detail.php?changed=1 (05-43): the "변경 요청 접수" sheet once, then the parameter is dropped from the URL
   const changedParam = useSearchParams().get("changed") === "1";
   const [changed, setChanged] = useState(changedParam);
+  const router = useRouter();
+  const changedRef = useRef<BottomSheetHandle>(null);
+  const goList = (e: React.MouseEvent) => { e.preventDefault(); changedRef.current?.closeThen(() => router.replace("/mypage/bookings")); };
   useEffect(() => { if (changedParam) { try { window.history.replaceState(null, "", window.location.pathname); } catch { /* ignore */ } } }, [changedParam]);
   const title = !data ? "예약 상세" : data.kind === "cancelled" ? "취소·환불 내역을 확인해보세요" : data.isActive ? "예약 내용을 확인해보세요" : data.isCompleted ? "시술완료 내역" : "예약 상세";
   return (
@@ -34,19 +38,19 @@ export default function BookingDetail({ id, initial, anon }: { id: number; initi
         <div className={support.empty}>{error ? <>불러오지 못했습니다. <button type="button" className={support.retry} onClick={() => refetch()}>다시 시도</button></> : <Loading />}</div>
       ) : data.kind === "cancelled" ? <Cancelled d={data} /> : <Request d={data} />}
       {changed && data && data.kind === "request" && data.isActive && (
-        <div className={styles.bkDim} role="dialog" aria-modal="true" aria-labelledby="bdChgTitle" onClick={() => setChanged(false)}>
-          <div className={styles.bkSheet} onClick={(e) => e.stopPropagation()}>
+        <BottomSheet ref={changedRef} open onClose={() => setChanged(false)} label="예약 변경 요청 접수">
+          <div className={styles.bkBody}>
             <div className={styles.bkSheetIcon} aria-hidden="true">✓</div>
             <div className={styles.bkSheetTitle} id="bdChgTitle">예약 변경 요청이 접수되었어요!</div>
             <div className={styles.bkSheetDesc}>원하시는 일정으로<br />병원에 예약 가능 여부를 확인하고 있어요</div>
             <div className={styles.bkSheetDesc}><b>예상 확인 시간</b><br />평균 1~3시간 이내<br />(병원 상황에 따라 달라질 수 있어요)</div>
             <div className={styles.bkSheetDesc}><b>알림을 꼭 확인해주세요!</b><br />예약 진행 상황은 알림(푸시)으로 안내해드려요<br />알림을 허용해두시면 빠르게 확인하실 수 있어요</div>
             <div className={styles.bkSheetActions}>
-              <Link className={`${styles.bkBtn} ${styles.bkBtnPri}`} href="/mypage/bookings" replace>확인했어요</Link>
-              <Link className={styles.bkBtn} href="/mypage/bookings" replace>내 예약 현황</Link>
+              <Link className={`${styles.bkBtn} ${styles.bkBtnPri}`} href="/mypage/bookings" replace onClick={goList}>확인했어요</Link>
+              <Link className={styles.bkBtn} href="/mypage/bookings" replace onClick={goList}>내 예약 현황</Link>
             </div>
           </div>
-        </div>
+        </BottomSheet>
       )}
     </div>
   );

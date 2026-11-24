@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/api";
 import { useMe } from "@/lib/me";
-import BottomSheet from "./BottomSheet";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import sentIcon from "@/assets/icons/login-check.png";
 import styles from "./PasswordLost.module.css";
 
@@ -18,6 +18,7 @@ export default function PasswordLost() {
   const [error, setError] = useState("");
   const [sentTo, setSentTo] = useState<string | null>(null);
   const sending = useRef(false);
+  const sentRef = useRef<BottomSheetHandle>(null);
 
   /** A signed-in member goes home (as the PHP page does). */
   useEffect(() => { if (me.data?.loggedIn) router.replace("/"); }, [me.data, router]);
@@ -62,12 +63,12 @@ export default function PasswordLost() {
         <button type="submit" className={`${styles.submit} ${ready ? styles.on : ""}`} disabled={!ready}>{busy ? "보내는 중…" : "재설정 메일 보내기"}</button>
       </div>
 
-      <BottomSheet open={sentTo !== null} onClose={() => router.replace("/password-reset")} label="메일 발송 안내">
+      <BottomSheet ref={sentRef} open={sentTo !== null} onClose={() => router.replace("/password-reset")} label="메일 발송 안내">
         <div className={styles.sent}>
           <div className={styles.sentIco}>{/* eslint-disable-line @next/next/no-img-element */}<img src={sentIcon.src} alt="" /></div>
           <h2 className={styles.sentTitle}>메일을 보냈어요</h2>
           <p className={styles.sentText}>{sentTo} 으로<br />비밀번호 재설정 링크를 보냈어요.<br />메일이 안 보이면 스팸함도 확인해주세요</p>
-          <button type="button" className={styles.ok} onClick={() => router.replace("/password-reset")}>확인했어요</button>
+          <button type="button" className={styles.ok} onClick={() => sentRef.current?.close()}>확인했어요</button>
         </div>
       </BottomSheet>
     </form>

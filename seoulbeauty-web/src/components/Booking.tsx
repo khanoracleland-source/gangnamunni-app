@@ -411,7 +411,7 @@ function BookingForm({ ctx, p, title, back, leave, change }: { ctx: BookingConte
           {flagged.map((q) => <div key={q} className={styles.mcItem}>{q}</div>)}
         </Sheet>
       )}
-      {stage === "consent" && <Consent onGo={() => { consented.current = true; setStage("confirm"); }} />}
+      {stage === "consent" && <Consent onGo={() => { consented.current = true; setStage("confirm"); }} onDismiss={() => setStage(null)} />}
 
       {refusal && (
         <Refusal r={refusal} hospitalId={ctx.hospital.id} onClose={closeRefusal} onProceed={proceedFlag}
@@ -443,17 +443,16 @@ function SheetActions({ render, close }: { render: (close: CloseThen) => React.R
 /**
  * Message sheet on the BottomSheet standard (05-11 / 05-12 layout): 48px icon, 22px title, 15px text, body, a row of 52px buttons.
  * `actions` gets `close(after)`: the sheet slides out (0.4 s) and then runs `after` — or `onClose` when nothing is passed.
- * `locked` = a decision sheet: no dim tap, Esc or grip; only its buttons close it.
  */
-function Sheet({ title, desc, icon, children, actions, onClose, locked, label }: {
-  title: React.ReactNode; desc?: React.ReactNode; icon?: "warn" | "ok"; children?: React.ReactNode; actions: (close: CloseThen) => React.ReactNode; onClose: () => void; locked?: boolean; label?: string;
+function Sheet({ title, desc, icon, children, actions, onClose, label }: {
+  title: React.ReactNode; desc?: React.ReactNode; icon?: "warn" | "ok"; children?: React.ReactNode; actions: (close: CloseThen) => React.ReactNode; onClose: () => void; label?: string;
 }) {
   const ref = useRef<BottomSheetHandle>(null);
   const pending = useRef<(() => void) | null>(null);
   const close: CloseThen = (after) => { pending.current = after ?? null; ref.current?.close(); };
   const afterClose = () => { const f = pending.current ?? onClose; pending.current = null; f(); };
   return (
-    <BottomSheet ref={ref} open onClose={afterClose} label={label ?? (typeof title === "string" ? title : "안내")} dismissible={!locked}>
+    <BottomSheet ref={ref} open onClose={afterClose} label={label ?? (typeof title === "string" ? title : "안내")}>
       <div className={styles.sheetBody}>
         {icon && <div className={styles.sheetIcon} aria-hidden="true">{icon === "ok" ? <CheckIcon /> : <WarnIcon />}</div>}
         <h2 className={styles.sheetTitle}>{title}</h2>
@@ -468,7 +467,7 @@ function Sheet({ title, desc, icon, children, actions, onClose, locked, label }:
 /** 05-11 예약 요청 접수 */
 function SuccessSheet({ onDone, onList }: { onDone: () => void; onList: () => void }) {
   return (
-    <Sheet title="예약 요청이 접수되었어요!" icon="ok" onClose={onDone} locked label="예약 요청 접수"
+    <Sheet title="예약 요청이 접수되었어요!" icon="ok" onClose={onDone} label="예약 요청 접수"
       desc={<>원하시는 일정으로<br />병원에 예약 가능 여부를 확인하고 있어요</>}
       actions={(close) => <><button type="button" className={`${styles.act} ${styles.actPri}`} onClick={() => close(onDone)}>확인했어요</button><button type="button" className={styles.act} onClick={() => close(onList)}>내 예약 현황</button></>}>
       <div className={styles.waitBox}>
@@ -544,7 +543,8 @@ function PreCheck({ questions, answers, setAnswers, onNext }: { questions: strin
   );
 }
 
-function Consent({ onGo }: { onGo: () => void }) {
+/** Closable (dim, grip, Esc): closing without agreeing only drops the sheet — the page behind keeps its date, time and treatments. */
+function Consent({ onGo, onDismiss }: { onGo: () => void; onDismiss: () => void }) {
   const [on, setOn] = useState([false, false, false]);
   const [note, setNote] = useState(false);
   const all = on.every(Boolean);
@@ -554,7 +554,7 @@ function Consent({ onGo }: { onGo: () => void }) {
     "시술 전후 주의사항을 확인했습니다.",
   ];
   return (
-    <Sheet onClose={onGo} locked title="시술 전 확인해 주세요" label="시술 전 확인"
+    <Sheet onClose={onDismiss} title="시술 전 확인해 주세요" label="시술 전 확인"
       actions={(close) => <button type="button" className={`${styles.act} ${styles.actPri}`} disabled={!all} onClick={() => close(onGo)}>동의하고 예약하기</button>}>
       <div className={styles.consent}>
         <button type="button" className={`${styles.csRow} ${styles.csAll}`} onClick={() => setOn(all ? [false, false, false] : [true, true, true])} aria-pressed={all}><i className={`${styles.tick} ${all ? styles.tickOn : ""}`}>{all ? "✓" : ""}</i><span>전체동의</span></button>
@@ -574,7 +574,7 @@ function Consent({ onGo }: { onGo: () => void }) {
 
 function NoshowSheet({ info, onOk }: { info: NoshowInfo; onOk: () => void }) {
   return (
-    <Sheet onClose={onOk} locked icon="warn" title="지금은 예약할 수 없어요" label="예약 불가"
+    <Sheet onClose={onOk} icon="warn" title="지금은 예약할 수 없어요" label="예약 불가"
       desc={<>최근 {info.months}개월 동안 {info.has_cancel ? "방문하지 않았거나 취소한" : "방문하지 않은"} 예약이 {info.count}건 있어요.<br />{info.available_from}부터 다시 예약할 수 있어요.</>}
       actions={(close) => <button type="button" className={`${styles.act} ${styles.actPri}`} onClick={() => close(onOk)}>확인했어요</button>}>
       {info.items.length > 0 && (

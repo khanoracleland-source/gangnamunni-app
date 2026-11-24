@@ -1,5 +1,6 @@
 "use client";
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -179,10 +180,10 @@ export const CANCEL_REASONS = ["일정 변경", "개인 사정", "다른 병원 
 function CancelReasonSheet({ onClose, onGo }: { onClose: () => void; onGo: (reason: string) => void }) {
   const [choice, setChoice] = useState(CANCEL_REASONS[0]);
   const [custom, setCustom] = useState("");
+  const ref = useRef<BottomSheetHandle>(null);
   return (
-    <div className={styles.bkDim} role="dialog" aria-modal="true" aria-labelledby="bkCancelTitle" onClick={onClose}>
-      <div className={`${styles.bkSheet} ${styles.bkSheetLeft}`} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.bkHandle} aria-hidden="true" />
+    <BottomSheet ref={ref} open onClose={onClose} label="예약 취소 사유">
+      <div className={`${styles.bkBody} ${styles.bkBodyLeft}`}>
         <div className={styles.bkSheetTitle} id="bkCancelTitle">예약을 취소하시는 이유가 있으신가요?</div>
         <div className={styles.bkSheetDesc}>보다 나은 서비스를 위해 의견을 들려주세요</div>
         <div className={styles.bkReasons}>
@@ -191,26 +192,27 @@ function CancelReasonSheet({ onClose, onGo }: { onClose: () => void; onGo: (reas
           ))}
         </div>
         <input className={styles.bkReasonInput} type="text" maxLength={255} placeholder="직접 입력할게요 (선택)" value={custom} onChange={(e) => setCustom(e.target.value)} />
-        <button type="button" className={`${styles.bkBtn} ${styles.bkBtnPri} ${styles.bkBtnWide}`} onClick={() => onGo(custom.trim() ? `${choice}: ${custom.trim()}` : choice)}>예약 취소 요청</button>
+        <button type="button" className={`${styles.bkBtn} ${styles.bkBtnPri} ${styles.bkBtnWide}`} onClick={() => ref.current?.closeThen(() => onGo(custom.trim() ? `${choice}: ${custom.trim()}` : choice))}>예약 취소 요청</button>
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 
 /** my_bookings.php changeConfirmModal. */
 function ChangeConfirmSheet({ left, onClose, onGo }: { left: number; onClose: () => void; onGo: () => void }) {
+  const ref = useRef<BottomSheetHandle>(null);
   return (
-    <div className={styles.bkDim} role="dialog" aria-modal="true" aria-labelledby="bkChangeTitle" onClick={onClose}>
-      <div className={styles.bkSheet} onClick={(e) => e.stopPropagation()}>
+    <BottomSheet ref={ref} open onClose={onClose} label="일정 변경 확인">
+      <div className={styles.bkBody}>
         <div className={styles.bkSheetIcon} aria-hidden="true">!</div>
         <div className={styles.bkSheetTitle} id="bkChangeTitle">병원의 예약 현황에 따라<br />일정 변경이 불가할 수도 있어요</div>
         <div className={styles.bkSheetDesc}>변경하시겠어요? (변경 가능 {left}회 남음)</div>
         <div className={styles.bkSheetActions}>
-          <button type="button" className={`${styles.bkBtn} ${styles.bkBtnPri}`} onClick={onClose}>취소</button>
-          <button type="button" className={styles.bkBtn} onClick={onGo}>변경</button>
+          <button type="button" className={`${styles.bkBtn} ${styles.bkBtnPri}`} onClick={() => ref.current?.close()}>취소</button>
+          <button type="button" className={styles.bkBtn} onClick={() => ref.current?.closeThen(onGo)}>변경</button>
         </div>
       </div>
-    </div>
+    </BottomSheet>
   );
 }
 
@@ -222,19 +224,19 @@ function ExpiredSheet({ n, rebookHref }: { n: NonNullable<MyBookingsData["expire
     mutationFn: () => api.bookingExpireSeen(n.bookingId),
     onSettled: () => { void qc.invalidateQueries({ queryKey: qk.myBookings }); },
   });
+  const ref = useRef<BottomSheetHandle>(null);
   const close = () => { setOpen(false); seen.mutate(); };
-  if (!open) return null;
   return (
-    <div className={styles.bkDim} role="dialog" aria-modal="true" aria-labelledby="bkExpTitle" onClick={close}>
-      <div className={styles.bkSheet} onClick={(e) => e.stopPropagation()}>
+    <BottomSheet ref={ref} open={open} onClose={close} label="결제 기한 만료 안내">
+      <div className={styles.bkBody}>
         <div className={styles.bkSheetIcon} aria-hidden="true">!</div>
         <div className={styles.bkSheetTitle} id="bkExpTitle">결제 기한이 지나<br />예약이 취소되었어요</div>
         <div className={styles.bkSheetDesc}>병원 확인 후 {n.deadlineHours}시간 안에 결제하지 않으면<br />예약이 자동으로 취소돼요. 다시 예약해주세요.</div>
         <div className={styles.bkSheetActions}>
-          <button type="button" className={styles.bkBtn} onClick={close}>확인했어요</button>
-          <a className={`${styles.bkBtn} ${styles.bkBtnPri}`} href={rebookHref} onClick={() => seen.mutate()}>다시 예약하기</a>
+          <button type="button" className={styles.bkBtn} onClick={() => ref.current?.close()}>확인했어요</button>
+          <a className={`${styles.bkBtn} ${styles.bkBtnPri}`} href={rebookHref} onClick={(e) => { e.preventDefault(); ref.current?.closeThen(() => window.location.assign(rebookHref)); }}>다시 예약하기</a>
         </div>
       </div>
-    </div>
+    </BottomSheet>
   );
 }

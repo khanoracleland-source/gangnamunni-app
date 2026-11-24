@@ -1,6 +1,7 @@
 "use client";
 import Loading from "./Loading";
 import { useEffect, useRef, useState } from "react";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, browserApiBase, qk, type ProgressDetail as Data } from "@/lib/api";
@@ -23,6 +24,7 @@ export default function ProgressDetail({ id, initial, anon }: { id: number; init
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState<{ kind: "entry"; entryId: number } | { kind: "review" } | null>(null);
+  const confirmRef = useRef<BottomSheetHandle>(null);
   const [edate, setEdate] = useState(() => initial && initial.enabled ? initial.today : "");
   const [content, setContent] = useState("");
   const [consent, setConsent] = useState(false);
@@ -158,14 +160,14 @@ export default function ProgressDetail({ id, initial, anon }: { id: number; init
       )}
 
       {confirm && (
-        <div className={styles.modal} role="presentation" onClick={() => setConfirm(null)}>
-          <div className={styles.modalBox} role="dialog" aria-modal="true" aria-labelledby="pr-confirm" onClick={(e) => e.stopPropagation()}>
+        <BottomSheet ref={confirmRef} open onClose={() => setConfirm(null)} label="삭제 확인">
+          <div className={styles.modalBox}>
             <h2 id="pr-confirm">{confirm.kind === "entry" ? "이 경과를 삭제할까요?" : "경과 후기를 삭제할까요?"}</h2>
             <p>{confirm.kind === "entry" ? "삭제한 경과는 복구할 수 없어요." : "적립된 포인트는 회수됩니다."}</p>
-            <button type="button" className={styles.modalGhost} onClick={() => setConfirm(null)}>취소</button>
-            <button type="button" className={styles.modalDanger} onClick={doConfirm}>삭제할게요</button>
+            <button type="button" className={styles.modalGhost} onClick={() => confirmRef.current?.close()}>취소</button>
+            <button type="button" className={styles.modalDanger} onClick={() => confirmRef.current?.closeThen(doConfirm)}>삭제할게요</button>
           </div>
-        </div>
+        </BottomSheet>
       )}
     </div>
   );

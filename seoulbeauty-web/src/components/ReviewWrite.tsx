@@ -8,6 +8,7 @@ import { api, ApiError, assetUrl, qk } from "@/lib/api";
 import type { ReviewForm } from "@/lib/api";
 import { useLoginUrl, useMe } from "@/lib/me";
 import { shrinkImage } from "@/lib/image";
+import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
 import styles from "./ReviewWrite.module.css";
 
 const UNKNOWN = "담당 의사 모름";
@@ -54,6 +55,7 @@ function Editor({ data }: { data: ReviewForm }) {
   const [consent, setConsent] = useState(false);
   const [agree, setAgree] = useState(false);
   const [sheet, setSheet] = useState(false);
+  const docRef = useRef<BottomSheetHandle>(null);
   const [draft, setDraft] = useState<number[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -86,7 +88,7 @@ function Editor({ data }: { data: ReviewForm }) {
 
   const openSheet = () => { setDraft(ids); setSheet(true); };
   const toggleDraft = (id: number) => setDraft((d) => (d.includes(id) ? d.filter((x) => x !== id) : [...d, id]));
-  const confirmSheet = () => { if (!draft.length) return; setIds(draft); setUnknown(false); setSheet(false); };
+  const confirmSheet = () => { if (!draft.length) return; setIds(draft); setUnknown(false); docRef.current?.close(); };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -237,8 +239,8 @@ function Editor({ data }: { data: ReviewForm }) {
       <button type="submit" className={styles.submit} disabled={busy}>{busy ? "저장 중…" : edit ? "수정했어요" : "작성했어요"}</button>
 
       {sheet && (
-        <div className={styles.modal} onClick={(e) => { if (e.target === e.currentTarget) setSheet(false); }}>
-          <section className={styles.sheet} role="dialog" aria-modal="true" aria-labelledby="rw-doc-title">
+        <BottomSheet ref={docRef} open onClose={() => setSheet(false)} label="담당 의사 선택">
+          <section className={styles.sheet}>
             <h2 id="rw-doc-title">어떤 원장님께 시술받으셨나요?</h2>
             <div className={styles.dlist}>
               {data.doctors.length === 0 ? (
@@ -261,7 +263,7 @@ function Editor({ data }: { data: ReviewForm }) {
             </div>
             <button type="button" className={styles.dconfirm} disabled={draft.length === 0} onClick={confirmSheet}>선택했어요</button>
           </section>
-        </div>
+        </BottomSheet>
       )}
     </form>
   );
