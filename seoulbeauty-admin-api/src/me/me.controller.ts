@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { AdminGuard, adminsEnabled, doctorsEnabled, doctorsWriteEnabled, doctorsOrderEnabled, doctorsDeleteEnabled, bookingsEnabled, bookingsWriteEnabled, paymentsEnabled, adminsWriteEnabled, hospitalsDeleteEnabled, hospitalsDocumentsEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsReviewEnabled, hospitalsOrderEnabled, hospitalsTreatmentsEnabled, hospitalApplyEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest, treatmentsEnabled, treatmentsImagesEnabled, treatmentsWriteEnabled, treatmentUnitsEnabled, treatmentUnitsWriteEnabled, moderationEnabled, moderationWriteEnabled, moderationEditEnabled, moderationDeleteEnabled } from '../admin-auth/admin.guard';
+import { AdminGuard, adminsEnabled, doctorsEnabled, doctorsWriteEnabled, doctorsOrderEnabled, doctorsDeleteEnabled, bookingsEnabled, bookingsWriteEnabled, paymentsEnabled, adminsWriteEnabled, hospitalsDeleteEnabled, hospitalsDocumentsEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsReviewEnabled, hospitalsOrderEnabled, hospitalsTreatmentsEnabled, hospitalApplyEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest, treatmentsEnabled, treatmentsImagesEnabled, treatmentsWriteEnabled, treatmentUnitsEnabled, treatmentUnitsWriteEnabled, moderationEnabled, moderationWriteEnabled, moderationEditEnabled, moderationDeleteEnabled, bannersEnabled, bannersWriteEnabled } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
 @UseGuards(AdminGuard)
@@ -17,6 +17,7 @@ export class MeController {
       hospitalApply: hospitalApplyEnabled(), admins: adminsEnabled(), adminsWrite: adminsWriteEnabled(), treatments: treatmentsEnabled(), treatmentsWrite: treatmentsWriteEnabled(), treatmentsImages: treatmentsImagesEnabled(),
       treatmentUnits: treatmentUnitsEnabled(), treatmentUnitsWrite: treatmentUnitsWriteEnabled(),
       bookings: bookingsEnabled(), bookingsWrite: bookingsWriteEnabled(), payments: paymentsEnabled(),
-      moderation: moderationEnabled(), moderationWrite: moderationWriteEnabled(), moderationEdit: moderationEditEnabled(), moderationDelete: moderationDeleteEnabled() } };
+      moderation: moderationEnabled(), moderationWrite: moderationWriteEnabled(), moderationEdit: moderationEditEnabled(), moderationDelete: moderationDeleteEnabled(),
+      banners: bannersEnabled(), bannersWrite: bannersWriteEnabled() } };
   }
 }

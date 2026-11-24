@@ -506,6 +506,29 @@ export const moderationEditEnabled = (): boolean => moderationEnabled() && proce
 /** Deleting a review or post for good. A switch of its own because it cannot be undone; only the exact value "1" turns it on. */
 export const moderationDeleteEnabled = (): boolean => moderationEnabled() && process.env.ADMIN_MODERATION_DELETE === '1';
 
+/** Advertising banners of the home page and my page (/v1/banners*, super admin only). Only the exact value "1" turns it on. */
+export const bannersEnabled = (): boolean => process.env.ADMIN_BANNERS_ENABLED === '1';
+/** Changing banners (scroll settings, home switch, delete). Needs the banner page on as well; only the exact value "1" turns it on. */
+export const bannersWriteEnabled = (): boolean => bannersEnabled() && process.env.ADMIN_BANNERS_WRITE === '1';
+
+/** With ADMIN_BANNERS_ENABLED off the banner routes answer 404 as if they did not exist. */
+@Injectable()
+export class BannersEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !bannersEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the write switch off the banner writing routes answer 404 as if they did not exist. */
+@Injectable()
+export class BannersWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !bannersWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** With ADMIN_MODERATION_ENABLED off the moderation routes answer 404 as if they did not exist; PHP is not asked. */
 @Injectable()
 export class ModerationEnabledGuard implements CanActivate {
