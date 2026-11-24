@@ -8,6 +8,7 @@ import { Notice, Pill } from "../hospitals/parts";
 import { Pager, SearchForm, Skeleton, StatusSeg } from "./ReviewsTab";
 import DetailDialog, { Gallery } from "./DetailDialog";
 import { DecisionActions, DecisionButtons, useDecision } from "./useDecision";
+import { useDelete } from "./useDelete";
 import { usePostEdit } from "./usePostEdit";
 import { fetchModerationPosts, type ModerationPage, type PostItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
@@ -18,7 +19,7 @@ import { hasModerationFilters, moderationHref, PER_PAGE, STATE_LABEL, STATE_TONE
 type State = { data: ModerationPage<PostItem> | null; failed: boolean; stale: boolean; settled: string };
 
 /** Community posts (platform admin only): status, search, cards, pages. Approve / reject only with the write switch. */
-export default function PostsTab({ view, canDecide, canEdit }: { view: ModerationView; canDecide: boolean; canEdit: boolean }) {
+export default function PostsTab({ view, canDecide, canEdit, canDelete }: { view: ModerationView; canDecide: boolean; canEdit: boolean; canDelete: boolean }) {
   const t = useT();
   const router = useRouter();
   const [state, setState] = useState<State>({ data: null, failed: false, stale: false, settled: "" });
@@ -96,7 +97,7 @@ export default function PostsTab({ view, canDecide, canEdit }: { view: Moderatio
         </>
       ) : null}
       {decision.dialog}
-      {detail ? <PostDetail p={detail} decision={canDecide && detail.state === "pending" ? decision : null} canEdit={canEdit} reload={retry} onClose={() => setDetail(null)} /> : null}
+      {detail ? <PostDetail p={detail} decision={canDecide && detail.state === "pending" ? decision : null} canEdit={canEdit} canDelete={canDelete} reload={retry} onClose={() => setDetail(null)} /> : null}
     </>
   );
 }
@@ -123,19 +124,24 @@ function PostCard({ p, decision, onOpen }: { p: PostItem; decision: ReturnType<t
   );
 }
 
-function PostDetail({ p, decision, canEdit, reload, onClose }: { p: PostItem; decision: ReturnType<typeof useDecision> | null; canEdit: boolean; reload: () => void; onClose: () => void }) {
+function PostDetail({ p, decision, canEdit, canDelete, reload, onClose }: { p: PostItem; decision: ReturnType<typeof useDecision> | null; canEdit: boolean; canDelete: boolean; reload: () => void; onClose: () => void }) {
   const t = useT();
   const edit = usePostEdit(p, { reload, onSettled: onClose });
-  const manage = canEdit ? <button type="button" id={edit.openerId} className="btn btn--ghost" onClick={edit.start} disabled={decision?.busy === true}>{t("mod.act.edit")}</button> : null;
-  if (edit.editing) {
-    return (
-      <DetailDialog title={t("mod.edit.title.post")} onClose={onClose} foot={edit.foot} locked={edit.saving} guard={edit.dirty}>
-        {edit.body}
-      </DetailDialog>
-    );
-  }
-  return (
-    <DetailDialog title={t("mod.detail.title.post")} onClose={onClose} manage={manage} decide={decision ? <DecisionButtons busy={decision.busy} onApprove={() => decision.approve(p)} onReject={() => decision.askReject(p)} /> : null}>
+  const del = useDelete("post", p, { reload, onSettled: onClose });
+  const busy = decision?.busy === true || del.busy;
+  const manage = canEdit || canDelete ? (
+    <>
+      {canEdit ? <button type="button" id={edit.openerId} className="btn btn--ghost" onClick={edit.start} disabled={busy}>{t("mod.act.edit")}</button> : null}
+      {canDelete ? <button type="button" className="btn btn--ghost btn--reject" onClick={del.ask} disabled={busy}>{t("mod.act.delete")}</button> : null}
+    </>
+  ) : null;
+  // Both windows sit at the same place of the tree, so switching between them keeps the open <dialog>.
+  const win = edit.editing ? (
+    <DetailDialog title={t("mod.edit.title.post")} onClose={onClose} foot={edit.foot} locked={edit.saving} guard={edit.dirty}>
+      {edit.body}
+    </DetailDialog>
+  ) : (
+    <DetailDialog title={t("mod.detail.title.post")} onClose={onClose} manage={manage} decide={decision ? <DecisionButtons busy={busy} onApprove={() => decision.approve(p)} onReject={() => decision.askReject(p)} /> : null}>
       <div className="mod-card__head">
         <Pill tone={STATE_TONE[p.state]}>{t(STATE_LABEL[p.state])}</Pill>
         {p.category !== "" ? <Pill tone="plain">{p.category}</Pill> : null}
@@ -148,5 +154,11 @@ function PostDetail({ p, decision, canEdit, reload, onClose }: { p: PostItem; de
       </ul>
       <Gallery images={p.images} />
     </DetailDialog>
+  );
+  return (
+    <>
+      {win}
+      {del.dialog}
+    </>
   );
 }
