@@ -52,4 +52,12 @@ export class ModerationController {
   decideReview(@Req() req: ScopedAdminRequest, @Param('id') rawId: string, @Param('decision') decision: string, @Body() body: unknown) {
     return this.moderation.decideReview(scopeOfRequest(req), parseItemId(rawId), decisionOf(decision), revisionOf(body));
   }
+
+  /** Same for a community post; a whole-platform (super) admin only. */
+  @Post('community/:id/:decision')
+  @HttpCode(200)
+  @UseGuards(ModerationWriteEnabledGuard, CsrfGuard, AdminGuard, SuperAdminRoleGuard)
+  decidePost(@Param('id') rawId: string, @Param('decision') decision: string, @Body() body: unknown) {
+    return this.moderation.decidePost(parseItemId(rawId), decisionOf(decision), revisionOf(body));
+  }
 }

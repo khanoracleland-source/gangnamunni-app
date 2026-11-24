@@ -242,3 +242,13 @@ export const recalcHospitalQuery = (hospitalId: number): Query => ({
         WHERE id = ?`,
   values: [hospitalId, hospitalId, hospitalId],
 });
+
+export const lockPostQuery = (id: number): Query => ({
+  sql: 'SELECT id, category, title, content, photos, status FROM gangnamunni_community_posts WHERE id = ? LIMIT 1 FOR UPDATE',
+  values: [id],
+});
+
+export const decidePostQuery = (id: number, decision: Decision): Query => ({
+  sql: "UPDATE gangnamunni_community_posts SET status = ? WHERE id = ? AND status = 'pending' LIMIT 1",
+  values: [decision === 'approve' ? 'active' : 'rejected', id],
+});

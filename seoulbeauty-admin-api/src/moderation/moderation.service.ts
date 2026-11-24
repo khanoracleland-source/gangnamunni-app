@@ -3,7 +3,7 @@ import { DB, Db, DB_RW, RwDb, RwDbProvider } from '../db/db.module';
 import { hospitalOptionsQuery, toHospitalOption } from '../doctors/doctors.logic';
 import { canSee, num, Query, Scope, seesNothing, str } from '../hospitals/hospitals.logic';
 import {
-  decideReviewQuery, Decision, emptyPage, lockReviewQuery, ModerationPage, ModerationQuery, PER_PAGE, PostItem, postCountsQuery, postListQuery, recalcHospitalQuery, reviewCountsQuery, reviewImagesQuery, reviewListQuery, ReviewItem, reviewRevision, safeImageUrl, toCounts,
+  decidePostQuery, decideReviewQuery, Decision, emptyPage, lockPostQuery, lockReviewQuery, ModerationPage, ModerationQuery, PER_PAGE, PostItem, postCountsQuery, postListQuery, postRevision, recalcHospitalQuery, reviewCountsQuery, reviewImagesQuery, reviewListQuery, ReviewItem, reviewRevision, safeImageUrl, toCounts,
   toPage, toPostItem, toReviewItem,
 } from './moderation.logic';
 
@@ -86,6 +86,34 @@ export class ModerationService {
       await conn.query(upd.sql, upd.values);
       const recalc = recalcHospitalQuery(hospitalId);
       await conn.query(recalc.sql, recalc.values);
+      await conn.commit();
+    } catch (e) {
+      try {
+        await conn.rollback();
+      } catch {
+        /* already rolled back */
+      }
+      throw e;
+    } finally {
+      conn.release();
+    }
+    return { id, state: decision === 'approve' ? 'approved' : 'rejected' };
+  }
+
+  /** Same for a community post (whole-platform admins only; the controller enforces it). */
+  async decidePost(id: number, decision: Decision, revision: string) {
+    if (id <= 0) throw new NotFoundException({ error: 'not_found' });
+    const conn = await this.pool().getConnection();
+    try {
+      await conn.beginTransaction();
+      const lock = lockPostQuery(id);
+      const [found] = (await conn.query(lock.sql, lock.values)) as any;
+      const row: Row | undefined = Array.isArray(found) ? found[0] : undefined;
+      if (!row) throw new NotFoundException({ error: 'not_found' });
+      if (str(row.status) !== 'pending') throw new ConflictException({ error: 'already_done' });
+      if (postRevision(row) !== revision) throw new ConflictException({ error: 'changed' });
+      const upd = decidePostQuery(id, decision);
+      await conn.query(upd.sql, upd.values);
       await conn.commit();
     } catch (e) {
       try {

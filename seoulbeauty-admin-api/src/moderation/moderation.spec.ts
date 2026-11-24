@@ -14,6 +14,7 @@ const MP = { 'X-Requested-With': 'admin-next' };
 const admin = (role: string, hospitalId: number | null = null) => ({ id: 7, username: 'boss', name: '김관리', role, hospitalId });
 
 type Call = { sql: string; values: unknown[] };
+type Post = { id: number; category: string; title: string; content: string; photos: string; status: string; author_name: string };
 type Review = { id: number; hospital_id: number; booking_id: number | null; review_status: string; is_active: number; title: string; content: string; rating: number; treatments: string; doctor_name: string; user_name: string; updated_at: string };
 
 describe('admin API: moderation (review list)', () => {
@@ -23,6 +24,7 @@ describe('admin API: moderation (review list)', () => {
   const rwCalls: Call[] = [];
   const events: string[] = [];
   let reviews: Review[];
+  let posts: Post[];
 
   const ro = {
     query: jest.fn(async (sql: string, values: unknown[] = []) => {
@@ -55,6 +57,11 @@ describe('admin API: moderation (review list)', () => {
         return [{ affectedRows: 1 }];
       }
       if (sql.startsWith('UPDATE gangnamunni_hospitals SET')) return [{ affectedRows: 1 }];
+      if (sql.includes('FROM gangnamunni_community_posts WHERE id = ? LIMIT 1 FOR UPDATE')) return [posts.filter((p) => p.id === values[0])];
+      if (sql.startsWith('UPDATE gangnamunni_community_posts SET status')) {
+        posts.find((p) => p.id === values[1])!.status = values[0] as string;
+        return [{ affectedRows: 1 }];
+      }
       throw new Error(`unexpected rw sql: ${sql}`);
     }),
   };
@@ -77,6 +84,7 @@ describe('admin API: moderation (review list)', () => {
     roCalls.length = 0;
     rwCalls.length = 0;
     events.length = 0;
+    posts = [{ id: 9, category: '자유', title: 'P', content: 'body', photos: '["/u/a.png"]', status: 'pending', author_name: 'Han' }];
     const base = { review_status: 'pending', is_active: 0, title: 'T', content: 'C', rating: 5, treatments: 'Botox, Filler', doctor_name: 'Kim', user_name: 'Min', updated_at: '2026-11-20 10:00:00' };
     reviews = [
       { id: 1, hospital_id: 12, booking_id: 55, ...base },
@@ -203,6 +211,28 @@ describe('admin API: moderation (review list)', () => {
     expect((await post('/v1/moderation/reviews/1/reject', { revision: rev(1) })).body).toMatchObject({ error: 'already_done' });
     expect((await post('/v1/moderation/reviews/1/maybe', { revision: r })).status).toBe(400);
     expect((await post('/v1/moderation/reviews/99/approve', { revision: r })).status).toBe(404);
+  });
+
+  it('decides a community post once', async () => {
+    const revision = postRevision(posts[0]);
+    expect((await post('/v1/moderation/community/9/approve', { revision })).body).toEqual({ id: 9, state: 'approved' });
+    expect(posts[0].status).toBe('active');
+    expect((await post('/v1/moderation/community/9/reject', { revision })).body).toMatchObject({ error: 'already_done' });
+  });
+
+  it('keeps community decisions for a super admin: a hospital account gets 403 and nothing is written', async () => {
+    expect((await post('/v1/moderation/community/9/approve', { revision: postRevision(posts[0]) }, HOSPITAL)).status).toBe(403);
+    expect((await post('/v1/moderation/community/9/approve', { revision: postRevision(posts[0]) }, SUPER, {})).status).toBe(403);
+    process.env.ADMIN_MODERATION_WRITE = '0';
+    expect((await post('/v1/moderation/community/9/approve', { revision: postRevision(posts[0]) })).status).toBe(404);
+    expect(rwCalls).toHaveLength(0);
+    expect(posts[0].status).toBe('pending');
+  });
+
+  it('answers 409 for an edited post and 404 for a missing one', async () => {
+    expect((await post('/v1/moderation/community/9/reject', { revision: 'b'.repeat(64) })).body).toMatchObject({ error: 'changed' });
+    expect((await post('/v1/moderation/community/99/reject', { revision: postRevision(posts[0]) })).status).toBe(404);
+    expect(posts[0].status).toBe('pending');
   });
 
   it('lists the hospitals of the caller', async () => {
