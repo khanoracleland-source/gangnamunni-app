@@ -37,6 +37,39 @@ export function Counter({ id, n, max }: { id: string; n: number; max: number }) 
   return <p id={id} className={n > max ? "mod-count is-over" : "mod-count"}>{t("mod.edit.count", { n, max })}</p>;
 }
 
+/** The pictures of an item, each with a remove / undo button. Removing only unlinks the picture; the file stays. */
+export function RemovableImages({ uid, images, removed, saving, onToggle, error }: { uid: string; images: string[]; removed: string[]; saving: boolean; onToggle: (url: string) => void; error: string | undefined }) {
+  const t = useT();
+  if (images.length === 0) return null;
+  return (
+    <div className="field">
+      <span className="field__label" id={`${uid}-img-l`}>{t("mod.edit.f.photos")}</span>
+      <ul className="mod-ed__imgs" aria-labelledby={`${uid}-img-l`}>
+        {images.map((url, i) => {
+          const gone = removed.includes(url);
+          const href = imageHref(url);
+          return (
+            <li key={`${i}-${url}`} className={gone ? "mod-ed__img is-gone" : "mod-ed__img"}>
+              {href !== "" ? (
+                // eslint-disable-next-line @next/next/no-img-element -- stored pictures come from the panel's media host, not the Next image optimizer
+                <img src={href} alt="" loading="lazy" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="mod-ed__noimg" aria-hidden="true"><Icon name="image" size={20} /></span>
+              )}
+              {gone ? <span className="mod-ed__tag">{t("mod.edit.img.willRemove")}</span> : null}
+              <button type="button" className="btn btn--ghost mod-ed__imgbtn" disabled={saving} aria-pressed={gone} aria-label={t(gone ? "mod.edit.img.undoN" : "mod.edit.img.removeN", { n: i + 1 })} onClick={() => onToggle(url)}>
+                {t(gone ? "mod.edit.img.undo" : "mod.edit.img.remove")}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="field__hint">{t("mod.edit.img.note")}</p>
+      <FieldError id={`${uid}-img-e`} code={error || undefined} />
+    </div>
+  );
+}
+
 function RatingInput({ value, onChange, disabled, labelledBy, describedBy }: { value: number; onChange: (n: number) => void; disabled: boolean; labelledBy: string; describedBy?: string }) {
   const t = useT();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -251,33 +284,7 @@ export function useReviewEdit(r: ReviewItem, o: { reload: () => void; onSettled:
         <FieldError id={`${uid}-tr-e`} code={shown("treatments") || undefined} />
       </div>
 
-      {r.images.length > 0 ? (
-        <div className="field">
-          <span className="field__label" id={`${uid}-img-l`}>{t("mod.edit.f.photos")}</span>
-          <ul className="mod-ed__imgs" aria-labelledby={`${uid}-img-l`}>
-            {r.images.map((url, i) => {
-              const gone = removed.includes(url);
-              const href = imageHref(url);
-              return (
-                <li key={`${i}-${url}`} className={gone ? "mod-ed__img is-gone" : "mod-ed__img"}>
-                  {href !== "" ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- stored pictures come from the panel's media host, not the Next image optimizer
-                    <img src={href} alt="" loading="lazy" referrerPolicy="no-referrer" />
-                  ) : (
-                    <span className="mod-ed__noimg" aria-hidden="true"><Icon name="image" size={20} /></span>
-                  )}
-                  {gone ? <span className="mod-ed__tag">{t("mod.edit.img.willRemove")}</span> : null}
-                  <button type="button" className="btn btn--ghost mod-ed__imgbtn" disabled={saving} aria-pressed={gone} aria-label={t(gone ? "mod.edit.img.undoN" : "mod.edit.img.removeN", { n: i + 1 })} onClick={() => toggleImage(url)}>
-                    {t(gone ? "mod.edit.img.undo" : "mod.edit.img.remove")}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <p className="field__hint">{t("mod.edit.img.note")}</p>
-          <FieldError id={`${uid}-img-e`} code={fields.removeImages || undefined} />
-        </div>
-      ) : null}
+      <RemovableImages uid={uid} images={r.images} removed={removed} saving={saving} onToggle={toggleImage} error={fields.removeImages} />
 
       <p className="mod-ed__locked"><Icon name="lock" size={14} />{t("mod.author")} <b translate="no">{r.author}</b> · {t("mod.author.locked")}</p>
     </form>

@@ -91,7 +91,7 @@ export default function ModerationPage() {
               </Link>
             ))}
           </nav>
-          {view.tab === "reviews" ? <ReviewsTab view={view} hospitals={hospitals} isSuper={isSuper} canDecide={me?.features.moderationWrite === true} canEdit={me?.features.moderationEdit === true} /> : <PostsTab view={view} canDecide={me?.features.moderationWrite === true} />}
+          {view.tab === "reviews" ? <ReviewsTab view={view} hospitals={hospitals} isSuper={isSuper} canDecide={me?.features.moderationWrite === true} canEdit={me?.features.moderationEdit === true} /> : <PostsTab view={view} canDecide={me?.features.moderationWrite === true} canEdit={me?.features.moderationEdit === true} />}
         </>
       ) : null}
     </AdminShell>
