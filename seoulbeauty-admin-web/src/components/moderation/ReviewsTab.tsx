@@ -7,6 +7,7 @@ import Icon from "../Icon";
 import { Notice, Pill } from "../hospitals/parts";
 import HospitalCombo from "../payments/HospitalCombo";
 import Thumbs from "./Thumbs";
+import { DecisionActions, useDecision } from "./useDecision";
 import { fetchModerationReviews, type DoctorHospitalOption, type ModerationCounts, type ModerationPage, type ModerationState, type ReviewItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatDay, formatNumber } from "@/lib/format";
@@ -18,8 +19,8 @@ import { hasModerationFilters, MODERATION_SEARCH_MAX, MODERATION_STATUSES, moder
 type Phase = "loading" | "ready" | "error";
 type State = { phase: Phase; data: ModerationPage<ReviewItem> | null; stale: boolean; settled: string };
 
-/** The reviews waiting for a decision (and the decided ones): status, search, hospital, cards, pages. Read only here. */
-export default function ReviewsTab({ view, hospitals, isSuper }: { view: ModerationView; hospitals: DoctorHospitalOption[]; isSuper: boolean }) {
+/** The reviews waiting for a decision (and the decided ones): status, search, hospital, cards, pages. Approve / reject only with the write switch. */
+export default function ReviewsTab({ view, hospitals, isSuper, canDecide }: { view: ModerationView; hospitals: DoctorHospitalOption[]; isSuper: boolean; canDecide: boolean }) {
   const t = useT();
   const router = useRouter();
   const [state, setState] = useState<State>({ phase: "loading", data: null, stale: false, settled: "" });
@@ -48,9 +49,16 @@ export default function ReviewsTab({ view, hospitals, isSuper }: { view: Moderat
 
   const go = (patch: Partial<ModerationView>) => router.push(moderationHref({ ...view, page: 1, ...patch }));
   const retry = () => setAttempt((n) => n + 1);
+  const decision = useDecision("review", retry);
   const { phase, data, stale } = state;
   const total = data ? data.counts[view.status] : 0;
   const pages = Math.ceil(total / PER_PAGE);
+
+  // The last item of a page was decided: the page no longer exists, so step back to the last one that does.
+  const emptyPast = !busy && data !== null && data.items.length === 0 && view.page > 1 && pages >= 1 && view.page > pages;
+  useEffect(() => {
+    if (emptyPast) router.replace(moderationHref({ ...view, page: pages }), { scroll: false });
+  }, [emptyPast, pages, view, router]);
 
   return (
     <>
@@ -102,13 +110,14 @@ export default function ReviewsTab({ view, hospitals, isSuper }: { view: Moderat
           ) : (
             <ul className={busy ? "mod-cards is-busy" : "mod-cards"}>
               {data.items.map((r) => (
-                <ReviewCard key={r.id} r={r} showNoBooking={isSuper} />
+                <ReviewCard key={r.id} r={r} showNoBooking={isSuper} decision={canDecide ? decision : null} />
               ))}
             </ul>
           )}
           <Pager view={view} pages={pages} />
         </>
       ) : null}
+      {decision.dialog}
     </>
   );
 }
@@ -143,7 +152,7 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-function ReviewCard({ r, showNoBooking }: { r: ReviewItem; showNoBooking: boolean }) {
+function ReviewCard({ r, showNoBooking, decision }: { r: ReviewItem; showNoBooking: boolean; decision: ReturnType<typeof useDecision> | null }) {
   const t = useT();
   return (
     <li className="mod-card mod-card--review">
@@ -168,7 +177,7 @@ function ReviewCard({ r, showNoBooking }: { r: ReviewItem; showNoBooking: boolea
         {r.doctorName !== "" ? <li><Icon name="people" size={14} /><span>{t("mod.doctor")}</span> <b>{r.doctorName}</b></li> : null}
         <li title={t("mod.author.locked")}><Icon name="lock" size={14} /><span>{t("mod.author")}</span> <b translate="no">{r.author}</b></li>
       </ul>
-      {r.state !== "pending" ? <p className="mod-done">{t("mod.handled")}</p> : null}
+      {r.state !== "pending" ? <p className="mod-done">{t("mod.handled")}</p> : decision ? <DecisionActions busy={decision.busy} onApprove={() => decision.approve(r)} onReject={() => decision.askReject(r)} /> : null}
     </li>
   );
 }

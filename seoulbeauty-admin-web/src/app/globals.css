@@ -3336,7 +3336,7 @@ body.reo-dragging { user-select: none; cursor: grabbing; }
 .mod-meta { margin: 0; }
 .mod-empty { text-align: center; }
 .mod-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); transition: opacity var(--t-fast) var(--ease); }
-.mod-cards.is-busy { opacity: .6; }
+.mod-cards.is-busy { opacity: .6; pointer-events: none; }
 .mod-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); }
 .mod-card__head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .mod-card__date { margin-left: auto; font-size: 12px; color: var(--muted); }
@@ -3366,3 +3366,5 @@ a.mod-thumb:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px
   .mod-thumb { width: 72px; height: 72px; }
 }
 @media (prefers-reduced-motion: reduce) { .mod-skel__line { animation: none; } .mod-cards { transition: none; } }
+.mod-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; padding-top: 4px; }
+@media (max-width: 639px) { .mod-acts .btn { flex: 1; min-height: 44px; } }

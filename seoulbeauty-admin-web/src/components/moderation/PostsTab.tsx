@@ -7,6 +7,7 @@ import Icon from "../Icon";
 import { Notice, Pill } from "../hospitals/parts";
 import { Pager, SearchForm, Skeleton, StatusSeg } from "./ReviewsTab";
 import Thumbs from "./Thumbs";
+import { DecisionActions, useDecision } from "./useDecision";
 import { fetchModerationPosts, type ModerationPage, type PostItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatDay, formatNumber } from "@/lib/format";
@@ -15,8 +16,8 @@ import { hasModerationFilters, moderationHref, PER_PAGE, STATE_LABEL, STATE_TONE
 
 type State = { data: ModerationPage<PostItem> | null; failed: boolean; stale: boolean; settled: string };
 
-/** Community posts (platform admin only): status, search, cards, pages. Read only here. */
-export default function PostsTab({ view }: { view: ModerationView }) {
+/** Community posts (platform admin only): status, search, cards, pages. Approve / reject only with the write switch. */
+export default function PostsTab({ view, canDecide }: { view: ModerationView; canDecide: boolean }) {
   const t = useT();
   const router = useRouter();
   const [state, setState] = useState<State>({ data: null, failed: false, stale: false, settled: "" });
@@ -45,9 +46,16 @@ export default function PostsTab({ view }: { view: ModerationView }) {
 
   const go = (patch: Partial<ModerationView>) => router.push(moderationHref({ ...view, page: 1, ...patch }));
   const retry = () => setAttempt((n) => n + 1);
+  const decision = useDecision("post", retry);
   const { data, failed, stale } = state;
   const total = data ? data.counts[view.status] : 0;
   const pages = Math.ceil(total / PER_PAGE);
+
+  // The last item of a page was decided: the page no longer exists, so step back to the last one that does.
+  const emptyPast = !busy && data !== null && data.items.length === 0 && view.page > 1 && pages >= 1 && view.page > pages;
+  useEffect(() => {
+    if (emptyPast) router.replace(moderationHref({ ...view, page: pages }), { scroll: false });
+  }, [emptyPast, pages, view, router]);
   const retryBtn = <button type="button" className="txtbtn mod-retry" onClick={retry} disabled={busy}>{t("state.retry")}</button>;
   const filtered = hasModerationFilters({ ...view, hospitalId: 0 });
 
@@ -78,18 +86,19 @@ export default function PostsTab({ view }: { view: ModerationView }) {
           ) : (
             <ul className={busy ? "mod-cards is-busy" : "mod-cards"}>
               {data.items.map((p) => (
-                <PostCard key={p.id} p={p} />
+                <PostCard key={p.id} p={p} decision={canDecide ? decision : null} />
               ))}
             </ul>
           )}
           <Pager view={view} pages={pages} />
         </>
       ) : null}
+      {decision.dialog}
     </>
   );
 }
 
-function PostCard({ p }: { p: PostItem }) {
+function PostCard({ p, decision }: { p: PostItem; decision: ReturnType<typeof useDecision> | null }) {
   const t = useT();
   return (
     <li className="mod-card mod-card--post">
@@ -104,7 +113,7 @@ function PostCard({ p }: { p: PostItem }) {
       <ul className="mod-facts">
         <li title={t("mod.author.locked")}><Icon name="lock" size={14} /><span>{t("mod.author")}</span> <b translate="no">{p.author}</b></li>
       </ul>
-      {p.state !== "pending" ? <p className="mod-done">{t("mod.handled")}</p> : null}
+      {p.state !== "pending" ? <p className="mod-done">{t("mod.handled")}</p> : decision ? <DecisionActions busy={decision.busy} onApprove={() => decision.approve(p)} onReject={() => decision.askReject(p)} /> : null}
     </li>
   );
 }
