@@ -529,6 +529,29 @@ export class BannersWriteEnabledGuard implements CanActivate {
   }
 }
 
+/** Home menu categories page (/v1/category-board*, super admin only). Needs the treatment master pages on as well; only the exact value "1" turns it on. */
+export const categoryBoardEnabled = (): boolean => treatmentsEnabled() && process.env.ADMIN_CATEGORY_BOARD === '1';
+/** Changing the home menu categories (treatment assignment, category delete). Needs the treatment master editing on as well; only the exact value "1" turns it on. */
+export const categoryBoardWriteEnabled = (): boolean => categoryBoardEnabled() && treatmentsWriteEnabled();
+
+/** With the category page switch off its routes answer 404 as if they did not exist. */
+@Injectable()
+export class CategoryBoardEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !categoryBoardEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
+/** With the write switches off the category page's writing routes answer 404 as if they did not exist. */
+@Injectable()
+export class CategoryBoardWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !categoryBoardWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** With ADMIN_MODERATION_ENABLED off the moderation routes answer 404 as if they did not exist; PHP is not asked. */
 @Injectable()
 export class ModerationEnabledGuard implements CanActivate {

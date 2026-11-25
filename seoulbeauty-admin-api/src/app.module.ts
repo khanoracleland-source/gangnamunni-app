@@ -16,6 +16,7 @@ import { TreatmentUnitsModule } from './treatment-units/treatment-units.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BannersModule } from './banners/banners.module';
+import { CategoryBoardModule } from './category-board/category-board.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { HealthController } from './health/health.controller';
 
@@ -39,6 +40,7 @@ import { HealthController } from './health/health.controller';
     PaymentsModule,
     ModerationModule,
     BannersModule,
+    CategoryBoardModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
