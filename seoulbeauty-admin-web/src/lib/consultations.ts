@@ -33,3 +33,23 @@ export function tagValue(tags: readonly string[], label: string): string {
 }
 
 export const TYPE_KEYS: Record<string, "cs.type.general" | "cs.type.doctor" | "cs.type.kakao"> = { general: "cs.type.general", doctor: "cs.type.doctor", kakao: "cs.type.kakao" };
+
+export const MESSAGE_MAX = 1000;
+export type ConsultationAction = "approve" | "reject" | "contact_failed" | "complete";
+export const ACTION_STATUS = { approve: "approved", reject: "rejected", contact_failed: "contact_failed", complete: "completed" } as const;
+
+/** What the member's notice says (always Korean), as the server writes it. */
+export const PUSH_APPROVED = { title: "상담신청이 확인되었습니다" } as const;
+export const PUSH_FAILED = { title: "병원에서 연락드렸지만 받지 않으셨어요", body: "편한 시간을 골라 다시 요청해주세요." } as const;
+
+/** Which buttons a request in `status` offers: a waiting one is answered, an approved or unreachable one is finished. */
+// The server accepts any state from any state; the screen deliberately offers only the steps of the legacy page.
+export function actionsFor(status: string): ConsultationAction[] {
+  if (status === "pending") return ["approve", "reject", "contact_failed"];
+  if (status === "approved" || status === "contact_failed") return ["complete"];
+  return [];
+}
+/** The hospital message can be written while the request is open to the patient's re-request. */
+export const canEditMessage = (status: string): boolean => status === "pending" || status === "contact_failed";
+/** Length the way the server counts it (code points, not UTF-16 units). */
+export const messageLength = (v: string): number => Array.from(v.replace(/\r\n?/g, "\n").trim()).length;

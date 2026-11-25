@@ -5,8 +5,9 @@ import { createPortal } from "react-dom";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import { showUnitToast } from "../treatment-units/UnitToast";
+import { ActionBar, ConfirmDialog, MessageDialog } from "./ConsultationActions";
 import { consultationPhotoUrl, fetchConsultationDetail, type ApiResult, type ConsultationDetail } from "@/lib/api";
-import { TYPE_KEYS, isConsultationStatus } from "@/lib/consultations";
+import { TYPE_KEYS, canEditMessage, isConsultationStatus, type ConsultationAction } from "@/lib/consultations";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 
@@ -20,8 +21,8 @@ function fullTime(value: string): string {
 }
 
 /** The request as the admin reads it; `foot` is the action bar below it. */
-export function DetailView({ id, own, mode, onClose, foot, reloadKey = 0 }: {
-  id: number; own: boolean; mode: "panel" | "sheet"; onClose: () => void; foot?: (d: ConsultationDetail) => ReactNode; reloadKey?: number;
+export function DetailView({ id, own, mode, onClose, canWrite, onChanged }: {
+  id: number; own: boolean; mode: "panel" | "sheet"; onClose: () => void; canWrite: boolean; onChanged: () => void;
 }) {
   const t = useT();
   const [got, setGot] = useState<{ key: string; res: ApiResult<ConsultationDetail> } | null>(null);
@@ -30,7 +31,11 @@ export function DetailView({ id, own, mode, onClose, foot, reloadKey = 0 }: {
   // The viewer belongs to the request it was opened on.
   const photo = photoAt && photoAt.id === id ? photoAt.index : null;
   const setPhoto = (index: number | null) => setPhotoAt(index === null ? null : { id, index });
-  const key = `${id}#${reloadKey}#${retry}`;
+  const [confirm, setConfirm] = useState<ConsultationAction | null>(null);
+  const [editing, setEditing] = useState(false);
+  const key = `${id}#${retry}`;
+  // After a change the request is read again and the list behind it too.
+  const changed = () => { setRetry((n) => n + 1); onChanged(); };
 
   useEffect(() => {
     const c = new AbortController();
@@ -38,7 +43,7 @@ export function DetailView({ id, own, mode, onClose, foot, reloadKey = 0 }: {
       if (!c.signal.aborted) setGot({ key, res });
     });
     return () => c.abort();
-    // `key` stands for id, reloadKey and retry.
+    // `key` stands for id and retry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
@@ -49,7 +54,7 @@ export function DetailView({ id, own, mode, onClose, foot, reloadKey = 0 }: {
 
   let body: ReactNode;
   if (current) {
-    body = <DetailBody d={current} own={own} onPhoto={setPhoto} />;
+    body = <DetailBody d={current} own={own} onPhoto={setPhoto} onEdit={canWrite && canEditMessage(current.status) ? () => setEditing(true) : null} />;
   } else if (failed) {
     body = (
       <div className="cs-d__state">
@@ -72,13 +77,17 @@ export function DetailView({ id, own, mode, onClose, foot, reloadKey = 0 }: {
         <button type="button" className="ibtn cs-d__close" onClick={onClose} aria-label={t("cs.d.close")} title={t("cs.d.close")} data-autofocus=""><Icon name="close" size={18} /></button>
         {body}
       </div>
-      {current && foot ? <div className="cs-d__foot">{foot(current)}</div> : null}
+      {current ? <div className="cs-d__foot"><ActionBar d={current} canWrite={canWrite} busy={!settled} onPick={setConfirm} /></div> : null}
+      {current && confirm ? (
+        <ConfirmDialog d={current} action={confirm} onClose={() => setConfirm(null)} onDone={(a, wantMessage) => { setConfirm(null); changed(); if (wantMessage) setEditing(true); }} />
+      ) : null}
+      {current && editing ? <MessageDialog d={current} onClose={() => setEditing(false)} onSaved={() => { setEditing(false); changed(); }} /> : null}
       {current && photo !== null && photo < current.photoCount ? <Lightbox id={current.id} count={current.photoCount} index={photo} onIndex={setPhoto} onClose={() => setPhoto(null)} /> : null}
     </div>
   );
 }
 
-function DetailBody({ d, own, onPhoto }: { d: ConsultationDetail; own: boolean; onPhoto: (i: number) => void }) {
+function DetailBody({ d, own, onPhoto, onEdit }: { d: ConsultationDetail; own: boolean; onPhoto: (i: number) => void; onEdit: (() => void) | null }) {
   const t = useT();
   const typeKey = TYPE_KEYS[d.type];
   const dialable = d.phone.replace(/[^0-9+]/g, "");
@@ -145,7 +154,7 @@ function DetailBody({ d, own, onPhoto }: { d: ConsultationDetail; own: boolean; 
       {d.historySupported ? (
         <>
           <section className="cs-d__sec">
-            <h3>{t("cs.d.hmsg")}<small>{t("cs.d.hmsgSeen")}</small></h3>
+            <h3>{t("cs.d.hmsg")}<small>{t("cs.d.hmsgSeen")}</small>{onEdit ? <button type="button" className="btn btn--ghost btn--sm cs-d__edit" onClick={onEdit}><Icon name="edit" size={14} />{t(d.hospitalMessage ? "cs.m.edit" : "cs.m.write")}</button> : null}</h3>
             {d.hospitalMessage ? (
               <>
                 <p className="cs-d__hm">{d.hospitalMessage}</p>
@@ -231,7 +240,7 @@ function Lightbox({ id, count, index, onIndex, onClose }: { id: number; count: n
 }
 
 /** The request in a modal sheet (below 1280px): a dialog on tablets, a bottom sheet on phones. */
-export function DetailSheet({ id, own, onClose, foot, reloadKey }: { id: number; own: boolean; onClose: () => void; foot?: (d: ConsultationDetail) => ReactNode; reloadKey?: number }) {
+export function DetailSheet({ id, own, onClose, canWrite, onChanged }: { id: number; own: boolean; onClose: () => void; canWrite: boolean; onChanged: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const t = useT();
 
@@ -256,7 +265,7 @@ export function DetailSheet({ id, own, onClose, foot, reloadKey }: { id: number;
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <span className="cs-sheet__handle" aria-hidden="true" />
-      <DetailView id={id} own={own} mode="sheet" onClose={onClose} foot={foot} reloadKey={reloadKey} />
+      <DetailView id={id} own={own} mode="sheet" onClose={onClose} canWrite={canWrite} onChanged={onChanged} />
     </dialog>,
     document.body,
   );

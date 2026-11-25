@@ -89,6 +89,7 @@ function Board({ me }: { me: Me }) {
   const t = useT();
   const own = me.admin.scope === "own";
   const wide = useWide();
+  const canWrite = me.features.consultationsWrite;
 
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [qInput, setQInput] = useState("");
@@ -238,13 +239,13 @@ function Board({ me }: { me: Me }) {
       ) : null}
       {split ? (
         <aside className="cs-panel" aria-label={t("cs.d.title")}>
-          {selectedId !== null ? <DetailView id={selectedId} own={own} mode="panel" onClose={() => setSelectedId(null)} /> : (
+          {selectedId !== null ? <DetailView id={selectedId} own={own} mode="panel" onClose={() => setSelectedId(null)} canWrite={canWrite} onChanged={refresh} /> : (
             <div className="cs-panel__idle"><Icon name="headset" size={26} /><b>{t("cs.d.idle.title")}</b><p>{t("cs.d.idle.body")}</p></div>
           )}
         </aside>
       ) : null}
       </div>
-      {!wide && selectedId !== null ? <DetailSheet id={selectedId} own={own} onClose={() => setSelectedId(null)} /> : null}
+      {!wide && selectedId !== null ? <DetailSheet id={selectedId} own={own} onClose={() => setSelectedId(null)} canWrite={canWrite} onChanged={refresh} /> : null}
     </div>
   );
 }

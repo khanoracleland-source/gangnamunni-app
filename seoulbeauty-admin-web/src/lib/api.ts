@@ -1963,6 +1963,20 @@ export async function fetchConsultationDetail(id: number, signal?: AbortSignal):
 /** One attached photo; the browser asks with the admin's cookie, the server checks scope and file. */
 export const consultationPhotoUrl = (id: number, index: number): string => `${BASE_PATH}/api/v1/consultations/${encodeURIComponent(String(id))}/photos/${index}`;
 
+export type ConsultationWriteStatus = "approved" | "completed" | "rejected" | "contact_failed";
+
+/** Moves an application to a new state. `changed` is false when it already was in that state. */
+export async function changeConsultationStatus(id: number, status: ConsultationWriteStatus): Promise<WriteResult<{ status: string; changed: boolean }>> {
+  const res = await sendJson("POST", `/v1/consultations/${encodeURIComponent(String(id))}/status`, { status });
+  return res.ok ? { ok: true, data: { status: str(res.data.status), changed: res.data.changed !== false } } : res;
+}
+
+/** The message the patient sees; an empty text clears it. */
+export async function saveConsultationMessage(id: number, message: string): Promise<WriteResult<{ hospitalMessage: string }>> {
+  const res = await sendJson("POST", `/v1/consultations/${encodeURIComponent(String(id))}/message`, { message });
+  return res.ok ? { ok: true, data: { hospitalMessage: str(res.data.hospitalMessage) } } : res;
+}
+
 export type BookingsExport = { hospitalIds: number[]; from: string; to: string; status: string };
 export type ExcelResult = { ok: true; blob: Blob; filename: string } | { ok: false; status: number; error: string };
 
