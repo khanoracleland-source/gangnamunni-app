@@ -18,7 +18,7 @@ export type MenuItem = {
   /** A page of this panel that only a super admin can open (its API refuses everyone else). */
   superOnly?: boolean;
   /** Shown only to a super admin while the server has this switch on. */
-  requires?: "archive" | "moderation" | "banners";
+  requires?: "archive" | "moderation" | "banners" | "categoryBoard";
 };
 
 export type MenuGroup = { key: string; label: Label; icon: IconName; items: MenuItem[] };
@@ -114,6 +114,7 @@ const MENU: MenuGroup[] = [
       { ...legacy("treatment_units", "admin_treatment_units.php", "단위 관리", "Units", "tag"), superOnly: true },
       // Becomes a page of this panel (super admin only) once the server has the treatment master switched on.
       { ...legacy("treatment_master", "admin_treatments.php", "시술 마스터 관리", "Treatment master list", "heart"), superOnly: true },
+      { key: "home_categories", label: L("홈 카테고리 관리", "Home categories"), icon: "tag", status: "new", href: "/categories", superOnly: true, requires: "categoryBoard" },
       legacy("hospital_treatments", "admin_hospital_treatments.php", "병원별 시술 배정 · 이미지 검수", "Assign treatments to hospitals and review images", "image"),
       legacy("doctor_treatments", "admin_doctor_treatments.php", "의사별 시술 전문도", "Doctor treatment expertise", "people"),
       legacy("treatment_packages", "admin_treatment_packages.php", "시술 패키지 관리", "Treatment packages", "collection"),
@@ -259,9 +260,10 @@ export function buildMenu(features: Features | null, scope: Scope | null): MenuG
   const showArchive = features?.archive === true && scope === "all";
   const showModeration = features?.moderation === true;
   const showBanners = features?.banners === true && scope === "all";
+  const showCategoryBoard = features?.categoryBoard === true && scope === "all";
   const groups = MENU.map((group) => ({
     ...group,
-    items: group.items.filter((item) => (item.requires !== "archive" || showArchive) && (item.requires !== "moderation" || showModeration) && (item.requires !== "banners" || showBanners)).map((item): MenuItem => {
+    items: group.items.filter((item) => (item.requires !== "archive" || showArchive) && (item.requires !== "moderation" || showModeration) && (item.requires !== "banners" || showBanners) && (item.requires !== "categoryBoard" || showCategoryBoard)).map((item): MenuItem => {
       const href = routes.get(item.key);
       return href ? { ...item, status: "new", href } : item;
     }),

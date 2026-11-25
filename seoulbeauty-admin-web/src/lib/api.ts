@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -152,6 +152,8 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         moderationDelete: obj(d.features).moderationDelete === true,
         banners: obj(d.features).banners === true,
         bannersWrite: obj(d.features).bannersWrite === true,
+        categoryBoard: obj(d.features).categoryBoard === true,
+        categoryBoardWrite: obj(d.features).categoryBoardWrite === true,
       },
     },
   };
@@ -2626,4 +2628,57 @@ export async function saveBanner(input: BannerInput, target: { id: number; revis
   } catch {
     return fail(0);
   }
+}
+
+// ───────── Home menu categories page (super admin, behind the category board switch) ─────────
+
+export type BoardTreatment = { id: number; name: string; sortOrder: number; isActive: boolean };
+export type BoardCategory = { id: number; name: string; icon: string; sortOrder: number; isActive: boolean; treatments: BoardTreatment[] };
+export type BoardData = {
+  /** In the order of the app's home menu. */
+  categories: BoardCategory[];
+  /** Treatments that belong to no category: the app does not show them. */
+  uncategorized: BoardTreatment[];
+};
+
+const boardTreatment = (raw: unknown): BoardTreatment => {
+  const x = obj(raw);
+  return { id: num(x.id), name: text(x.name), sortOrder: num(x.sortOrder), isActive: bool(x.isActive) };
+};
+
+const boardData = (raw: unknown): BoardData => {
+  const d = obj(raw);
+  return {
+    categories: list(d.categories)
+      .map((c) => {
+        const x = obj(c);
+        return { id: num(x.id), name: text(x.name), icon: str(x.icon), sortOrder: num(x.sortOrder), isActive: bool(x.isActive), treatments: list(x.treatments).map(boardTreatment).filter((t) => t.id > 0) };
+      })
+      .filter((c) => c.id > 0),
+    uncategorized: list(d.uncategorized).map(boardTreatment).filter((t) => t.id > 0),
+  };
+};
+
+export async function fetchCategoryBoard(signal?: AbortSignal): Promise<ApiResult<BoardData>> {
+  const res = await getJson("/v1/category-board", signal);
+  return res.ok ? { ok: true, data: boardData(res.data) } : res;
+}
+
+const boardPath = (categoryId: number): string => `/v1/category-board/categories/${encodeURIComponent(String(categoryId))}`;
+const boardChange = (res: WriteResult<Json>): WriteResult<BoardData> => (res.ok ? { ok: true, data: boardData(res.data) } : res);
+
+/** Adds existing treatments to a category; one that sits in another category (or in none) is moved. */
+export async function assignBoardTreatments(categoryId: number, treatmentIds: number[]): Promise<WriteResult<BoardData>> {
+  return boardChange(await sendJson("POST", `${boardPath(categoryId)}/treatments`, { treatmentIds }));
+}
+
+/** Takes a treatment out of a category: it then belongs to none. */
+export async function detachBoardTreatment(categoryId: number, treatmentId: number): Promise<WriteResult<BoardData>> {
+  return boardChange(await sendJson("DELETE", `${boardPath(categoryId)}/treatments/${encodeURIComponent(String(treatmentId))}`));
+}
+
+/** Deletes a category; its treatments stay and belong to none. `detached` is how many there were. */
+export async function deleteBoardCategory(categoryId: number): Promise<WriteResult<BoardData & { detached: number }>> {
+  const res = await sendJson("DELETE", boardPath(categoryId));
+  return res.ok ? { ok: true, data: { ...boardData(res.data), detached: num(obj(res.data).detached) } } : res;
 }
