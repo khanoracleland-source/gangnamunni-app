@@ -1,49 +1,49 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Icon from "../Icon";
 import type { BoardCategory } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 import { useT } from "@/lib/locale";
 
-/** One category of the home menu: order buttons, name (opens the panel), counts and the active switch; the panel holds its treatments. */
+/**
+ * One line of the list: order buttons, name (the whole line is the click target), number of treatments and the active switch.
+ * On a wide screen `selected` marks the category shown in the panel beside the list; on a narrow one it is the open accordion item and `children` is its panel.
+ */
 export default function CategoryRow({
   category,
   rank,
   index,
   total,
-  open,
+  selected,
+  wide,
   canWrite,
   busy,
-  onToggle,
+  onSelect,
   onMove,
   onActive,
-  onAdd,
-  onRename,
-  onDelete,
-  onRemove,
+  children,
 }: {
   category: BoardCategory;
   /** The place in the app's home menu, or null for a hidden category. */
   rank: number | null;
   index: number;
   total: number;
-  open: boolean;
+  selected: boolean;
+  wide: boolean;
   canWrite: boolean;
   busy: boolean;
-  onToggle: () => void;
+  onSelect: () => void;
   onMove: (dir: -1 | 1) => void;
   onActive: (next: boolean) => void;
-  onAdd: () => void;
-  onRename: () => void;
-  onDelete: () => void;
-  onRemove: (treatmentId: number) => void;
+  children?: ReactNode;
 }) {
   const t = useT();
   const count = category.treatments.length;
-  const empty = count === 0;
   const lock = !canWrite || busy;
+  const expand = wide ? { "aria-current": selected ? ("true" as const) : undefined } : { "aria-expanded": selected, "aria-controls": `cb-pan-${category.id}` };
   return (
-    <li className={open ? "cb-item is-open" : "cb-item"} aria-busy={busy || undefined}>
+    <li className={`cb-item${selected ? " is-open" : ""}${category.isActive ? "" : " is-off"}`}>
       <div className="cb-row">
         <div className="cb-ord" role="group" aria-label={category.name}>
           <button type="button" className="ibtn" data-cb={`up-${category.id}`} aria-label={t("cb.up", { name: category.name })} title={t("cb.up", { name: category.name })} disabled={lock || index === 0} onClick={() => onMove(-1)}>
@@ -55,60 +55,29 @@ export default function CategoryRow({
           </button>
         </div>
         <h3 className="cb-h">
-          <button type="button" className="cb-name" id={`cb-nm-${category.id}`} aria-expanded={open} aria-controls={`cb-pan-${category.id}`} title={category.name} onClick={onToggle}>
+          <button type="button" className="cb-name" id={`cb-nm-${category.id}`} title={category.name} onClick={onSelect} {...expand}>
             <Icon name="chevron" size={16} className="cb-chev" />
             <span className="cb-name__t" translate="no">{category.name}</span>
+            {!category.isActive ? <span className="cb-off">{t("cb.hidden")}</span> : null}
           </button>
         </h3>
-        <div className="cb-meta">
-          <span className={category.isActive && empty ? "pill pill--warn" : "pill pill--info"}>{t("cb.count", { n: formatNumber(count) })}</span>
-          {!category.isActive ? <span className="pill pill--off">{t("cb.hidden")}</span> : null}
-          <span className="cb-meta__sp" />
-          <span className="cb-sw">
-            <span className="cb-sw__t" aria-hidden="true">{t("cb.active")}</span>
-            <button type="button" role="switch" className="switch" aria-checked={category.isActive} aria-label={t("cb.switch", { name: category.name })} aria-disabled={lock || undefined} onClick={() => !lock && onActive(!category.isActive)}>
-              <span className="switch__thumb" />
-            </button>
-          </span>
-        </div>
+        <span className="cb-n">
+          {category.isActive && count === 0 ? (
+            <span className="pill pill--warn"><span className="sr-only">{t("cb.stat.treatments")} </span>0</span>
+          ) : (
+            <>
+              <span className="sr-only">{t("cb.stat.treatments")} </span>
+              {formatNumber(count)}
+            </>
+          )}
+        </span>
+        <span className="cb-sw">
+          <button type="button" role="switch" className="switch" aria-checked={category.isActive} aria-label={t("cb.switch", { name: category.name })} aria-disabled={lock || undefined} onClick={() => !lock && onActive(!category.isActive)}>
+            <span className="switch__thumb" />
+          </button>
+        </span>
       </div>
-      <div className="cb-pan" id={`cb-pan-${category.id}`} role="region" aria-labelledby={`cb-nm-${category.id}`} hidden={!open}>
-        <div className="cb-bar">
-          <button type="button" className="btn btn--primary cb-bar__add" data-cb={`add-${category.id}`} disabled={lock} onClick={onAdd}>
-            <Icon name="plus" size={16} /> {t("cb.btn.add")}
-          </button>
-          <button type="button" className="btn btn--ghost" disabled={lock} onClick={onRename}>
-            <Icon name="edit" size={16} /> {t("cb.btn.rename")}
-          </button>
-          <span className="cb-bar__sp" />
-          <button type="button" className="btn btn--ghost btn--reject" disabled={lock} onClick={onDelete}>
-            <Icon name="trash" size={16} /> {t("cb.btn.delete")}
-          </button>
-        </div>
-        {empty ? (
-          <div className="cb-pempty">
-            <p className="cb-pempty__t">{t("cb.pempty.title")}</p>
-            <p className="cb-pempty__b">{t("cb.pempty.body")}</p>
-          </div>
-        ) : (
-          <>
-            <p className="cb-plabel" id={`cb-pl-${category.id}`}>
-              {t("cb.plabel")} <strong>{formatNumber(count)}</strong>
-            </p>
-            <ul className="chips chips--edit" aria-labelledby={`cb-pl-${category.id}`}>
-              {category.treatments.map((tr) => (
-                <li key={tr.id} className="chip chip--edit">
-                  <span translate="no">{tr.name}</span>
-                  {!tr.isActive ? <span className="cb-chip__off">{t("cb.hidden")}</span> : null}
-                  <button type="button" className="chip__x" data-cb={`chip-${tr.id}`} disabled={lock} aria-label={t("cb.chip.remove", { name: tr.name })} title={t("cb.chip.remove", { name: tr.name })} onClick={() => onRemove(tr.id)}>
-                    <Icon name="close" size={14} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
+      {children}
     </li>
   );
 }

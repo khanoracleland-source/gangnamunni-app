@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import ConfirmDialog from "../hospitals/ConfirmDialog";
@@ -9,6 +9,7 @@ import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type Er
 import { showUnitToast } from "../treatment-units/UnitToast";
 import { failureKey } from "../treatments/writeErrors";
 import AssignDialog from "./AssignDialog";
+import CategoryPanel from "./CategoryPanel";
 import CategoryRow from "./CategoryRow";
 import NameDialog from "./NameDialog";
 import {
@@ -37,6 +38,15 @@ type State = { phase: Phase; errorKind: ErrorKind; me: Me | null; data: BoardDat
 const INITIAL: State = { phase: "loading", errorKind: "load", me: null, data: null };
 const PROBLEMS: Record<NameProblem, MessageKey> = { empty: "cb.add.empty", long: "cb.add.long", dup: "cb.add.dup" };
 
+const WIDE = "(min-width: 900px)";
+const subscribeWide = (cb: () => void) => {
+  const mq = window.matchMedia(WIDE);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const readWide = () => window.matchMedia(WIDE).matches;
+const serverWide = () => false;
+
 /** The categories of the app's home menu: their order, and which treatments each one holds. Super admin only; editing needs the write switches. */
 export default function CategoryBoardPage() {
   const t = useT();
@@ -45,6 +55,7 @@ export default function CategoryBoardPage() {
   const [attempt, setAttempt] = useState(0);
   const halted = useRef(false);
   const [openId, setOpenId] = useState(0);
+  const wide = useSyncExternalStore(subscribeWide, readWide, serverWide);
   const [busy, setBusy] = useState(false);
   const [live, setLive] = useState("");
   const [conflict, setConflict] = useState(false);
@@ -269,34 +280,75 @@ export default function CategoryBoardPage() {
   const uncategorized = data?.uncategorized ?? [];
   const treatmentTotal = categories.reduce((n, c) => n + c.treatments.length, 0) + uncategorized.length;
   const activeCount = categories.filter((c) => c.isActive).length;
+  // A wide screen always shows one category in the side panel (the first until one is picked); a narrow one opens at most one row.
+  const selectedId = wide ? (categories.some((c) => c.id === openId) ? openId : (categories[0]?.id ?? 0)) : openId;
+  const selectedCategory = categories.find((c) => c.id === selectedId) ?? null;
+  const panel = (cat: BoardCategory, inline: boolean) => (
+    <CategoryPanel
+      key={cat.id}
+      category={cat}
+      rank={ranks.get(cat.id) ?? null}
+      inline={inline}
+      canWrite={canWrite}
+      busy={busy}
+      onAdd={() => setAssigning(cat)}
+      onRename={() => setRenaming(cat)}
+      onDelete={() => setDeleting(cat)}
+      onRemove={(tid) => removeChip(cat, tid)}
+    />
+  );
 
   return (
     <AdminShell admin={me?.admin ?? null} features={me?.features ?? null} title={t("cb.title")} description={t("cb.desc")} screen={screen}>
       {phase === "ready" && data ? (
         <div className="cb-wrap">
-          <ul className="stats cb-stats" role="group" aria-label={t("cb.stats.group")}>
-            <li><div className="stat"><span className="stat__label">{t("cb.stat.categories")}</span><span className="stat__value">{formatNumber(categories.length)}</span></div></li>
-            <li><div className="stat"><span className="stat__label">{t("cb.stat.active")}</span><span className="stat__value">{formatNumber(activeCount)}</span></div></li>
-            <li><div className="stat"><span className="stat__label">{t("cb.stat.treatments")}</span><span className="stat__value">{formatNumber(treatmentTotal)}</span></div></li>
-            <li>
-              {uncategorized.length > 0 ? (
-                <button
-                  type="button"
-                  className="stat stat--btn"
-                  aria-label={t("cb.stat.noneAria", { n: formatNumber(uncategorized.length) })}
-                  onClick={() => {
-                    noneRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-                    noneRef.current?.focus({ preventScroll: true });
-                  }}
-                >
-                  <span className="stat__label stat__label--dot"><span className="stat__dot" aria-hidden="true" />{t("cb.stat.none")}</span>
-                  <span className="stat__value">{formatNumber(uncategorized.length)}</span>
-                </button>
-              ) : (
-                <div className="stat stat--dim"><span className="stat__label">{t("cb.stat.none")}</span><span className="stat__value">0</span></div>
-              )}
-            </li>
-          </ul>
+          <div className="cb-top">
+            <ul className="cb-sum" role="group" aria-label={t("cb.stats.group")}>
+              <li>{t("cb.stat.categories")} <b>{formatNumber(categories.length)}</b></li>
+              <li>{t("cb.stat.active")} <b>{formatNumber(activeCount)}</b></li>
+              <li>{t("cb.stat.treatments")} <b>{formatNumber(treatmentTotal)}</b></li>
+              <li>
+                {uncategorized.length > 0 ? (
+                  <button
+                    type="button"
+                    className="cb-sum__none"
+                    aria-label={t("cb.stat.noneAria", { n: formatNumber(uncategorized.length) })}
+                    onClick={() => {
+                      noneRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+                      noneRef.current?.focus({ preventScroll: true });
+                    }}
+                  >
+                    <span className="stat__dot" aria-hidden="true" />{t("cb.stat.none")} <b>{formatNumber(uncategorized.length)}</b>
+                  </button>
+                ) : (
+                  <>{t("cb.stat.none")} <b>0</b></>
+                )}
+              </li>
+            </ul>
+            <form className="cb-add" onSubmit={addCategory} noValidate>
+              <label className="sr-only" htmlFor={`${uid}-add`}>{t("cb.add.label")}</label>
+              <input
+                id={`${uid}-add`}
+                ref={addRef}
+                className="input"
+                value={addName}
+                placeholder={t("cb.add.placeholder")}
+                maxLength={CATEGORY_NAME_MAX * 2}
+                autoComplete="off"
+                disabled={!canWrite || busy}
+                aria-invalid={addError ? true : undefined}
+                aria-describedby={`${uid}-add-m`}
+                onChange={(e) => {
+                  setAddName(e.target.value);
+                  setAddError(null);
+                }}
+              />
+              <button type="submit" className="btn btn--primary" disabled={!canWrite || busy}>
+                <Icon name="plus" size={16} /> {t("cb.add.btn")}
+              </button>
+              <p id={`${uid}-add-m`} className={addError ? "field__error" : "sr-only"} role={addError ? "alert" : undefined}>{addError ?? t("cb.add.hint")}</p>
+            </form>
+          </div>
 
           {!canWrite ? (
             <div className="notice" role="note">
@@ -321,70 +373,55 @@ export default function CategoryBoardPage() {
             </div>
           ) : null}
 
-          <form className="cb-add" onSubmit={addCategory} noValidate>
-            <div className="field">
-              <label className="field__label" htmlFor={`${uid}-add`}>{t("cb.add.label")}</label>
-              <input
-                id={`${uid}-add`}
-                ref={addRef}
-                className="input"
-                value={addName}
-                maxLength={CATEGORY_NAME_MAX * 2}
-                autoComplete="off"
-                disabled={!canWrite || busy}
-                aria-invalid={addError ? true : undefined}
-                aria-describedby={`${uid}-add-m`}
-                onChange={(e) => {
-                  setAddName(e.target.value);
-                  setAddError(null);
-                }}
-              />
-              <p id={`${uid}-add-m`} className={addError ? "field__error" : "field__hint"} role={addError ? "alert" : undefined}>{addError ?? t("cb.add.hint")}</p>
-            </div>
-            <button type="submit" className="btn btn--primary" disabled={!canWrite || busy}>
-              <Icon name="plus" size={16} /> {t("cb.add.btn")}
-            </button>
-          </form>
-
           <section className="section" aria-labelledby={`${uid}-list`}>
-            <h2 id={`${uid}-list`} ref={listRef} tabIndex={-1}>{t("cb.section")}</h2>
-            <p className="section__desc">{t("cb.section.desc")}</p>
+            <h2 id={`${uid}-list`} ref={listRef} tabIndex={-1} className="sr-only">{t("cb.section")}</h2>
             {categories.length === 0 ? (
               <div className="empty">
                 <p>{t("cb.empty.title")}</p>
                 {canWrite ? <button type="button" className="btn btn--primary" onClick={() => addRef.current?.focus()}>{t("cb.empty.cta")}</button> : null}
               </div>
             ) : (
-              <ul className={busy ? "cb-list is-busy" : "cb-list"}>
-                {categories.map((cat, i) => (
-                  <CategoryRow
-                    key={cat.id}
-                    category={cat}
-                    rank={ranks.get(cat.id) ?? null}
-                    index={i}
-                    total={categories.length}
-                    open={openId === cat.id}
-                    canWrite={canWrite}
-                    busy={busy}
-                    onToggle={() => setOpenId((id) => (id === cat.id ? 0 : cat.id))}
-                    onMove={(dir) => move(cat, dir)}
-                    onActive={(next) => toggleActive(cat, next)}
-                    onAdd={() => setAssigning(cat)}
-                    onRename={() => setRenaming(cat)}
-                    onDelete={() => setDeleting(cat)}
-                    onRemove={(tid) => removeChip(cat, tid)}
-                  />
-                ))}
-              </ul>
+              <div className={busy ? "cb-split is-busy" : "cb-split"}>
+                <div className="cb-lcol">
+                  <div className="cb-cols" aria-hidden="true">
+                    <span>{t("cb.col.order")}</span>
+                    <span className="cb-cols__name">{t("cb.stat.categories")}</span>
+                    <span className="cb-cols__n">{t("cb.stat.treatments")}</span>
+                    <span className="cb-cols__s">{t("cb.active")}</span>
+                  </div>
+                  <ul className="cb-list">
+                    {categories.map((cat, i) => {
+                      const selected = selectedId === cat.id;
+                      return (
+                        <CategoryRow
+                          key={cat.id}
+                          category={cat}
+                          rank={ranks.get(cat.id) ?? null}
+                          index={i}
+                          total={categories.length}
+                          selected={selected}
+                          wide={wide}
+                          canWrite={canWrite}
+                          busy={busy}
+                          onSelect={() => (wide ? setOpenId(cat.id) : setOpenId((id) => (id === cat.id ? 0 : cat.id)))}
+                          onMove={(dir) => move(cat, dir)}
+                          onActive={(next) => toggleActive(cat, next)}
+                        >
+                          {!wide && selected ? panel(cat, true) : null}
+                        </CategoryRow>
+                      );
+                    })}
+                  </ul>
+                </div>
+                {wide && selectedCategory ? <aside className="cb-aside">{panel(selectedCategory, false)}</aside> : null}
+              </div>
             )}
           </section>
 
           {uncategorized.length > 0 ? (
             <section className="cb-un" ref={noneRef} tabIndex={-1} aria-labelledby={`${uid}-un`} aria-describedby={`${uid}-un-d`} data-cb="un-head">
               <header className="cb-un__head">
-                <Icon name="alert" size={18} />
-                <h2 id={`${uid}-un`}>{t("cb.un.title")}</h2>
-                <span className="pill pill--warn">{formatNumber(uncategorized.length)}</span>
+                <h2 id={`${uid}-un`}>{t("cb.un.title")} <b>{formatNumber(uncategorized.length)}</b></h2>
                 <p id={`${uid}-un-d`}>{t("cb.un.desc")}</p>
               </header>
               <ul>
