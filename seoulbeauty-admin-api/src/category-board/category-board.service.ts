@@ -2,7 +2,8 @@ import { ConflictException, Inject, Injectable, Logger, NotFoundException, Servi
 import { DB_RW, RwDbProvider } from '../db/db.module';
 import { TreatmentsService } from '../treatments/treatments.service';
 import { TreatmentsRwBase, WriteActor } from '../treatments/treatments.rw';
-import { assignQuery, BoardAnswer, buildBoard, detachQuery, parseAssignBody } from './category-board.logic';
+import { deleteEmptyCategoryQuery } from '../treatments/treatments.master.logic';
+import { assignQuery, BoardAnswer, buildBoard, detachAllQuery, detachQuery, parseAssignBody } from './category-board.logic';
 
 /** MySQL 1048: the column does not accept NULL, so "no category" cannot be stored. */
 const COLUMN_NOT_NULL = 1048;
@@ -66,5 +67,35 @@ export class CategoryBoardService extends TreatmentsRwBase {
     if (affected === 0) throw new ConflictException({ error: 'not_in_category' });
     this.audit(actor, 'board_detach', [categoryId, treatmentId]);
     return this.get();
+  }
+
+  /**
+   * Deletes a category together with its place in the home menu; its treatments stay and become uncategorized.
+   * One transaction: free the treatments, then delete the category with the same "no treatment points at it" check
+   * the plain delete uses, so a treatment added in between rolls everything back (409 in_use) instead of being orphaned.
+   */
+  async removeCategory(actor: WriteActor, categoryId: number): Promise<BoardAnswer & { detached: number }> {
+    if (categoryId <= 0) throw new NotFoundException({ error: 'not_found' });
+    const snap = await this.reads.list();
+    const current = snap.categories.find((c) => c.id === categoryId);
+    if (!current) throw new NotFoundException({ error: 'not_found' });
+    let detached = 0;
+    await this.guarded(() =>
+      this.tx(async (conn) => {
+        const free = detachAllQuery(categoryId);
+        try {
+          const [res] = (await conn.query(free.sql, free.values)) as any;
+          detached = Number(res?.affectedRows || 0);
+        } catch (e) {
+          if ((e as { errno?: number })?.errno === COLUMN_NOT_NULL) throw new ServiceUnavailableException({ error: 'uncategorized_unsupported' });
+          throw e;
+        }
+        const del = deleteEmptyCategoryQuery(categoryId);
+        const [res] = (await conn.query(del.sql, del.values)) as any;
+        if (Number(res?.affectedRows || 0) === 0) throw new ConflictException({ error: 'in_use', count: Math.max(detached, 1) });
+      }),
+    );
+    this.audit(actor, 'board_category_delete', [categoryId]);
+    return { ...(await this.get()), detached };
   }
 }

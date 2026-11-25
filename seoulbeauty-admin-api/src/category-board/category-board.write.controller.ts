@@ -23,4 +23,11 @@ export class CategoryBoardWriteController {
   detach(@Req() req: AdminRequest, @Param('id') raw: string, @Param('treatmentId') tid: string) {
     return this.board.detach(actorOf(req), id(raw), id(tid));
   }
+
+  /** Deletes the category; its treatments become uncategorized (unlike DELETE v1/treatment-categories/:id, which refuses a category that still has treatments). */
+  @Delete('categories/:id')
+  @HttpCode(200)
+  remove(@Req() req: AdminRequest, @Param('id') raw: string) {
+    return this.board.removeCategory(actorOf(req), id(raw));
+  }
 }

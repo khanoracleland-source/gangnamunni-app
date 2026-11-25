@@ -71,3 +71,8 @@ export const detachQuery = (treatmentId: number, categoryId: number): Query => (
   sql: 'UPDATE gangnamunni_treatment_master SET category_id = NULL WHERE id = ? AND category_id = ?',
   values: [treatmentId, categoryId],
 });
+/** Frees every treatment of a category (they then belong to none). */
+export const detachAllQuery = (categoryId: number): Query => ({
+  sql: 'UPDATE gangnamunni_treatment_master SET category_id = NULL WHERE category_id = ?',
+  values: [categoryId],
+});

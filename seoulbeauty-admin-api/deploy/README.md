@@ -1063,6 +1063,18 @@ The previous image file of a treatment is not deleted when it is replaced (as on
 Deleting a treatment is a hard delete (as on the PHP page) and will be refused with `409 {"error":"in_use"}` while any hospital has it; a treatment that is part of a package
 (`gangnamunni_treatment_package_items`, foreign key `ON DELETE RESTRICT`) cannot be deleted by the database either (answered `409 in_use`). Take a dump of the five tables above before the first write.
 
+### 13.3 Home menu categories page (`ADMIN_CATEGORY_BOARD`)
+Separate page for the categories of the home menu (order, treatments of each category, treatments with no category). Needs `ADMIN_TREATMENTS_ENABLED=1`; its writes also need `ADMIN_TREATMENTS_WRITE=1`. Default off; with the key off every route answers 404.
+| Route | Purpose |
+|---|---|
+| `GET /v1/category-board` | categories in home order with their treatments, plus the treatments that belong to no category |
+| `POST /v1/category-board/categories/:id/treatments` `{treatmentIds:[…]}` | add existing treatments (moved from another category / none) to the end of the category |
+| `DELETE /v1/category-board/categories/:id/treatments/:treatmentId` | take a treatment out: its `category_id` becomes NULL, the app no longer shows it |
+| `DELETE /v1/category-board/categories/:id` | delete the category; its treatments become uncategorized (one transaction) |
+Adding, renaming, switching on/off and reordering categories use the existing `/v1/treatment-categories*` routes. No new GRANT: the statements use `UPDATE (category_id, sort_order)` on the treatment master and `DELETE` on the categories, both from 13.2.
+`gangnamunni_treatment_master.category_id` must accept NULL; if it does not, taking a treatment out answers `503 {"error":"uncategorized_unsupported"}` and nothing changes.
+Env: `ADMIN_CATEGORY_BOARD=1`, then `sudo systemctl restart seoulbeauty-admin-api`.
+
 ## 14. Registering a hospital (`ADMIN_HOSPITAL_APPLY_ENABLED`, optional; super admin only)
 The PHP page `hospital_apply.php` without its application workflow: a super admin fills in a hospital and it is stored at once as `status='approved'`, `is_active=0`
 (inactive; it is switched on from the hospital page). Independent of the hospital switches (sections 6-12). Hospital roles and anyone not signed in get 403 / 401; with the switch

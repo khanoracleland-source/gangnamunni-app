@@ -164,6 +164,48 @@ describe('admin API: category board writes', () => {
     });
   });
 
+  describe('DELETE /v1/category-board/categories/:id', () => {
+    it('frees the treatments, then deletes the category, in one transaction', async () => {
+      const res = await del('/v1/category-board/categories/1').expect(200);
+      expect(rwCalls.map((c) => [c.sql, c.values])).toEqual([
+        ['UPDATE gangnamunni_treatment_master SET category_id = NULL WHERE category_id = ?', [1]],
+        ['DELETE FROM gangnamunni_treatment_categories WHERE id = ? AND NOT EXISTS (SELECT 1 FROM gangnamunni_treatment_master WHERE category_id = ?)', [1, 1]],
+      ]);
+      expect(txStarted).toBe(1);
+      expect(res.body.detached).toBe(2);
+      expect(res.body.categories).toBeDefined();
+    });
+    it('an empty category is deleted too', async () => {
+      freedRows = 0;
+      const res = await del('/v1/category-board/categories/2').expect(200);
+      expect(res.body.detached).toBe(0);
+    });
+    it('a treatment added in between: rolled back, 409 in_use', async () => {
+      deleteAffected = 0;
+      const res = await del('/v1/category-board/categories/1').expect(409);
+      expect(res.body).toMatchObject({ error: 'in_use' });
+      expect(rolledBack).toBe(1);
+    });
+    it('unknown 404, bad id 404', async () => {
+      await del('/v1/category-board/categories/99').expect(404);
+      await del('/v1/category-board/categories/abc').expect(404);
+      expect(rwCalls).toHaveLength(0);
+    });
+    it('a column that does not take NULL: 503 uncategorized_unsupported, rolled back', async () => {
+      rwError = Object.assign(new Error('null'), { errno: 1048 });
+      const res = await del('/v1/category-board/categories/1').expect(503);
+      expect(res.body).toEqual({ error: 'uncategorized_unsupported' });
+      expect(rolledBack).toBe(1);
+    });
+    it('guards: switch off 404, hospital admin 403, no CSRF header 403', async () => {
+      await del('/v1/category-board/categories/1', HOSPITAL).expect(403);
+      await request(app.getHttpServer()).delete('/v1/category-board/categories/1').set('Cookie', SUPER).expect(403);
+      expect(rwCalls).toHaveLength(0);
+      process.env.ADMIN_TREATMENTS_WRITE = '0';
+      await del('/v1/category-board/categories/1').expect(404);
+    });
+  });
+
   describe('guards', () => {
     it('write switch off: 404 even for a visitor', async () => {
       process.env.ADMIN_TREATMENTS_WRITE = '0';
