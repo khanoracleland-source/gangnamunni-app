@@ -5,6 +5,7 @@ import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { ConsultationsModule } from './consultations.module';
 import { DB, DB_RW } from '../db/db.module';
+import { ConsultationNotifyService } from './consultations.notify.service';
 
 const SUPER = 'PHPSESSID=super';
 const HOSPITAL = 'PHPSESSID=hospital12';
@@ -21,12 +22,15 @@ describe('admin API: consultations (write)', () => {
   const rwCalls: Call[] = [];
   let status = 'pending';
   let failWith: unknown = null;
+  let failEvent: unknown = null;
+  const later = jest.fn();
 
   /** The row is found only when the statement's hospital part lets it through, like the real WHERE. */
   const visible = (sql: string, values: unknown[]) => !sql.includes('1 = 0') && (!sql.includes('IN (?)') || values.includes(12));
   const rwQuery = async (sql: string, values: unknown[] = []) => {
     rwCalls.push({ sql, values });
     if (failWith) throw failWith;
+    if (sql.startsWith('INSERT INTO gangnamunni_consultation_events') && failEvent) throw failEvent;
     if (sql.startsWith('SELECT id, status FROM gangnamunni_consultations')) return [visible(sql, values) && values[0] === 9 ? [{ id: 9, status }] : []];
     if (sql.startsWith('SELECT id FROM gangnamunni_consultations')) return [visible(sql, values) && values[0] === 9 ? [{ id: 9 }] : []];
     return [{ affectedRows: 1 }];
@@ -52,10 +56,10 @@ describe('admin API: consultations (write)', () => {
     process.env.ADMIN_HOSPITALS_ENABLED = '1';
     process.env.ADMIN_CONSULTATIONS_ENABLED = '1';
     process.env.ADMIN_CONSULTATIONS_WRITE = '1';
-    rwCalls.length = 0; conn.rollback.mockClear(); conn.commit.mockClear(); conn.release.mockClear();
-    status = 'pending'; failWith = null;
+    rwCalls.length = 0; conn.rollback.mockClear(); conn.commit.mockClear(); conn.release.mockClear(); later.mockClear();
+    status = 'pending'; failWith = null; failEvent = null;
     @Global() @Module({ providers: [{ provide: DB, useValue: roStub }, { provide: DB_RW, useValue: rwStub }], exports: [DB, DB_RW] }) class TestDbModule {}
-    const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, MeModule, ConsultationsModule] }).compile();
+    const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, MeModule, ConsultationsModule] }).overrideProvider(ConsultationNotifyService).useValue({ later }).compile();
     app = mod.createNestApplication();
     await app.init();
   });
@@ -165,6 +169,52 @@ describe('admin API: consultations (write)', () => {
     expect(r.body).toEqual({ error: 'write_unavailable' });
     expect(conn.rollback).toHaveBeenCalled();
     expect((await post('/v1/consultations/9/status', { status: 'approved' })).status).toBe(503);
+  });
+
+  describe('progress record and member notices', () => {
+    const events = () => rwCalls.filter((c) => c.sql.startsWith('INSERT INTO gangnamunni_consultation_events'));
+
+    it('completed and contact failed write their record in the same transaction; approved and rejected write none', async () => {
+      await post('/v1/consultations/9/status', { status: 'completed' });
+      expect(events().map((c) => c.values)).toEqual([[9, 'completed']]);
+      rwCalls.length = 0;
+      await post('/v1/consultations/9/status', { status: 'contact_failed' });
+      expect(events().map((c) => c.values)).toEqual([[9, 'no_answer']]);
+      expect(rwCalls.map((c) => c.sql.split(' ')[0])).toEqual(['SELECT', 'UPDATE', 'INSERT']);
+      rwCalls.length = 0;
+      for (const st of ['approved', 'rejected']) await post('/v1/consultations/9/status', { status: st });
+      expect(events()).toHaveLength(0);
+    });
+
+    it('a database without that table (or the right to write it) still saves the status; any other problem rolls everything back', async () => {
+      failEvent = Object.assign(new Error('no table'), { code: 'ER_NO_SUCH_TABLE', errno: 1146 });
+      const ok = await post('/v1/consultations/9/status', { status: 'completed' });
+      expect(ok.status).toBe(200);
+      expect(updates()).toHaveLength(1);
+      expect(conn.commit).toHaveBeenCalled();
+      later.mockClear(); conn.commit.mockClear();
+      failEvent = Object.assign(new Error('deadlock'), { code: 'ER_LOCK_DEADLOCK', errno: 1213 });
+      expect((await post('/v1/consultations/9/status', { status: 'completed' })).status).toBe(500);
+      expect(conn.rollback).toHaveBeenCalled();
+      expect(conn.commit).not.toHaveBeenCalled();
+    });
+
+    it('the member is told only after a real change to approved or contact failed', async () => {
+      await post('/v1/consultations/9/status', { status: 'approved' });
+      expect(later).toHaveBeenLastCalledWith(9, 'approved');
+      await post('/v1/consultations/9/status', { status: 'contact_failed' });
+      expect(later).toHaveBeenLastCalledWith(9, 'contact_failed');
+      later.mockClear();
+      await post('/v1/consultations/9/status', { status: 'completed' });
+      await post('/v1/consultations/9/status', { status: 'rejected' });
+      status = 'approved';
+      await post('/v1/consultations/9/status', { status: 'approved' });
+      await post('/v1/consultations/9/status', { status: 'approved' }, OTHER_HOSPITAL);
+      await post('/v1/consultations/9/message', { message: 'x' });
+      failWith = Object.assign(new Error('denied'), { code: 'ER_COLUMNACCESS_DENIED_ERROR', errno: 1143 });
+      await post('/v1/consultations/9/status', { status: 'contact_failed' });
+      expect(later).not.toHaveBeenCalled();
+    });
   });
 
   it('/v1/me tells the page whether writing is on', async () => {

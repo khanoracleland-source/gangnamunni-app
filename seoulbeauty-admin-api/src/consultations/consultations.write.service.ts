@@ -1,15 +1,17 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { isMissingObject } from '../hospitals/hospitals.treatments.logic';
 import { AdminScope } from '../admin-auth/admin.guard';
 import { BookingsRwBase, WriteActor } from '../bookings/bookings.rw';
 import { DB_RW, RwDbProvider } from '../db/db.module';
-import { isFail, parseId, parseMessageBody, parseStatusBody, scopeClause } from './consultations.logic';
+import { eventKindOf, INSERT_EVENT_SQL, isFail, noticeEventOf, parseId, parseMessageBody, parseStatusBody, scopeClause } from './consultations.logic';
+import { ConsultationNotifyService } from './consultations.notify.service';
 
 /** Changes an admin makes to an application: its status, and the message the member sees. Every statement is cut to the admin's hospitals. */
 @Injectable()
 export class ConsultationsWriteService extends BookingsRwBase {
   protected readonly log = new Logger('ConsultationsWrite');
 
-  constructor(@Inject(DB_RW) protected readonly rw: RwDbProvider) {
+  constructor(@Inject(DB_RW) protected readonly rw: RwDbProvider, private readonly notify: ConsultationNotifyService) {
     super();
   }
 
@@ -28,10 +30,14 @@ export class ConsultationsWriteService extends BookingsRwBase {
         if (!cur) throw new NotFoundException({ error: 'not_found' });
         if (String(cur.status) === b.status) return false;
         await conn.query(`UPDATE gangnamunni_consultations SET status = ? WHERE id = ? AND ${sc.sql}`, [b.status, id, ...sc.values]);
+        await this.recordEvent(conn, id, b.status);
         return true;
       }),
     );
     this.log.log(`consultation write: admin=${actor.id} action=status:${b.status} consultation=${id} changed=${changed}`);
+    // Only after the change is committed, and only when it really changed something; never delays or fails the answer.
+    const notice = noticeEventOf(b.status);
+    if (changed && notice) this.notify.later(id, notice);
     return { id, status: b.status, changed };
   }
 
@@ -52,5 +58,20 @@ export class ConsultationsWriteService extends BookingsRwBase {
     );
     this.log.log(`consultation write: admin=${actor.id} action=message consultation=${id} length=${b.message.length}`);
     return { id, hospitalMessage: b.message };
+  }
+
+  /**
+   * The progress record the member's page shows. It is part of the same transaction, but a database without that table (or without the right to
+   * write it) only skips the record, like the PHP page; any other problem still rolls the status change back.
+   */
+  private async recordEvent(conn: { query: (sql: string, values?: unknown[]) => Promise<unknown> }, id: number, status: string): Promise<void> {
+    const kind = eventKindOf(status);
+    if (!kind) return;
+    try {
+      await conn.query(INSERT_EVENT_SQL, [id, kind]);
+    } catch (e) {
+      if (!isMissingObject(e)) throw e;
+      this.log.warn(`progress record skipped for consultation=${id}: ${(e as { code?: string })?.code || (e as Error)?.message}`);
+    }
   }
 }

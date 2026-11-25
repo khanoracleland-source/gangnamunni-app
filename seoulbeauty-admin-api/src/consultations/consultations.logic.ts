@@ -239,3 +239,26 @@ export function parseMessageBody(body: unknown): { message: string } | Fail {
   if (Array.from(message).length > MESSAGE_MAX) return { error: 'too_long', field: 'message' };
   return { message };
 }
+
+// ---- progress record and member notices ----
+
+/** The progress record the member's page shows: completed -> "completed", contact failed -> "no_answer" (the member's own re-request is written by the member side). */
+export const eventKindOf = (status: string): 'completed' | 'no_answer' | null => (status === 'completed' ? 'completed' : status === 'contact_failed' ? 'no_answer' : null);
+
+export const INSERT_EVENT_SQL = 'INSERT INTO gangnamunni_consultation_events (consultation_id, kind) VALUES (?, ?)';
+
+export type NoticeEvent = 'approved' | 'contact_failed';
+/** Only these two changes tell the member; completed and rejected stay silent, like the PHP page. */
+export const noticeEventOf = (status: string): NoticeEvent | null => (status === 'approved' || status === 'contact_failed' ? status : null);
+
+/** Title, text and the page the notice opens (a relative page name; the sender puts the site address in front). */
+export function noticePayload(event: NoticeEvent, hospitalName: unknown): { title: string; body: string; link: string } {
+  const hospital = s(hospitalName).trim();
+  if (event === 'approved') return { title: '상담신청이 확인되었습니다', body: hospital, link: 'my_appointments.php' };
+  return { title: '병원에서 연락드렸지만 받지 않으셨어요', body: `${hospital} · 편한 시간을 골라 다시 요청해주세요.`, link: 'my_consultations.php' };
+}
+
+/** What the app reads from the push to open the right page. */
+export function noticePushData(link: string): Record<string, string> {
+  return { type: 'member_notification', url: link, webview_url: link, click_action: 'FLUTTER_NOTIFICATION_CLICK' };
+}
