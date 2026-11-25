@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
+import { DetailSheet, DetailView } from "./ConsultationDetail";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import { fetchConsultationHospitals, fetchConsultations, fetchMe, type ApiResult, type ConsultationHospital, type ConsultationList, type ConsultationRow, type Me } from "@/lib/api";
 import { pageButtons } from "@/lib/bookings";
@@ -16,6 +17,16 @@ import { useT } from "@/lib/locale";
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "error";
 const leaveToLogin = () => window.location.assign(PHP_ADMIN_URL);
 const stKey = (s: string) => `cs.st.${s}` as MessageKey;
+
+const WIDE = "(min-width: 1280px)";
+/** True from 1280px up, where the detail sits beside the list; below it opens as a sheet. */
+function useWide(): boolean {
+  return useSyncExternalStore(
+    (cb) => { const m = window.matchMedia(WIDE); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); },
+    () => window.matchMedia(WIDE).matches,
+    () => false,
+  );
+}
 
 /** "2026-11-24 10:00:00" -> "11.24 10:00" (the stored time, not converted). */
 function shortTime(value: string): string {
@@ -77,6 +88,7 @@ export default function ConsultationsPage() {
 function Board({ me }: { me: Me }) {
   const t = useT();
   const own = me.admin.scope === "own";
+  const wide = useWide();
 
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [qInput, setQInput] = useState("");
@@ -136,6 +148,7 @@ function Board({ me }: { me: Me }) {
   };
   const dirty = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS) || qInput !== "";
 
+  const split = wide && !!list && list.items.length > 0;
   const stats = list?.stats;
   const rows = list?.items ?? [];
   const hospitalName = own ? (rows[0]?.hospitalName ?? hospitals[0]?.name ?? "") : "";
@@ -196,6 +209,7 @@ function Board({ me }: { me: Me }) {
         </div>
       ) : null}
 
+      <div className={split ? "cs-split" : undefined}>
       {list && rows.length > 0 ? (
         <div className={loadingList ? "cs-list cs-list--busy" : "cs-list"}>
           <div className="cs-list__meta" aria-live="polite">{t("cs.count", { n: formatNumber(list.total) })}</div>
@@ -222,6 +236,15 @@ function Board({ me }: { me: Me }) {
           </nav>
         </div>
       ) : null}
+      {split ? (
+        <aside className="cs-panel" aria-label={t("cs.d.title")}>
+          {selectedId !== null ? <DetailView id={selectedId} own={own} mode="panel" onClose={() => setSelectedId(null)} /> : (
+            <div className="cs-panel__idle"><Icon name="headset" size={26} /><b>{t("cs.d.idle.title")}</b><p>{t("cs.d.idle.body")}</p></div>
+          )}
+        </aside>
+      ) : null}
+      </div>
+      {!wide && selectedId !== null ? <DetailSheet id={selectedId} own={own} onClose={() => setSelectedId(null)} /> : null}
     </div>
   );
 }

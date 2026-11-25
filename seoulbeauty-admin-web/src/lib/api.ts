@@ -1935,6 +1935,34 @@ export async function fetchConsultationHospitals(signal?: AbortSignal): Promise<
   };
 }
 
+export type ConsultationEvent = { kind: string; createdAt: string };
+export type ConsultationDetail = Omit<ConsultationRow, "preview"> & {
+  /** The application text without the form lines (those are in `tags`). */
+  text: string;
+  /** false when the database has no history columns yet; the hospital message and progress then stay empty. */
+  historySupported: boolean;
+  hospitalMessage: string; hospitalMessageAt: string | null; callbackSlot: string; events: ConsultationEvent[];
+};
+
+export async function fetchConsultationDetail(id: number, signal?: AbortSignal): Promise<ApiResult<ConsultationDetail>> {
+  const res = await getJson(`/v1/consultations/${encodeURIComponent(String(id))}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return {
+    ok: true,
+    data: {
+      id: num(d.id), hospitalId: num(d.hospitalId), hospitalName: str(d.hospitalName), type: str(d.type), name: str(d.name), phone: text(d.phone),
+      tags: list(d.tags).filter((x): x is string => typeof x === "string"), text: str(d.text), photoCount: Math.min(10, num(d.photoCount)), status: str(d.status), createdAt: str(d.createdAt),
+      historySupported: d.historySupported === true, hospitalMessage: str(d.hospitalMessage), hospitalMessageAt: typeof d.hospitalMessageAt === "string" ? d.hospitalMessageAt : null,
+      callbackSlot: str(d.callbackSlot),
+      events: list(d.events).map((e) => ({ kind: str(obj(e).kind), createdAt: str(obj(e).createdAt) })).filter((e) => e.kind),
+    },
+  };
+}
+
+/** One attached photo; the browser asks with the admin's cookie, the server checks scope and file. */
+export const consultationPhotoUrl = (id: number, index: number): string => `${BASE_PATH}/api/v1/consultations/${encodeURIComponent(String(id))}/photos/${index}`;
+
 export type BookingsExport = { hospitalIds: number[]; from: string; to: string; status: string };
 export type ExcelResult = { ok: true; blob: Blob; filename: string } | { ok: false; status: number; error: string };
 
