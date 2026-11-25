@@ -33,6 +33,7 @@ describe('admin API: category board writes', () => {
   let detachAffected = 1;
   let txFailsAt = -1;
   let deleteAffected = 1;
+  let lockRows: { id: number }[] = [{ id: 1 }];
   let freedRows = 2;
 
   const roStub = {
@@ -60,6 +61,7 @@ describe('admin API: category board writes', () => {
     rwCalls.push({ sql, values });
     if (rwError) throw rwError;
     if (txFailsAt >= 0 && rwCalls.length === txFailsAt + 1) throw Object.assign(new Error('boom'), { errno: 1213 });
+    if (sql.startsWith('SELECT id FROM gangnamunni_treatment_categories')) return [lockRows];
     if (sql.startsWith('DELETE FROM gangnamunni_treatment_categories')) return [{ affectedRows: deleteAffected }];
     if (sql.startsWith('UPDATE gangnamunni_treatment_master SET category_id = NULL WHERE category_id')) return [{ affectedRows: freedRows }];
     if (sql.includes('SET category_id = NULL')) return [{ affectedRows: detachAffected }];
@@ -92,7 +94,7 @@ describe('admin API: category board writes', () => {
     process.env.ADMIN_TREATMENTS_ENABLED = '1';
     process.env.ADMIN_TREATMENTS_WRITE = '1';
     process.env.ADMIN_CATEGORY_BOARD = '1';
-    rwCalls.length = 0; rwEmpty = false; rwError = null; detachAffected = 1; deleteAffected = 1; freedRows = 2; txFailsAt = -1; txStarted = 0; rolledBack = 0;
+    rwCalls.length = 0; rwEmpty = false; rwError = null; detachAffected = 1; deleteAffected = 1; lockRows = [{ id: 1 }]; freedRows = 2; txFailsAt = -1; txStarted = 0; rolledBack = 0;
     await boot();
   });
   afterEach(async () => { await app.close(); jest.restoreAllMocks(); });
@@ -107,14 +109,15 @@ describe('admin API: category board writes', () => {
     it('moves treatments to the end of the category, one transaction, parameterised', async () => {
       const res = await post('/v1/category-board/categories/1/treatments', { treatmentIds: [12, 13, 10] }).expect(200);
       // 10 is already in category 1 and is left alone; 12 and 13 follow the last place (7).
-      expect(rwCalls.map((c) => c.values)).toEqual([[1, 8, 12], [1, 9, 13]]);
-      expect(rwCalls[0].sql).toBe('UPDATE gangnamunni_treatment_master SET category_id = ?, sort_order = ? WHERE id = ?');
+      expect(rwCalls[0].sql).toBe('SELECT id FROM gangnamunni_treatment_categories WHERE id = ? FOR UPDATE');
+      expect(rwCalls.slice(1).map((c) => c.values)).toEqual([[1, 8, 12], [1, 9, 13]]);
+      expect(rwCalls[1].sql).toBe('UPDATE gangnamunni_treatment_master SET category_id = ?, sort_order = ? WHERE id = ?');
       expect(txStarted).toBe(1);
       expect(res.body.categories).toHaveLength(2);
     });
     it('into an empty category the places start at 1', async () => {
       await post('/v1/category-board/categories/2/treatments', { treatmentIds: [12] }).expect(200);
-      expect(rwCalls.map((c) => c.values)).toEqual([[2, 2, 12]]);
+      expect(rwCalls.slice(1).map((c) => c.values)).toEqual([[2, 2, 12]]);
     });
     it('everything already in the category: nothing is written', async () => {
       await post('/v1/category-board/categories/1/treatments', { treatmentIds: [10, 11] }).expect(200);
@@ -127,8 +130,14 @@ describe('admin API: category board writes', () => {
       await post('/v1/category-board/categories/1/treatments', {}).expect(400);
       expect(rwCalls).toHaveLength(0);
     });
+    it('the category deleted after the read: 404, rolled back, nothing moved', async () => {
+      lockRows = [];
+      await post('/v1/category-board/categories/1/treatments', { treatmentIds: [12] }).expect(404);
+      expect(rolledBack).toBe(1);
+      expect(rwCalls).toHaveLength(1);
+    });
     it('a failing statement rolls the whole move back', async () => {
-      txFailsAt = 1;
+      txFailsAt = 2;
       await post('/v1/category-board/categories/1/treatments', { treatmentIds: [12, 13] }).expect(500);
       expect(rolledBack).toBe(1);
     });

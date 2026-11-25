@@ -76,3 +76,8 @@ export const detachAllQuery = (categoryId: number): Query => ({
   sql: 'UPDATE gangnamunni_treatment_master SET category_id = NULL WHERE category_id = ?',
   values: [categoryId],
 });
+/** Locks the category row for the length of a transaction, so a delete of it cannot slip in between the check and the move. */
+export const categoryLockQuery = (categoryId: number): Query => ({
+  sql: 'SELECT id FROM gangnamunni_treatment_categories WHERE id = ? FOR UPDATE',
+  values: [categoryId],
+});

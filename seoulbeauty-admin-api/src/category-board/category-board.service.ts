@@ -3,7 +3,7 @@ import { DB_RW, RwDbProvider } from '../db/db.module';
 import { TreatmentsService } from '../treatments/treatments.service';
 import { TreatmentsRwBase, WriteActor } from '../treatments/treatments.rw';
 import { deleteEmptyCategoryQuery } from '../treatments/treatments.master.logic';
-import { assignQuery, BoardAnswer, buildBoard, detachAllQuery, detachQuery, parseAssignBody } from './category-board.logic';
+import { assignQuery, BoardAnswer, buildBoard, categoryLockQuery, detachAllQuery, detachQuery, parseAssignBody } from './category-board.logic';
 
 /** MySQL 1048: the column does not accept NULL, so "no category" cannot be stored. */
 const COLUMN_NOT_NULL = 1048;
@@ -35,6 +35,9 @@ export class CategoryBoardService extends TreatmentsRwBase {
       const last = Math.max(0, ...snap.items.filter((i) => i.categoryId === categoryId).map((i) => i.sortOrder));
       await this.guarded(() =>
         this.tx(async (conn) => {
+          const lock = categoryLockQuery(categoryId);
+          const [rows] = (await conn.query(lock.sql, lock.values)) as any;
+          if (!Array.isArray(rows) || rows.length === 0) throw new NotFoundException({ error: 'not_found' });
           for (let i = 0; i < moving.length; i++) {
             const q = assignQuery(moving[i], categoryId, last + i + 1);
             await conn.query(q.sql, q.values);
