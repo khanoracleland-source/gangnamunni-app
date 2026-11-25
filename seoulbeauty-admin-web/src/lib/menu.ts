@@ -61,7 +61,6 @@ const MENU: MenuGroup[] = [
     label: L("콘텐츠 관리", "Content management"),
     icon: "collection",
     items: [
-      legacy("recommend", "admin_recommend.php", "메인 추천 병원", "Recommended hospitals", "star"),
       legacy("hospitals", "admin_hospitals.php", "병원 관리", "Hospitals", "hospital"),
       { key: "hospital_archive", label: L("삭제 병원 보관함", "Archive"), icon: "collection", status: "new", href: "/hospital-archive", superOnly: true, requires: "archive" },
       legacy("doctors", "admin_doctors.php", "의사 관리", "Doctors", "people"),
@@ -69,30 +68,27 @@ const MENU: MenuGroup[] = [
       // legacy("personnel", "admin_personnel.php", "인력 관리", "Staff", "people"),
       { key: "content_review", label: L("콘텐츠 심사", "Content review"), icon: "shield", status: "new", href: "/moderation", requires: "moderation" },
       { key: "banners", label: L("배너 관리", "Banners"), icon: "image", status: "new", href: "/banners", superOnly: true, requires: "banners" },
-      legacy("categories", "admin_categories.php", "카테고리 관리", "Categories", "tag"),
-      legacy("events", "admin_events.php", "이벤트 관리", "Events", "calendar"),
-      legacy("columns", "admin_columns.php", "칼럼/뉴스 관리", "Columns / news", "sheet"),
     ],
   },
-  {
-    key: "ad_management",
-    label: L("광고 관리", "Ad management"),
-    icon: "megaphone",
-    items: [
-      legacy("ad_pricing", "admin_ad_pricing.php", "광고 단가 관리", "Ad pricing", "coin"),
-      legacy("ad_slots", "admin_ad_slots.php", "광고 슬롯 관리", "Ad slots", "collection"),
-      legacy("ad_stats", "admin_ad_stats.php", "광고 통계", "Ad statistics", "chart"),
-      legacy("advertisers", "admin_advertisers.php", "광고주 관리", "Advertisers", "building"),
-      legacy("ad_settings", "admin_ad_settings.php", "광고·디스플레이 설정", "Ad and display settings", "gear"),
-      legacy("promos", "admin_promos.php", "프로모션 관리", "Promotions", "tag"),
-    ],
-  },
+  // 광고 관리: 새 관리자 페이지에서는 임시로 메뉴에서 숨김 — 다시 보이려면 아래 블록의 주석을 해제
+  // {
+  //   key: "ad_management",
+  //   label: L("광고 관리", "Ad management"),
+  //   icon: "megaphone",
+  //   items: [
+  //     legacy("ad_pricing", "admin_ad_pricing.php", "광고 단가 관리", "Ad pricing", "coin"),
+  //     legacy("ad_slots", "admin_ad_slots.php", "광고 슬롯 관리", "Ad slots", "collection"),
+  //     legacy("ad_stats", "admin_ad_stats.php", "광고 통계", "Ad statistics", "chart"),
+  //     legacy("advertisers", "admin_advertisers.php", "광고주 관리", "Advertisers", "building"),
+  //     legacy("ad_settings", "admin_ad_settings.php", "광고·디스플레이 설정", "Ad and display settings", "gear"),
+  //     legacy("promos", "admin_promos.php", "프로모션 관리", "Promotions", "tag"),
+  //   ],
+  // },
   {
     key: "wizard",
     label: L("신청 관리", "Request management"),
     icon: "clipboard",
     items: [
-      legacy("hospital_wizard", "admin_hospital_wizard.php", "병원 등록 마법사", "Add-hospital wizard", "hospital"),
       legacy("bookings", "admin_bookings.php", "예약 관리", "Bookings", "calendar"),
       legacy("consultations", "admin_consultations.php", "상담 관리", "Consultations", "headset"),
     ],
