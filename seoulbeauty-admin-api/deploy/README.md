@@ -661,6 +661,11 @@ GRANT INSERT (hospital_treatment_id, option_name, body_part, dosage_value, dosag
 GRANT INSERT (hospital_treatment_id, option_name, body_part, dosage_value, dosage_unit, regular_price, price, is_representative, sort_order) ON <DB_NAME>.gangnamunni_hospital_treatment_prices TO 'sb_admin_rw'@'localhost';
 GRANT SELECT (id, name, is_active) ON <DB_NAME>.gangnamunni_treatment_units TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (id, name, is_active) ON <DB_NAME>.gangnamunni_treatment_units TO 'sb_admin_ro'@'localhost';
+-- body part groups of the price form (tables: hairwang_full/gangnamunni/sql/body_parts_20261125.sql); without them the form uses its built-in list
+GRANT SELECT (id, name, sort_order, is_active) ON <DB_NAME>.gangnamunni_body_part_groups TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, name, sort_order, is_active) ON <DB_NAME>.gangnamunni_body_part_groups TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, group_id, name, sort_order, is_active) ON <DB_NAME>.gangnamunni_body_parts TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, group_id, name, sort_order, is_active) ON <DB_NAME>.gangnamunni_body_parts TO 'sb_admin_ro'@'localhost';
 SHOW GRANTS FOR 'sb_admin_rw'@'127.0.0.1';   -- check: ..._treatment_prices has SELECT (id, hospital_treatment_id), INSERT (9 columns above) and DELETE
 ```
 The dump from section 10 already covers `gangnamunni_hospital_treatment_prices`. Without the INSERT / DELETE rights the answer is `503 {"error":"write_unavailable"}` and nothing changes.

@@ -817,6 +817,8 @@ export type HospitalTreatmentSet = {
   pricesEnabled?: boolean;
   /** The units the price window offers (only sent to an admin who may edit prices). */
   priceUnits?: string[];
+  /** The body part groups of the price window, from the body part tables (empty or missing: the window uses its own list). */
+  priceBodyParts?: { label: string; parts: string[] }[];
   /** The question window is switched on (and the question texts were read). */
   questionsEnabled?: boolean;
   /** The detail image window is switched on. */
@@ -874,6 +876,11 @@ function treatmentSet(v: unknown): HospitalTreatmentSet {
     removeEnabled: d.removeEnabled === undefined ? undefined : bool(d.removeEnabled),
     pricesEnabled: d.pricesEnabled === undefined ? undefined : bool(d.pricesEnabled),
     priceUnits: d.priceUnits === undefined ? undefined : list(d.priceUnits).filter((u): u is string => typeof u === "string" && u.trim() !== ""),
+    priceBodyParts: d.priceBodyParts === undefined ? undefined : list(d.priceBodyParts).flatMap((g) => {
+      const o = g as { label?: unknown; parts?: unknown };
+      const parts = list(o.parts).filter((p): p is string => typeof p === "string" && p.trim() !== "");
+      return typeof o.label === "string" && o.label.trim() !== "" && parts.length > 0 ? [{ label: o.label, parts }] : [];
+    }),
     questionsEnabled: d.questionsEnabled === undefined ? undefined : bool(d.questionsEnabled),
     imagesEnabled: d.imagesEnabled === undefined ? undefined : bool(d.imagesEnabled),
   };

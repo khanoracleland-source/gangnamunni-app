@@ -45,6 +45,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
   let nextId: number;
   let hasRw = true;
   let unitsRows: string[] | 'ERROR';
+  let bodyPartRows: { gid: number; group_name: string; part_name: string }[] | 'ERROR';
   let priceColumns: boolean;
   let failPriceInsertAt: number | null;
   let priceInsertCount: number;
@@ -168,6 +169,10 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       if (row) row.min_age = age;
       return [{ affectedRows: row ? 1 : 0 }];
     }
+    if (sql.includes('FROM gangnamunni_body_part_groups')) {
+      if (bodyPartRows === 'ERROR') throw dbError('ER_NO_SUCH_TABLE', 1146);
+      return [bodyPartRows];
+    }
     if (sql.startsWith('SELECT name FROM gangnamunni_treatment_units')) {
       if (unitsRows === 'ERROR') throw dbError('ER_NO_SUCH_TABLE', 1146);
       return [unitsRows.map((name) => ({ name }))];
@@ -227,6 +232,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
     delete process.env.ADMIN_HOSPITALS_TREATMENTS_QUESTIONS;
     delete process.env.ADMIN_HOSPITALS_TREATMENTS_IMAGES;
     questionTextsReadable = true; failQuestionInsertAt = null; questionInsertCount = 0; questionsWriteTable = true;
+    bodyPartRows = [{ gid: 1, group_name: '얼굴', part_name: '이마' }, { gid: 1, group_name: '얼굴', part_name: '자갈턱' }, { gid: 2, group_name: '몸', part_name: '손바닥' }, { gid: 2, group_name: '몸', part_name: '이마' }, { gid: 2, group_name: '몸', part_name: 'a||b' }];
     unitsRows = ['회', 'ml', 'IU', 'Box']; priceColumns = true; failPriceInsertAt = null; priceInsertCount = 0;
     phpCalls.length = 0; roCalls.length = 0; rwCalls.length = 0; txEvents.length = 0;
     hospitals = { 12: { status: 'approved' }, 13: { status: 'approved' }, 14: { status: 'pending' } };
@@ -385,7 +391,7 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       expect(r.body).toMatchObject({ count: 2, promotedCount: 1, canManage: true, minAgeSupported: true, removeEnabled: true });
       // 11 was removed (is_active=0) so it is available again; 30 is inactive in the master
       expect(r.body.available).toEqual([{ id: 11, name: '필러', hashtag: '#필러', categoryId: 1, categoryName: '주사' }]);
-      expect(Object.keys(r.body).sort()).toEqual(['available', 'canManage', 'count', 'imagesEnabled', 'items', 'minAgeSupported', 'priceUnits', 'pricesEnabled', 'promotedCount', 'questionsEnabled', 'removeEnabled']);
+      expect(Object.keys(r.body).sort()).toEqual(['available', 'canManage', 'count', 'imagesEnabled', 'items', 'minAgeSupported', 'priceBodyParts', 'priceUnits', 'pricesEnabled', 'promotedCount', 'questionsEnabled', 'removeEnabled']);
     });
 
     it('imagesEnabled follows ADMIN_HOSPITALS_TREATMENTS_IMAGES (off by default, only the exact value 1) and does not change the image counts', async () => {
@@ -757,6 +763,14 @@ describe('admin API: hospital treatments (list, assign, promotion, minimum age, 
       expect(r.body.pricesEnabled).toBe(true);
       expect(r.body.priceUnits).toEqual(['Box', 'IU', 'ml', '회']);
       expect(r.body.items[0].priceOptions[0]).toEqual({ optionName: '', bodyPart: '이마', dosageValue: '50', dosageUnit: '유닛', regularPrice: 100000, price: 80000, isRepresentative: true });
+    });
+
+    it('GET adds the body part groups from the table (a repeat or a name with the separator is left out); table missing -> empty list, no 500', async () => {
+      expect((await get('/v1/hospitals/12/treatments', SUPER)).body.priceBodyParts).toEqual([{ label: '얼굴', parts: ['이마', '자갈턱'] }, { label: '몸', parts: ['손바닥'] }]);
+      bodyPartRows = 'ERROR';
+      const r = await get('/v1/hospitals/12/treatments', SUPER);
+      expect(r.status).toBe(200);
+      expect(r.body.priceBodyParts).toEqual([]);
     });
 
     it('units table missing or empty -> the standard list, no 500', async () => {

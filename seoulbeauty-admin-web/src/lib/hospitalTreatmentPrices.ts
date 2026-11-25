@@ -12,16 +12,22 @@ export type BodyPartGroup = { id: string; label: string; parts: readonly string[
 export const BODY_PART_GROUPS: readonly BodyPartGroup[] = [
   { id: "face", label: "얼굴 전체 및 헤어", parts: ["얼굴 전체 (풀페이스)", "헤어라인", "두피"] },
   { id: "upper", label: "상안면부 (눈/이마 주변)", parts: ["이마", "미간", "눈가 (눈웃음 주름)", "눈밑 (다크서클, 눈밑 꺼짐)", "애교살", "관자놀이"] },
-  { id: "mid", label: "중안면부 (코/볼/팔자 주변)", parts: ["앞광대", "옆광대", "코 (콧대, 코끝)", "콧볼 (콧볼 축소 등)", "팔자주름", "인중"] },
-  { id: "lower", label: "하안면부 (입술/턱 주변)", parts: ["입술 (입술 볼륨)", "입꼬리", "사각턱 (턱 근육)", "턱끝 (무턱)", "이중턱 (턱밑 뱃살)", "심부볼 (불독살)", "턱선 (마리오넷 주름, 페이스라인)"] },
+  { id: "mid", label: "중안면부 (코/볼/팔자 주변)", parts: ["광대", "앞광대", "옆광대", "코 (콧대, 코끝)", "콧볼 (콧볼 축소 등)", "팔자주름", "인중", "나비존"] },
+  { id: "lower", label: "하안면부 (입술/턱 주변)", parts: ["입술 (입술 볼륨)", "립플립", "입꼬리", "거미스마일", "사각턱 (턱 근육)", "자갈턱", "턱끝 (무턱)", "이중턱 (턱밑 뱃살)", "심부볼 (불독살)", "턱선 (마리오넷 주름, 페이스라인)"] },
   {
     id: "body",
     label: "바디 (체형 및 레이저 제모 등)",
-    parts: ["목 (목주름)", "승모근 (어깨 라인)", "쇄골", "겨드랑이", "팔 (팔뚝)", "복부 (윗배, 아랫배)", "러브핸들 (옆구리)", "등", "허벅지 (안쪽, 바깥쪽)", "종아리 (종아리 알)", "손등 / 발등"],
+    parts: ["목 (목주름)", "승모근 (어깨 라인)", "쇄골", "겨드랑이", "팔 (팔뚝)", "복부 (윗배, 아랫배)", "러브핸들 (옆구리)", "등", "허벅지 (안쪽, 바깥쪽)", "종아리 (종아리 알)", "손등 / 발등", "손바닥", "발바닥"],
   },
 ];
 
-const KNOWN_PARTS: readonly string[] = BODY_PART_GROUPS.flatMap((g) => g.parts);
+const partsOf = (groups: readonly BodyPartGroup[]): string[] => groups.flatMap((g) => g.parts);
+
+/** The groups the server sends (from the body part tables); the built-in list when it sends none. */
+export function groupsFromServer(items: readonly { label: string; parts: readonly string[] }[]): readonly BodyPartGroup[] {
+  const groups = items.filter((g) => g.parts.length > 0).map((g, i) => ({ id: `g${i}`, label: g.label, parts: g.parts }));
+  return groups.length > 0 ? groups : BODY_PART_GROUPS;
+}
 
 /** The units offered when the server sends none. */
 export const DEFAULT_UNITS: readonly string[] = ["Box", "cc", "IU", "kj", "ml", "기타", "라인", "병", "샷", "시린지", "회"];
@@ -58,18 +64,19 @@ export const newDraft = (): PriceDraft => ({ key: nextKey++, optionName: "", bod
 export const splitBodyParts = (bodyPart: string): string[] => bodyPart.split(BODY_PART_SEP).map((p) => p.trim()).filter(Boolean);
 
 /** Puts parts in the order of the groups; names the groups do not know keep their place at the end. */
-export function orderBodyParts(parts: readonly string[]): string[] {
+export function orderBodyParts(parts: readonly string[], groups: readonly BodyPartGroup[] = BODY_PART_GROUPS): string[] {
+  const known = [...new Set(partsOf(groups))];
   const seen = new Set(parts);
-  return [...KNOWN_PARTS.filter((p) => seen.has(p)), ...parts.filter((p, i) => !KNOWN_PARTS.includes(p) && parts.indexOf(p) === i)];
+  return [...known.filter((p) => seen.has(p)), ...parts.filter((p, i) => !known.includes(p) && parts.indexOf(p) === i)];
 }
 
 /** The rows a stored treatment starts with; one empty row when it has no price option. */
-export function draftsFromOptions(options: readonly TreatmentPriceOption[]): PriceDraft[] {
+export function draftsFromOptions(options: readonly TreatmentPriceOption[], groups: readonly BodyPartGroup[] = BODY_PART_GROUPS): PriceDraft[] {
   if (options.length === 0) return [newDraft()];
   return options.map((o) => ({
     key: nextKey++,
     optionName: o.optionName,
-    bodyParts: orderBodyParts(splitBodyParts(o.bodyPart)),
+    bodyParts: orderBodyParts(splitBodyParts(o.bodyPart), groups),
     dosage: o.dosageValue,
     unit: o.dosageUnit,
     regular: o.regularPrice > 0 ? String(o.regularPrice) : "",
@@ -101,7 +108,10 @@ export function bodyPartSummary(parts: readonly string[]): { kind: "none" } | { 
 }
 
 /** Parts that are saved on a row but that no group lists. */
-export const legacyParts = (parts: readonly string[]): string[] => parts.filter((p) => !KNOWN_PARTS.includes(p));
+export const legacyParts = (parts: readonly string[], groups: readonly BodyPartGroup[] = BODY_PART_GROUPS): string[] => {
+  const known = partsOf(groups);
+  return parts.filter((p) => !known.includes(p));
+};
 
 const isBlankText = (v: string): boolean => v.trim() === "";
 const moneyValue = (v: string): number => (isBlankText(v) ? 0 : Number(v.trim()));

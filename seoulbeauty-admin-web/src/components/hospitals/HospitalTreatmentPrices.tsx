@@ -1,23 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import Icon from "../Icon";
 import ConfirmDialog, { type ConfirmSpec } from "./ConfirmDialog";
 import { saveTreatmentPrices, type HospitalTreatment } from "@/lib/api";
 import {
-  BODY_PART_GROUPS,
   MAX_OPTIONS,
   bodyPartSummary,
   checkPrices,
   draftSignature,
   draftsFromOptions,
+  groupsFromServer,
   legacyParts,
   newDraft,
   orderBodyParts,
   priceErrorKey,
   priceSaveFailure,
   unitChoices,
+  type BodyPartGroup,
   type DraftField,
   type PriceDraft,
 } from "@/lib/hospitalTreatmentPrices";
@@ -31,6 +32,8 @@ type Props = {
   /** The treatment whose prices are edited. */
   item: HospitalTreatment;
   units: readonly string[];
+  /** Body part groups from the server; empty = the built-in list. */
+  bodyParts: readonly { label: string; parts: readonly string[] }[];
   /** The prices were saved; `saved` is the treatment with its new options (null when the answer did not carry it). */
   onSaved: (saved: HospitalTreatment | null) => void;
   /** The window is closed without saving. */
@@ -115,6 +118,7 @@ function PartPicker({
   invalid,
   describedBy,
   disabled,
+  groups: baseGroups,
   onChange,
 }: {
   id: string;
@@ -122,6 +126,7 @@ function PartPicker({
   invalid: boolean;
   describedBy?: string;
   disabled: boolean;
+  groups: readonly BodyPartGroup[];
   onChange: (next: string[]) => void;
 }) {
   const t = useT();
@@ -312,15 +317,15 @@ function PartPicker({
     }
   };
 
-  const toggle = (part: string, on: boolean) => onChange(orderBodyParts(on ? [...value, part] : value.filter((p) => p !== part)));
+  const toggle = (part: string, on: boolean) => onChange(orderBodyParts(on ? [...value, part] : value.filter((p) => p !== part), baseGroups));
   const clear = () => {
     onChange([]);
     // The button is disabled now: keep the focus inside the list.
     doneButton.current?.focus();
   };
   const summary = bodyPartSummary(value);
-  const legacy = legacyParts(value);
-  const groups = legacy.length > 0 ? [...BODY_PART_GROUPS, { id: "legacy", label: t("h.e.tp.parts.legacy"), parts: legacy }] : BODY_PART_GROUPS;
+  const legacy = legacyParts(value, baseGroups);
+  const groups = legacy.length > 0 ? [...baseGroups, { id: "legacy", label: t("h.e.tp.parts.legacy"), parts: legacy }] : baseGroups;
   const n = value.length;
 
   return (
@@ -422,11 +427,11 @@ function PartPicker({
  * option, the same checks the server makes. It is drawn outside the hospital form, so nothing in it can submit that form
  * or change its dirty state. Saving replaces every price option of the treatment in one request.
  */
-export default function HospitalTreatmentPrices({ hospitalId, item, units, onSaved, onClose, onStale, onUnauthorized }: Props) {
+export default function HospitalTreatmentPrices({ hospitalId, item, units, bodyParts, onSaved, onClose, onStale, onUnauthorized }: Props) {
   const t = useT();
   const uid = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [drafts, setDrafts] = useState<PriceDraft[]>(() => draftsFromOptions(item.priceOptions));
+  const [drafts, setDrafts] = useState<PriceDraft[]>(() => draftsFromOptions(item.priceOptions, groupsFromServer(bodyParts)));
   const [initial] = useState(() => draftSignature(drafts));
   const [busy, setBusy] = useState(false);
   const [rowError, setRowError] = useState<RowError | null>(null);
@@ -441,6 +446,7 @@ export default function HospitalTreatmentPrices({ hospitalId, item, units, onSav
   });
   const dirty = draftSignature(drafts) !== initial;
   const choices = unitChoices(units, drafts);
+  const partGroups = useMemo(() => groupsFromServer(bodyParts), [bodyParts]);
 
   // Opens as a modal; the focus goes to the save button while the window animates in.
   useEffect(() => {
@@ -681,6 +687,7 @@ export default function HospitalTreatmentPrices({ hospitalId, item, units, onSav
                             invalid={bad("bodyParts")}
                             describedBy={describe("bodyParts")}
                             disabled={busy}
+                            groups={partGroups}
                             onChange={(next) => edit(d.key, { bodyParts: next })}
                           />
                         </div>

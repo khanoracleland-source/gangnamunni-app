@@ -273,6 +273,8 @@ export interface TreatmentsView {
   imagesEnabled: boolean;
   /** units for the price form; only filled when the actor may manage and the prices switch is on */
   priceUnits: string[];
+  /** body part groups for the price form (from the body part tables); empty = the form uses its own built-in list */
+  priceBodyParts: BodyPartGroupItem[];
   available: AvailableItem[];
 }
 
@@ -400,6 +402,33 @@ export function parsePricesBody(body: unknown): PricesParsed {
   if (out.length === 0) return fail('no_options');
   if (representatives > 1) return fail('multiple_representative');
   return { ok: true, options: out };
+}
+
+export interface BodyPartGroupItem { label: string; parts: string[] }
+
+/** Active groups and parts in table order. */
+export const bodyPartsQuery = (): Query => ({
+  sql: `SELECT g.id AS gid, g.name AS group_name, p.name AS part_name
+        FROM gangnamunni_body_part_groups g JOIN gangnamunni_body_parts p ON p.group_id = g.id
+        WHERE g.is_active = 1 AND p.is_active = 1 ORDER BY g.sort_order ASC, g.id ASC, p.sort_order ASC, p.id ASC`,
+  values: [],
+});
+
+/** Rows (already in order) -> groups with their parts; a name the price rules refuse (empty, over 100 characters, containing the separator) or a repeat is left out. */
+export function buildBodyParts(rows: Row[]): BodyPartGroupItem[] {
+  const groups = new Map<number, BodyPartGroupItem>();
+  const seen = new Set<string>();
+  for (const r of rows) {
+    const part = str(r.part_name).trim();
+    const label = str(r.group_name).trim();
+    if (part === '' || label === '' || Array.from(part).length > MAX_BODY_PART || part.includes('||') || seen.has(part)) continue;
+    seen.add(part);
+    const gid = Number(r.gid);
+    const g = groups.get(gid) ?? { label, parts: [] };
+    g.parts.push(part);
+    groups.set(gid, g);
+  }
+  return [...groups.values()];
 }
 
 export const unitsQuery = (): Query => ({ sql: 'SELECT name FROM gangnamunni_treatment_units WHERE is_active = 1 ORDER BY id ASC', values: [] });

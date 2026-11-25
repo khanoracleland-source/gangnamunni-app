@@ -4,7 +4,7 @@ import { DB, Db, DB_RW, RwDb, RwDbProvider } from '../db/db.module';
 import { canSee, num, Query, Scope, seesNothing, str } from './hospitals.logic';
 import { lockHospitalQuery } from './hospitals.images.logic';
 import {
-  activeMasterQuery, assignedQuery, attachQuestions, deleteQuestionsQuery, insertQuestionQuery, parseQuestionsBody, questionTextsQuery, availableQuery, buildAvailable, buildItems, buildUnits, canManageTreatments, clearPriceSummaryQuery, DEFAULT_PRICE_UNITS, insertPriceQuery, parsePricesBody, sortUnits, unitsQuery, DEFAULT_MGMT_MODE, deleteImagesQuery, deletePriceOptionsQuery,
+  activeMasterQuery, assignedQuery, attachQuestions, deleteQuestionsQuery, insertQuestionQuery, parseQuestionsBody, questionTextsQuery, availableQuery, buildAvailable, buildItems, buildBodyParts, bodyPartsQuery, BodyPartGroupItem, buildUnits, canManageTreatments, clearPriceSummaryQuery, DEFAULT_PRICE_UNITS, insertPriceQuery, parsePricesBody, sortUnits, unitsQuery, DEFAULT_MGMT_MODE, deleteImagesQuery, deletePriceOptionsQuery,
   existingAssignmentsQuery, hospitalExistsQuery, imageCountsQuery, insertAssignmentQuery, isMinAgeProblem, isMissingObject, lockAssignmentQuery, mgmtModeQuery,
   parseAssignBody, parsePatchBody, priceOptionsQuery, questionCountsQuery, reactivateQuery, removeAssignmentQuery, setMinAgeQuery, setPromotedQuery, TreatmentItem, TreatmentsView,
 } from './hospitals.treatments.logic';
@@ -103,7 +103,7 @@ export class HospitalsTreatmentsService {
     return {
       items, count: items.length, promotedCount: items.filter((i) => i.isPromoted).length,
       canManage, minAgeSupported, removeEnabled: hospitalsTreatmentsRemoveEnabled(),
-      pricesEnabled, imagesEnabled: hospitalsTreatmentsImagesEnabled(), questionsEnabled: hospitalsTreatmentsQuestionsEnabled() && (!canManage || questionsReadable), priceUnits: canManage && pricesEnabled ? await this.units() : [], available,
+      pricesEnabled, imagesEnabled: hospitalsTreatmentsImagesEnabled(), questionsEnabled: hospitalsTreatmentsQuestionsEnabled() && (!canManage || questionsReadable), priceUnits: canManage && pricesEnabled ? await this.units() : [], priceBodyParts: canManage && pricesEnabled ? await this.bodyParts() : [], available,
     };
   }
 
@@ -114,6 +114,16 @@ export class HospitalsTreatmentsService {
     } catch (e) {
       this.log.warn(`units unavailable, using the standard list: ${(e as { code?: string; message?: string })?.code || (e as Error)?.message}`);
       return sortUnits(DEFAULT_PRICE_UNITS);
+    }
+  }
+
+  /** Body part groups of the price form; a missing table or any read problem gives an empty list (the form then uses its built-in list). */
+  private async bodyParts(): Promise<BodyPartGroupItem[]> {
+    try {
+      return buildBodyParts(await this.roRun(bodyPartsQuery()));
+    } catch (e) {
+      this.log.warn(`body parts unavailable, the form uses its own list: ${(e as { code?: string; message?: string })?.code || (e as Error)?.message}`);
+      return [];
     }
   }
 

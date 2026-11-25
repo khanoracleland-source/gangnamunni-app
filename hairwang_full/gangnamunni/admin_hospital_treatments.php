@@ -52,6 +52,30 @@ if ($body_part_col_r && mysqli_num_rows($body_part_col_r) > 0) {
     $body_part_column = true;
 }
 
+// 부위 목록: gangnamunni_body_part_groups / gangnamunni_body_parts 에서 읽는다 (sql/body_parts_20261125.sql).
+// 테이블이 아직 없거나 비어 있으면 아래 기본 목록을 쓴다. 저장된 이름은 가격 옵션 행에 '||' 로 이어 붙여 저장된다.
+$body_part_groups = [
+    ['label' => '얼굴 전체 및 헤어', 'items' => ['얼굴 전체 (풀페이스)', '헤어라인', '두피']],
+    ['label' => '상안면부 (눈/이마 주변)', 'items' => ['이마', '미간', '눈가 (눈웃음 주름)', '눈밑 (다크서클, 눈밑 꺼짐)', '애교살', '관자놀이']],
+    ['label' => '중안면부 (코/볼/팔자 주변)', 'items' => ['광대', '앞광대', '옆광대', '코 (콧대, 코끝)', '콧볼 (콧볼 축소 등)', '팔자주름', '인중', '나비존']],
+    ['label' => '하안면부 (입술/턱 주변)', 'items' => ['입술 (입술 볼륨)', '립플립', '입꼬리', '거미스마일', '사각턱 (턱 근육)', '자갈턱', '턱끝 (무턱)', '이중턱 (턱밑 뱃살)', '심부볼 (불독살)', '턱선 (마리오넷 주름, 페이스라인)']],
+    ['label' => '바디 (체형 및 레이저 제모 등)', 'items' => ['목 (목주름)', '승모근 (어깨 라인)', '쇄골', '겨드랑이', '팔 (팔뚝)', '복부 (윗배, 아랫배)', '러브핸들 (옆구리)', '등', '허벅지 (안쪽, 바깥쪽)', '종아리 (종아리 알)', '손등 / 발등', '손바닥', '발바닥']],
+];
+try {
+    $bp_r = @mysqli_query($connect, "SELECT g.id AS gid, g.name AS group_name, p.name AS part_name FROM gangnamunni_body_part_groups g JOIN gangnamunni_body_parts p ON p.group_id = g.id WHERE g.is_active = 1 AND p.is_active = 1 ORDER BY g.sort_order ASC, g.id ASC, p.sort_order ASC, p.id ASC");
+    if ($bp_r && mysqli_num_rows($bp_r) > 0) {
+        $bp_db = [];
+        while ($bp_row = mysqli_fetch_assoc($bp_r)) {
+            $gid = (int)$bp_row['gid'];
+            if (!isset($bp_db[$gid])) $bp_db[$gid] = ['label' => (string)$bp_row['group_name'], 'items' => []];
+            $bp_db[$gid]['items'][] = (string)$bp_row['part_name'];
+        }
+        $body_part_groups = array_values($bp_db);
+    }
+} catch (Throwable $e) {
+    // 테이블이 없는 경우 기본 목록을 그대로 쓴다.
+}
+
 $regular_price_column = false;
 $regular_col_r = @mysqli_query($connect, "SHOW COLUMNS FROM gangnamunni_hospital_treatment_prices LIKE 'regular_price'");
 if ($regular_col_r && mysqli_num_rows($regular_col_r) > 0) {
@@ -1626,13 +1650,7 @@ function sortUnits(list) {
     });
 }
 
-var BODY_PART_GROUPS = [
-    {label:'얼굴 전체 및 헤어', items:['얼굴 전체 (풀페이스)','헤어라인','두피']},
-    {label:'상안면부 (눈/이마 주변)', items:['이마','미간','눈가 (눈웃음 주름)','눈밑 (다크서클, 눈밑 꺼짐)','애교살','관자놀이']},
-    {label:'중안면부 (코/볼/팔자 주변)', items:['앞광대','옆광대','코 (콧대, 코끝)','콧볼 (콧볼 축소 등)','팔자주름','인중']},
-    {label:'하안면부 (입술/턱 주변)', items:['입술 (입술 볼륨)','입꼬리','사각턱 (턱 근육)','턱끝 (무턱)','이중턱 (턱밑 뱃살)','심부볼 (불독살)','턱선 (마리오넷 주름, 페이스라인)']},
-    {label:'바디 (체형 및 레이저 제모 등)', items:['목 (목주름)','승모근 (어깨 라인)','쇄골','겨드랑이','팔 (팔뚝)','복부 (윗배, 아랫배)','러브핸들 (옆구리)','등','허벅지 (안쪽, 바깥쪽)','종아리 (종아리 알)','손등 / 발등']}
-];
+var BODY_PART_GROUPS = <?= json_encode($body_part_groups, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
 function priceToWon(price) {
     return Number(price) || 0;

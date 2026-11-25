@@ -734,6 +734,7 @@ export default function HospitalTreatments({ hospitalId, opened, onChange, image
           hospitalId={hospitalId}
           item={priceFor}
           units={set.priceUnits ?? []}
+          bodyParts={set.priceBodyParts ?? []}
           onSaved={pricesSaved}
           onClose={() => setPriceFor(null)}
           onStale={() => void refresh()}
