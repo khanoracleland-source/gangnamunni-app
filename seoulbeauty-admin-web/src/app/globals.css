@@ -623,8 +623,6 @@ h1 { font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: -0.02
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-pop);
 }
-.dialog[open] { animation: dialog-in var(--t-base) var(--ease) both; }
-@keyframes dialog-in { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
 .dialog::backdrop { background: rgba(15, 27, 45, 0.45); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .dialog__box { padding: 24px; }
@@ -2489,7 +2487,6 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
 /* success dialog */
 .ha-dlg { width: min(480px, calc(100% - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; border-radius: var(--r-lg); background: var(--surface); color: var(--ink); box-shadow: var(--shadow-pop); }
 .ha-dlg::backdrop { background: var(--overlay); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
-.ha-dlg[open] { animation: dialog-in var(--t-base) var(--ease) both; }
 .ha-dlg__box { display: grid; justify-items: center; gap: var(--s-3); padding: 32px; text-align: center; }
 .ha-dlg__box h2 { margin: 0; font-size: 20px; line-height: 28px; letter-spacing: -0.015em; }
 .ha-dlg__box p { margin: 0; }
@@ -3521,3 +3518,39 @@ body.reo-dragging { user-select: none; cursor: grabbing; }
 }
 @media (min-width: 640px) { .ban-form__order .input { max-width: 200px; } }
 @media (prefers-reduced-motion: reduce) { .ban-skel__img { animation: none; } .ban-grid { transition: none; } }
+
+/* ───────── Dialog motion ─────────
+   Every dialog fades and rises in, and fades and sinks out (the backdrop fades with it). Closing works because the dialog stays
+   displayed while its exit transition runs (transition-behavior: allow-discrete); DialogMotion holds the close event back for that long.
+   The three treatment dialogs keep their own opening animation; they only share the exit. Reduced motion: no motion at all. */
+@media (prefers-reduced-motion: no-preference) {
+  dialog.dialog, dialog.ha-dlg {
+    opacity: 0;
+    transform: translateY(10px) scale(0.975);
+    transition: opacity 150ms cubic-bezier(0.4, 0, 1, 1), transform 150ms cubic-bezier(0.4, 0, 1, 1), overlay 150ms allow-discrete, display 150ms allow-discrete;
+  }
+  dialog.dialog[open], dialog.ha-dlg[open] {
+    opacity: 1;
+    transform: none;
+    transition: opacity 220ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), overlay 220ms allow-discrete, display 220ms allow-discrete;
+  }
+  @starting-style {
+    dialog.dialog[open], dialog.ha-dlg[open] { opacity: 0; transform: translateY(10px) scale(0.975); }
+  }
+  dialog.dialog::backdrop, dialog.ha-dlg::backdrop {
+    opacity: 0;
+    transition: opacity 160ms linear, overlay 160ms allow-discrete, display 160ms allow-discrete;
+  }
+  dialog.dialog[open]::backdrop, dialog.ha-dlg[open]::backdrop { opacity: 1; transition-duration: 220ms; }
+  @starting-style {
+    dialog.dialog[open]::backdrop, dialog.ha-dlg[open]::backdrop { opacity: 0; }
+  }
+  /* While it fades out a closed dialog shows but takes no clicks. */
+  dialog.dialog:not([open]), dialog.ha-dlg:not([open]) { pointer-events: none; }
+  /* The booking drawer comes from the right edge on a wide screen. */
+  dialog.bk-modal--drawer { transform: translateX(32px); }
+  /* Bottom sheets (phones) rise from the bottom edge instead of scaling. */
+  @media (max-width: 639px) {
+    dialog.dialog--sheet, dialog.dc-dialog, dialog.bk-modal--sheet, dialog.bk-modal--drawer, dialog.dialog--prices, dialog.dialog--questions, dialog.dialog--images, dialog.ban-dlg { transform: translateY(32px); }
+  }
+}
