@@ -5,6 +5,9 @@ import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { ConsultationsModule } from './consultations.module';
 import { DB } from '../db/db.module';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'fs';
+import { tmpdir } from 'os';
+import * as path from 'path';
 
 const SUPER = 'PHPSESSID=super';
 const HOSPITAL = 'PHPSESSID=hospital12';
@@ -18,11 +21,29 @@ describe('admin API: consultations (read)', () => {
   const realFetch = global.fetch;
   const calls: Call[] = [];
   let failWith: unknown = null;
+  let historyFail: unknown = null;
+  let eventRows: Record<string, unknown>[] = [];
+  let photoUrls = '["uploads/consultations/9/a1.jpg","uploads/consultations/9/../../../etc/passwd","uploads/consultations/8/b.jpg","uploads/consultations/9/x.html"]';
+  const appRow = () => ({ id: 9, hospital_id: 12, hospital_name: '청담', consultation_type: 'general', name: '박서연', phone: '010-1', message: '[관심 시술] 보톡스\n안녕하세요\n두 번째 줄', photo_urls: photoUrls, status: 'pending', created_at: '2026-11-24 10:00:00' });
+  /** The row is returned only when the query's hospital part lets it through, like the real WHERE. */
+  const visible = (sql: string, values: unknown[]) => !sql.includes('1 = 0') && (!sql.includes('IN (?)') || values.includes(12));
 
   const dbStub = {
     query: jest.fn(async (sql: string, values: unknown[] = []) => {
       calls.push({ sql, values });
       if (failWith) throw failWith;
+      if (sql.includes('c.hospital_message')) {
+        if (historyFail) throw historyFail;
+        return [visible(sql, values) ? [{ hospital_message: '내일 연락드릴게요', hospital_message_at: '2026-11-24 12:00:00', callback_slot: 'pm' }] : []];
+      }
+      if (sql.includes('gangnamunni_consultation_events')) {
+        if (historyFail) throw historyFail;
+        return [eventRows];
+      }
+      if (sql.includes('SELECT c.id, c.photo_urls') || sql.includes('WHERE c.id = ?')) {
+        const row = appRow();
+        return [visible(sql, values) && values[0] === 9 ? [sql.includes('SELECT c.id, c.photo_urls') ? { id: row.id, photo_urls: row.photo_urls } : row] : []];
+      }
       if (sql.includes('COUNT(*) AS cnt FROM gangnamunni_consultations c WHERE')) return [[{ cnt: 41 }]];
       if (sql.includes('GROUP BY c.status')) return [[{ status: 'pending', cnt: 5, oldest: '2026-11-20 09:00:00' }, { status: 'completed', cnt: 36, oldest: null }]];
       if (sql.includes('FROM gangnamunni_hospitals h')) return [[{ id: 12, name: '청담', cnt: 9, pending_count: 2 }]];
@@ -130,6 +151,101 @@ describe('admin API: consultations (read)', () => {
     const r = await get('/v1/consultations');
     expect(r.status).toBe(503);
     expect(r.body).toMatchObject({ error: 'consultations_unavailable' });
+  });
+
+  describe('detail and photos', () => {
+    const FULL = '/v1/consultations/9';
+
+    it('the detail has the full text, the hospital message and the record; no photo addresses, no member id', async () => {
+      eventRows = [{ kind: 'no_answer', created_at: '2026-11-24 11:00:00' }, { kind: 'weird', created_at: 'x' }, { kind: 'completed', created_at: '2026-11-24 13:00:00' }];
+      const r = await get(FULL);
+      expect(r.status).toBe(200);
+      expect(r.body).toEqual({
+        id: 9, hospitalId: 12, hospitalName: '청담', type: 'general', name: '박서연', phone: '010-1', tags: ['[관심 시술] 보톡스'], text: '안녕하세요\n두 번째 줄', photoCount: 4, status: 'pending', createdAt: '2026-11-24 10:00:00',
+        historySupported: true, hospitalMessage: '내일 연락드릴게요', hospitalMessageAt: '2026-11-24 12:00:00', callbackSlot: 'pm',
+        events: [{ kind: 'no_answer', createdAt: '2026-11-24 11:00:00' }, { kind: 'completed', createdAt: '2026-11-24 13:00:00' }],
+      });
+      expect(JSON.stringify(r.body)).not.toMatch(/uploads|mb_id/);
+      expect(calls.every((c) => !c.sql.includes('mb_id') && !c.sql.includes('SELECT *'))).toBe(true);
+    });
+
+    it('an older database without the history parts still answers (historySupported false)', async () => {
+      historyFail = Object.assign(new Error('no column'), { code: 'ER_BAD_FIELD_ERROR', errno: 1054 });
+      const r = await get(FULL);
+      expect(r.status).toBe(200);
+      expect(r.body).toMatchObject({ historySupported: false, hospitalMessage: '', hospitalMessageAt: null, callbackSlot: '', events: [] });
+      historyFail = Object.assign(new Error('boom'), { code: 'ER_LOCK_DEADLOCK', errno: 1213 });
+      expect((await get(FULL)).status).toBe(500);
+      historyFail = null;
+    });
+
+    it('another hospital, an unbound account, a malformed or unknown id: the same 404, and nothing else is read', async () => {
+      process.env.ADMIN_UPLOAD_ROOT = '';
+      for (const [url, who] of [[FULL, NOHOSP], ['/v1/consultations/9x', SUPER], ['/v1/consultations/0', SUPER], ['/v1/consultations/77', SUPER]] as const) {
+        calls.length = 0;
+        const r = await get(url, who);
+        expect(r.status).toBe(404);
+        expect(r.body).toEqual({ error: 'not_found' });
+        expect(calls.every((c) => !c.sql.includes('c.hospital_message') && !c.sql.includes('gangnamunni_consultation_events'))).toBe(true);
+      }
+      const other = await get('/v1/consultations/9', 'PHPSESSID=hospital12');
+      expect(other.status).toBe(200);
+    });
+
+    it('detail and photo are off with the switch, closed without a session, closed for an unrelated role', async () => {
+      expect((await get(FULL, '')).status).toBe(401);
+      expect((await get(`${FULL}/photos/0`, OTHER)).status).toBe(403);
+      process.env.ADMIN_CONSULTATIONS_ENABLED = '0';
+      expect((await get(FULL)).status).toBe(404);
+      expect((await get(`${FULL}/photos/0`)).status).toBe(404);
+    });
+
+    describe('photo files', () => {
+      let root: string;
+      beforeEach(() => {
+        root = mkdtempSync(path.join(tmpdir(), 'consult-'));
+        mkdirSync(path.join(root, 'uploads/consultations/9'), { recursive: true });
+        mkdirSync(path.join(root, 'uploads/consultations/8'), { recursive: true });
+        writeFileSync(path.join(root, 'uploads/consultations/9/a1.jpg'), Buffer.from([0xff, 0xd8, 0xff, 0xd9]));
+        writeFileSync(path.join(root, 'uploads/consultations/9/x.html'), '<script>1</script>');
+        writeFileSync(path.join(root, 'uploads/consultations/8/b.jpg'), 'other');
+        process.env.ADMIN_UPLOAD_ROOT = root;
+        photoUrls = '["uploads/consultations/9/a1.jpg","uploads/consultations/9/../../../etc/passwd","uploads/consultations/8/b.jpg","uploads/consultations/9/x.html","uploads/consultations/9/link.jpg","uploads/consultations/9/missing.png"]';
+      });
+      afterEach(() => { rmSync(root, { recursive: true, force: true }); delete process.env.ADMIN_UPLOAD_ROOT; });
+
+      it('streams the image with safe headers, for the super admin and for the hospital that owns it', async () => {
+        for (const who of [SUPER, 'PHPSESSID=hospital12']) {
+          const r = await get(`${FULL}/photos/0`, who).buffer(true).parse((res, cb) => { const b: Buffer[] = []; res.on('data', (d: Buffer) => b.push(d)); res.on('end', () => cb(null, Buffer.concat(b))); });
+          expect(r.status).toBe(200);
+          expect(r.headers['content-type']).toBe('image/jpeg');
+          expect(r.headers['x-content-type-options']).toBe('nosniff');
+          expect(r.headers['cache-control']).toBe('private, no-store');
+          expect(r.headers['content-security-policy']).toContain('sandbox');
+          expect(r.headers['content-disposition']).toBe('inline; filename="a1.jpg"');
+          expect(Buffer.from(r.body).equals(Buffer.from([0xff, 0xd8, 0xff, 0xd9]))).toBe(true);
+        }
+      });
+
+      it('only this application\'s own plain image files: a path out of the folder, another application\'s file, a non-image, a link out, a missing file, an index off the list are all 404', async () => {
+        const secret = path.join(root, 'secret.txt');
+        writeFileSync(secret, 'secret');
+        symlinkSync(secret, path.join(root, 'uploads/consultations/9/link.jpg'));
+        for (const i of ['1', '2', '3', '4', '5', '6', '9']) expect((await get(`${FULL}/photos/${i}`)).status).toBe(404);
+        for (const i of ['10', '-1', 'a', '00']) expect((await get(`${FULL}/photos/${i}`)).status).toBe(404);
+      });
+
+      it('another hospital\'s application and an unbound account get 404 without a file being read', async () => {
+        expect((await get(`${FULL}/photos/0`, NOHOSP)).status).toBe(404);
+      });
+
+      it('a missing or unusable upload folder is a 503 with a name', async () => {
+        process.env.ADMIN_UPLOAD_ROOT = '';
+        const r = await get(`${FULL}/photos/0`);
+        expect(r.status).toBe(503);
+        expect(r.body).toMatchObject({ error: 'uploads_unavailable' });
+      });
+    });
   });
 
   it('/v1/me tells the page whether the consultations are on', async () => {

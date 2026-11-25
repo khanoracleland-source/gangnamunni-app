@@ -1383,16 +1383,22 @@ FLUSH PRIVILEGES;
 `seoulbeauty-admin-api/.env`: `ADMIN_DOCTORS_ORDER=1` and/or `ADMIN_DOCTORS_DELETE=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: set it to 0 + restart.
 
 ## 23. Consultation requests (`ADMIN_CONSULTATIONS_ENABLED`, optional, read only so far; super admin and hospital accounts)
-`/v1/consultations` (list with counts, search, paging) and `/v1/consultations/hospitals` (hospital filter). A super admin sees every hospital, a hospital account only its own
+`/v1/consultations` (list with counts, search, paging), `/v1/consultations/hospitals` (hospital filter), `/v1/consultations/:id` (the whole application: full text, the hospital's message, the progress record) and `/v1/consultations/:id/photos/:index` (an attached photo). A super admin sees every hospital, a hospital account only its own
 (and, like the other pages, only while `ADMIN_HOSPITALS_ENABLED=1`; an account without a bound hospital sees nothing). Newest first, 20 per page; the counts follow the hospital choice only.
-Detail, photos, changing the status and the hospital message come in later steps with their own switch.
+A photo is sent only for an application inside the admin's scope, only as a plain image file of that application's own folder `uploads/consultations/<id>/` (anything else is 404), never cached. Changing the status and the hospital message come in a later step with its own switch.
 
 23.1 GRANTs (run as the DB admin; repeat each line for `'127.0.0.1'` and `'localhost'`; `gangnamunni_hospitals (id, name)` is already granted in section 17):
 ```sql
 GRANT SELECT (id, hospital_id, hospital_name, consultation_type, name, phone, message, photo_urls, status, created_at) ON <DB_NAME>.gangnamunni_consultations TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (id, hospital_id, hospital_name, consultation_type, name, phone, message, photo_urls, status, created_at) ON <DB_NAME>.gangnamunni_consultations TO 'sb_admin_ro'@'localhost';
+-- detail: the hospital's message and the progress record (migration consultation_history_20261023.sql); without these the detail still answers, with `historySupported: false`
+GRANT SELECT (hospital_message, hospital_message_at, callback_slot) ON <DB_NAME>.gangnamunni_consultations TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (hospital_message, hospital_message_at, callback_slot) ON <DB_NAME>.gangnamunni_consultations TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, consultation_id, kind, created_at) ON <DB_NAME>.gangnamunni_consultation_events TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, consultation_id, kind, created_at) ON <DB_NAME>.gangnamunni_consultation_events TO 'sb_admin_ro'@'localhost';
 ```
 23.2 In `seoulbeauty-admin-api/.env`: `ADMIN_CONSULTATIONS_ENABLED=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Without the GRANT the routes answer 503 `consultations_unavailable`.
+Photos need `ADMIN_UPLOAD_ROOT` (the same absolute path of the PHP `gangnamunni` directory as in the other upload sections; reading only needs read and enter rights on it). Without it a photo answers 503 `uploads_unavailable`.
 Turning it off: `ADMIN_CONSULTATIONS_ENABLED=0` (all routes 404), then restart.
 
 ## Apache

@@ -154,3 +154,67 @@ export function toStats(rows: Record<string, unknown>[]): Stats {
   }
   return out;
 }
+
+// ---- detail and photos ----
+
+const DETAIL_COLUMNS = LIST_COLUMNS;
+/** Columns of the later history migration; a database without them still answers the rest. */
+const HISTORY_COLUMNS = 'c.hospital_message, c.hospital_message_at, c.callback_slot';
+
+export function parseId(raw: unknown): number | null {
+  return parsePositiveInt(raw);
+}
+export function parsePhotoIndex(raw: unknown): number | null {
+  const v = s(raw).trim();
+  return /^[0-9]$/.test(v) ? Number(v) : null;
+}
+
+const byId = (cols: string, scope: AdminScope, id: number): Query => {
+  const sc = scopeClause(scope, 0);
+  return { sql: `SELECT ${cols} FROM gangnamunni_consultations c WHERE c.id = ? AND ${sc.sql} LIMIT 1`, values: [id, ...sc.values] };
+};
+export const detailQuery = (scope: AdminScope, id: number): Query => byId(DETAIL_COLUMNS, scope, id);
+export const historyQuery = (scope: AdminScope, id: number): Query => byId(HISTORY_COLUMNS, scope, id);
+export const photosQuery = (scope: AdminScope, id: number): Query => byId('c.id, c.photo_urls', scope, id);
+/** Called only after the application itself was read inside the admin's scope. */
+export const eventsQuery = (id: number): Query => ({
+  sql: 'SELECT e.kind, e.created_at FROM gangnamunni_consultation_events e WHERE e.consultation_id = ? ORDER BY e.created_at ASC, e.id ASC LIMIT 100',
+  values: [id],
+});
+
+export const EVENT_KINDS = ['no_answer', 'rerequest', 'completed'] as const;
+
+export interface ConsultationDetail extends Omit<ConsultationItem, 'preview'> {
+  text: string;
+  /** false when the history columns / table are not there (older database). */
+  historySupported: boolean;
+  hospitalMessage: string;
+  hospitalMessageAt: string | null;
+  callbackSlot: string;
+  events: { kind: string; createdAt: string }[];
+}
+
+export function toDetail(core: Record<string, unknown>, history: Record<string, unknown> | null, events: Record<string, unknown>[] | null): ConsultationDetail {
+  const { tags, text } = splitMessage(core.message);
+  return {
+    id: Number(core.id), hospitalId: Number(core.hospital_id) || 0, hospitalName: s(core.hospital_name), type: s(core.consultation_type), name: s(core.name), phone: s(core.phone),
+    tags, text, photoCount: photoCount(core.photo_urls), status: s(core.status), createdAt: s(core.created_at),
+    historySupported: history !== null,
+    hospitalMessage: s(history?.hospital_message),
+    hospitalMessageAt: history?.hospital_message_at == null ? null : s(history.hospital_message_at),
+    callbackSlot: s(history?.callback_slot),
+    events: (events ?? []).filter((e) => (EVENT_KINDS as readonly string[]).includes(s(e.kind))).map((e) => ({ kind: s(e.kind), createdAt: s(e.created_at) })),
+  };
+}
+
+const PHOTO_TYPES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+
+/** The stored path of one photo, only when it is a plain file name inside this application's own folder; anything else is "no photo". */
+export function photoPath(id: number, rawUrls: unknown, index: number): { rel: string; name: string; type: string } | null {
+  let list: unknown;
+  try { list = JSON.parse(s(rawUrls)); } catch { return null; }
+  if (!Array.isArray(list)) return null;
+  const rel = s(list[index]);
+  const m = new RegExp(`^uploads/consultations/${id}/([A-Za-z0-9_\\-]+\\.(jpg|jpeg|png|gif|webp))$`).exec(rel);
+  return m ? { rel, name: m[1], type: PHOTO_TYPES[m[2].toLowerCase()] } : null;
+}
