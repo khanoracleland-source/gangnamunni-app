@@ -379,7 +379,10 @@ if (!$ht_panel && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'
                 foreach ($options as $opt) {
                     if ($opt['rp'] > 0 && $opt['pr'] > 0 && $opt['rp'] < $opt['pr']) ht_redirect($post_hospital_id, '정가는 판매가보다 작을 수 없습니다.', 'warning');
                     $representative_count += $opt['rep'];
-                    $key = mb_strtolower($opt['name'], 'UTF-8') . '|' . mb_strtolower($opt['body_part'], 'UTF-8') . '|' . $opt['dv'] . '|' . mb_strtolower($opt['du'], 'UTF-8');
+                    // 부위는 순서와 무관하게 같은 집합이면 같은 옵션으로 본다
+                    $part_set = array_values(array_unique(array_filter(array_map(function ($p) { return mb_strtolower(trim($p), 'UTF-8'); }, explode('||', $opt['body_part'])), 'strlen')));
+                    sort($part_set, SORT_STRING);
+                    $key = mb_strtolower($opt['name'], 'UTF-8') . '|' . implode('||', $part_set) . '|' . $opt['dv'] . '|' . mb_strtolower($opt['du'], 'UTF-8');
                     if (isset($option_keys[$key])) ht_redirect($post_hospital_id, '동일한 옵션명, 부위, 용량, 단위의 가격 옵션을 중복 등록할 수 없습니다.', 'warning');
                     $option_keys[$key] = true;
                 }

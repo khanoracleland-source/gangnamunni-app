@@ -176,12 +176,15 @@ export function checkPrices(drafts: readonly PriceDraft[]): PriceCheck {
   const seen = new Set<string>();
   for (let i = 0; i < options.length; i += 1) {
     const o = options[i];
-    const key = [o.optionName.toLowerCase(), o.bodyParts.join(BODY_PART_SEP).toLowerCase(), String(o.dosageValue), o.dosageUnit.toLowerCase()].join("|");
+    const key = [o.optionName.toLowerCase(), partsKey(o.bodyParts), String(o.dosageValue), o.dosageUnit.toLowerCase()].join("|");
     if (seen.has(key)) return fail("duplicate_option", rows[i]);
     seen.add(key);
   }
   return { ok: true, options, rows };
 }
+
+/** Order-independent identity of a body-part list: the same parts in any order (or repeated) count as the same set. */
+const partsKey = (parts: readonly string[]): string => Array.from(new Set(parts.map((p) => p.toLowerCase()))).sort().join(BODY_PART_SEP);
 
 /** The message of a refusal (from the check or from the server). */
 export function priceErrorKey(code: PriceErrorCode, field: DraftField | null): MessageKey {

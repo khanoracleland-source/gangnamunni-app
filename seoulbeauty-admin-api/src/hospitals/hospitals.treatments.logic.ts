@@ -349,6 +349,9 @@ function isBlankRow(o: Record<string, unknown>): boolean {
 
 const wholePrice = (v: unknown): number | null => (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= MAX_PRICE ? v : null);
 
+/** Order-independent identity of a body-part list: the same parts in any order (or repeated) count as the same set. */
+const partsKey = (parts: readonly string[]): string => Array.from(new Set(parts.map((p) => p.toLowerCase()))).sort().join(BODY_PART_SEPARATOR);
+
 /**
  * { options: [...] } -> the rows to store. Rules of the PHP page: blank rows are skipped; a filled row needs a dosage > 0 and a unit; at least one option;
  * prices are whole won (both optional); list price may not be below the sale price; one representative at most; no two options with the same name, body parts, dosage and unit.
@@ -395,7 +398,7 @@ export function parsePricesBody(body: unknown): PricesParsed {
     if (regularPrice > 0 && price > 0 && regularPrice < price) return fail('price_order', i);
     out.push({ optionName, bodyPart, dosageValue, dosageUnit, regularPrice, price, isRepresentative: r.isRepresentative === true });
     if (r.isRepresentative === true) representatives += 1;
-    const key = [optionName.toLowerCase(), bodyPart.toLowerCase(), dosageValue, dosageUnit.toLowerCase()].join('|');
+    const key = [optionName.toLowerCase(), partsKey(parts), dosageValue, dosageUnit.toLowerCase()].join('|');
     if (seen.has(key)) return fail('duplicate_option', i);
     seen.add(key);
   }

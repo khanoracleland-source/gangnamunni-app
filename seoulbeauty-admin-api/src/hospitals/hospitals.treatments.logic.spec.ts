@@ -163,6 +163,10 @@ describe('hospital treatments: pure rules', () => {
     it('duplicate key = lower(name) | lower(parts) | dosage as a number | lower(unit); the second row is reported', () => {
       expect(bad({ options: [o({ optionName: 'Abc', bodyParts: ['이마'], dosageUnit: 'CC' }), o({ dosageValue: 2 }), o({ optionName: 'aBC', bodyParts: ['이마'], dosageUnit: 'cc' })] })).toEqual({ error: 'duplicate_option', index: 2 });
       expect(bad({ options: [o({ dosageValue: 1.5 }), o({ dosageValue: 1.50 })] })).toEqual({ error: 'duplicate_option', index: 1 });
+      // same parts in another order are the same set
+      expect(bad({ options: [o({ bodyParts: ['자갈턱', '광대', '거미스마일', '립플립', '나비존', '손바닥'] }), o({ bodyParts: ['자갈턱', '광대', '거미스마일', '립플립', '손바닥', '나비존'] })] })).toEqual({ error: 'duplicate_option', index: 1 });
+      // a different set with the same first part and count is not a duplicate
+      expect(parsePricesBody({ options: [o({ bodyParts: ['이마', '광대'] }), o({ bodyParts: ['이마', '턱'] })] }).ok).toBe(true);
       const ok = parsePricesBody({ options: [o({ bodyParts: ['a'] }), o({ bodyParts: ['b'] }), o({ dosageValue: 2 }), o({ dosageUnit: 'cc' }), o({ optionName: 'n' }), o({ bodyParts: ['a', 'b'] })] });
       expect(ok.ok && ok.options).toHaveLength(6);
     });
