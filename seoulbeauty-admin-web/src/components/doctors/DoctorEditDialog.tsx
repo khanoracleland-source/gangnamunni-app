@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import Icon from "../Icon";
 import ConfirmDialog, { type ConfirmSpec } from "../hospitals/ConfirmDialog";
 import { Notice, Pill } from "../hospitals/parts";
 import DeleteDoctorDialog from "./DeleteDoctorDialog";
 import HospitalCombo from "../payments/HospitalCombo";
 import DoctorPhoto from "./DoctorPhoto";
+import DoctorTreatmentsTab, { type TreatmentOptions } from "./DoctorTreatmentsTab";
 import {
   deleteDoctor,
   editDoctor,
@@ -19,12 +20,27 @@ import {
   type DoctorTreatmentOption,
 } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
-import { DOCTOR_PHOTO_ACCEPT, SPECIALTY_CHOICES, actionFailureKey, editFailure, validateDoctorForm, type DoctorFormErrors } from "@/lib/doctors";
+import {
+  DOCTOR_PHOTO_ACCEPT,
+  SPECIALTY_CHOICES,
+  actionFailureKey,
+  editFailure,
+  newRow,
+  openingOrder,
+  rowFromTreatment,
+  rowsChanged,
+  rowsToInput,
+  sortRows,
+  validateDoctorForm,
+  validateRows,
+  type DoctorFormErrors,
+  type TreatmentRow,
+  type TreatmentRowErrors,
+} from "@/lib/doctors";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 
 type Load = "loading" | "ready" | "error";
-type Opts = { state: "loading" | "ready" | "error"; hospitalId: number; items: DoctorTreatmentOption[] };
 
 export type DoctorDialogResult = { kind: "saved" | "retired" | "deleted" | "deactivated" | "activated"; name: string };
 
@@ -61,13 +77,15 @@ export default function DoctorEditDialog({
   const [hospitalId, setHospitalId] = useState(0);
   const [specialty, setSpecialty] = useState("");
   const [qualification, setQualification] = useState("");
-  const [selected, setSelected] = useState<number[]>([]);
+  const [rows, setRows] = useState<TreatmentRow[]>([]);
+  const [removed, setRemoved] = useState<number[]>([]);
+  const [rowErrors, setRowErrors] = useState<Record<number, TreatmentRowErrors>>({});
+  const [tab, setTab] = useState<"profile" | "treatments">("profile");
   const [picked, setPicked] = useState<{ file: File; url: string } | null>(null);
   const photo = picked?.file ?? null;
   const preview = picked?.url ?? "";
   const urlRef = useRef("");
-  const seen = useRef(new WeakSet<HTMLDetailsElement>());
-  const [opts, setOpts] = useState<Opts>({ state: "loading", hospitalId: 0, items: [] });
+  const [opts, setOpts] = useState<TreatmentOptions>({ state: "loading", hospitalId: 0, items: [] });
   const [optsTry, setOptsTry] = useState(0);
   const [errors, setErrors] = useState<DoctorFormErrors>({});
   const [formError, setFormError] = useState<MessageKey | null>(null);
@@ -100,7 +118,9 @@ export default function DoctorEditDialog({
       setHospitalId(d.hospitalId);
       setSpecialty(d.specialty);
       setQualification(d.qualification);
-      setSelected(d.treatments.map((x) => x.id));
+      setRows(sortRows(d.treatments.map(rowFromTreatment), openingOrder(d.treatments)));
+      setRemoved([]);
+      setRowErrors({});
       setLoad("ready");
     };
     void run();
@@ -133,6 +153,9 @@ export default function DoctorEditDialog({
   const editable = canWrite && !resigned && doc !== null;
   const originalHospital = doc?.hospitalId ?? 0;
   const originalIds = useMemo(() => (doc ? doc.treatments.map((x) => x.id) : []), [doc]);
+  const originalRows = useMemo(() => (doc ? sortRows(doc.treatments.map(rowFromTreatment), openingOrder(doc.treatments)) : []), [doc]);
+  const activeRows = useMemo(() => rows.filter((r) => !removed.includes(r.id)), [rows, removed]);
+  const selected = useMemo(() => activeRows.map((r) => r.id), [activeRows]);
 
   const specialtyChoices = useMemo(() => {
     const list: string[] = [...SPECIALTY_CHOICES];
@@ -140,25 +163,36 @@ export default function DoctorEditDialog({
     return list;
   }, [doc]);
 
-  const groups = useMemo(() => {
-    const map = new Map<string, DoctorTreatmentOption[]>();
-    for (const item of opts.items) {
-      const key = item.category;
-      const bucket = map.get(key);
-      if (bucket) bucket.push(item);
-      else map.set(key, [item]);
-    }
-    return Array.from(map.entries());
-  }, [opts.items]);
-
   const changeHospital = (next: number) => {
     if (next === hospitalId) return;
     setHospitalId(next);
     // The treatments belong to the hospital: switching away clears them, switching back restores what is stored.
-    setSelected(next === originalHospital ? originalIds : []);
+    setRows(next === originalHospital ? originalRows : []);
+    setRemoved([]);
+    setRowErrors({});
     setErrors((e) => ({ ...e, hospitalId: undefined }));
   };
-  const toggle = (id: number) => setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const isStored = (id: number) => hospitalId === originalHospital && originalIds.includes(id);
+  // A stored row stays in the table, struck through, until Save (so it can be undone); a row added just now simply goes.
+  const dropRow = (id: number) => {
+    if (isStored(id)) setRemoved((cur) => (cur.includes(id) ? cur : [...cur, id]));
+    else setRows((cur) => cur.filter((r) => r.id !== id));
+  };
+  const undoRow = (id: number) => setRemoved((cur) => cur.filter((x) => x !== id));
+  const toggle = (o: DoctorTreatmentOption) => {
+    if (selected.includes(o.id)) dropRow(o.id);
+    else if (removed.includes(o.id)) undoRow(o.id);
+    else setRows((cur) => [newRow(o), ...cur]);
+  };
+  const patchRow = (id: number, patch: Partial<Pick<TreatmentRow, "level" | "cases" | "certification">>) => {
+    setRows((cur) => cur.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    setRowErrors((cur) => {
+      if (!cur[id]) return cur;
+      const rest = { ...cur };
+      delete rest[id];
+      return rest;
+    });
+  };
 
   const dirty =
     doc !== null &&
@@ -168,7 +202,8 @@ export default function DoctorEditDialog({
       qualification.trim() !== doc.qualification.trim() ||
       photo !== null ||
       selected.length !== originalIds.length ||
-      selected.some((id) => !originalIds.includes(id)));
+      selected.some((id) => !originalIds.includes(id)) ||
+      rowsChanged(activeRows, doc.treatments));
 
   const pickPhoto = (file: File | null) => {
     if (!file) return;
@@ -187,14 +222,18 @@ export default function DoctorEditDialog({
     e.preventDefault();
     if (!doc || !editable || saving) return;
     const found = validateDoctorForm({ name, hospitalId, specialty, qualification }, doc.specialty, photo ? { name: photo.name, type: photo.type, size: photo.size } : null);
+    const rowFound = validateRows(activeRows);
     setErrors(found);
+    setRowErrors(rowFound);
     setFormError(null);
-    if (Object.keys(found).length > 0) {
-      setFormError("d.e.invalid");
+    if (Object.keys(found).length > 0 || Object.keys(rowFound).length > 0) {
+      const profileWrong = Object.keys(found).length > 0;
+      setFormError(profileWrong ? "d.e.invalid" : "d.ex.fixFields");
+      setTab(profileWrong ? "profile" : "treatments");
       return;
     }
     setSaving(true);
-    const res = await editDoctor(doc.id, { name: name.trim(), hospitalId, specialty: specialty.trim(), qualification: qualification.trim(), treatmentIds: selected }, photo);
+    const res = await editDoctor(doc.id, { name: name.trim(), hospitalId, specialty: specialty.trim(), qualification: qualification.trim(), treatmentIds: selected, treatments: rowsToInput(activeRows) }, photo);
     setSaving(false);
     if (res.ok) {
       onDone({ kind: "saved", name: res.data.name });
@@ -206,7 +245,10 @@ export default function DoctorEditDialog({
     }
     const f = editFailure(res);
     setFormError(f.key);
-    if (f.field) setErrors({ [f.field]: f.key });
+    if (f.field) {
+      setErrors({ [f.field]: f.key });
+      setTab(f.field === "treatments" ? "treatments" : "profile");
+    }
   };
 
   const requestClose = () => {
@@ -275,7 +317,13 @@ export default function DoctorEditDialog({
 
   const hospitalName = hospitals.find((h) => h.id === hospitalId)?.name ?? doc?.hospitalName ?? "";
   const showPhoto = preview !== "";
-  const wide = typeof window !== "undefined" && window.matchMedia("(min-width: 640px)").matches;
+  const tabKeys = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const next = tab === "profile" ? "treatments" : "profile";
+    setTab(next);
+    requestAnimationFrame(() => document.getElementById(`${titleId}-t-${next}`)?.focus());
+  };
 
   const err = (key: keyof DoctorFormErrors) => (errors[key] ? <p className="dc-err" role="alert">{t(errors[key] as MessageKey)}</p> : null);
 
@@ -287,7 +335,7 @@ export default function DoctorEditDialog({
     <>
       <dialog
         ref={ref}
-        className="dialog dc-dialog"
+        className="dialog dc-dialog dc-dialog--b"
         aria-labelledby={titleId}
         onCancel={(e) => {
           if (saving || acting) e.preventDefault();
@@ -311,6 +359,27 @@ export default function DoctorEditDialog({
             </button>
           </div>
 
+          {load === "ready" && doc ? (
+            <div className="dc-tabs" role="tablist" aria-label={t(editable ? "d.ed.title" : "d.ed.titleView")} onKeyDown={tabKeys}>
+              {(["profile", "treatments"] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  role="tab"
+                  id={`${titleId}-t-${k}`}
+                  aria-selected={tab === k}
+                  aria-controls={`${titleId}-p-${k}`}
+                  tabIndex={tab === k ? 0 : -1}
+                  className={tab === k ? "dc-tab is-on" : "dc-tab"}
+                  onClick={() => setTab(k)}
+                >
+                  {t(k === "profile" ? "d.ex.tabProfile" : "d.ex.tabTreatments")}
+                  {k === "treatments" ? <span className="dc-tab__n">{selected.length}</span> : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <div className="dc-dialog__body">
             {load === "loading" ? <p className="dc-dialog__state" role="status" aria-busy="true">{t("d.ed.loading")}</p> : null}
             {load === "error" ? (
@@ -324,6 +393,7 @@ export default function DoctorEditDialog({
                 {resigned ? <Notice>{t("d.ed.readonly")}</Notice> : null}
                 {inactive ? <Notice>{t("d.ed.inactiveNote")}</Notice> : null}
                 {formError ? <Notice tone="warn" icon="alert">{t(formError)}</Notice> : null}
+                <div role="tabpanel" id={`${titleId}-p-profile`} aria-labelledby={`${titleId}-t-profile`} hidden={tab !== "profile"} className="dc-pane dc-pane--profile">
                 <div className="dc-grid">
                   <div className="dc-col">
                     <div className="field">
@@ -399,52 +469,6 @@ export default function DoctorEditDialog({
                       <span className="dc-count">{t("d.ed.qualCount", { n: Array.from(qualification).length.toLocaleString("en-US") })}</span>
                       {err("qualification")}
                     </label>
-
-                    <div className="field">
-                      <span className="field__label">
-                        {t("d.ed.treatments")} <span className="dc-count">{t("d.ed.treatmentsCount", { n: opts.state === "ready" && opts.hospitalId === hospitalId ? selected.filter((id) => opts.items.some((x) => x.id === id)).length : selected.length })}</span>
-                      </span>
-                      {opts.state === "loading" ? <p className="dc-help" role="status">{t("d.ed.treatmentsLoading")}</p> : null}
-                      {opts.state === "error" ? (
-                        <p className="dc-help" role="alert">
-                          {t("d.ed.treatmentsFail")}{" "}
-                          <button type="button" className="txtbtn" onClick={() => setOptsTry((n) => n + 1)}>{t("d.ed.treatmentsRetry")}</button>
-                        </p>
-                      ) : null}
-                      {opts.state === "ready" && opts.hospitalId === hospitalId ? (
-                        groups.length === 0 ? (
-                          <p className="dc-help">{t("d.ed.treatmentsNone")}</p>
-                        ) : (
-                          <div className="dc-treat">
-                            {groups.map(([category, items]) => {
-                              const count = items.filter((x) => selected.includes(x.id)).length;
-                              return (
-                                <details key={`${hospitalId}-${category}`} className="dc-treat__group" ref={(el) => { if (el && !seen.current.has(el)) { seen.current.add(el); el.open = wide || count > 0; } }}>
-                                  <summary>
-                                    <span>{category || t("h.find.treatmentOther")}</span>
-                                    {count > 0 ? <span className="dc-treat__n">{count}</span> : null}
-                                  </summary>
-                                  <ul className="dc-treat__list">
-                                    {items.map((item) => {
-                                      const on = selected.includes(item.id);
-                                      return (
-                                        <li key={item.id}>
-                                          <label className={on ? "dc-opt is-on" : "dc-opt"}>
-                                            <input type="checkbox" checked={on} disabled={!editable || saving} onChange={() => toggle(item.id)} />
-                                            <span>{item.name}</span>
-                                          </label>
-                                        </li>
-                                      );
-                                    })}
-                                  </ul>
-                                </details>
-                              );
-                            })}
-                          </div>
-                        )
-                      ) : null}
-                      {opts.state === "ready" ? <p className="dc-help">{t("d.ed.treatmentsHelp")}</p> : null}
-                    </div>
                   </div>
                 </div>
 
@@ -481,6 +505,23 @@ export default function DoctorEditDialog({
                     ) : null}
                   </section>
                 ) : null}
+                </div>
+                <div role="tabpanel" id={`${titleId}-p-treatments`} aria-labelledby={`${titleId}-t-treatments`} hidden={tab !== "treatments"} className="dc-pane">
+                  <DoctorTreatmentsTab
+                    editable={editable}
+                    saving={saving}
+                    hospitalId={hospitalId}
+                    opts={opts}
+                    onRetryOpts={() => setOptsTry((n) => n + 1)}
+                    rows={rows}
+                    removed={removed}
+                    errors={rowErrors}
+                    onToggle={toggle}
+                    onPatch={patchRow}
+                    onRemove={dropRow}
+                    onUndo={undoRow}
+                  />
+                </div>
               </>
             ) : null}
           </div>

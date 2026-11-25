@@ -112,7 +112,6 @@ const MENU: MenuGroup[] = [
       { ...legacy("treatment_master", "admin_treatments.php", "시술 마스터 관리", "Treatment master list", "heart"), superOnly: true },
       { key: "home_categories", label: L("홈 카테고리 관리", "Home categories"), icon: "tag", status: "new", href: "/categories", superOnly: true, requires: "categoryBoard" },
       legacy("hospital_treatments", "admin_hospital_treatments.php", "병원별 시술 배정 · 이미지 검수", "Assign treatments to hospitals and review images", "image"),
-      legacy("doctor_treatments", "admin_doctor_treatments.php", "의사별 시술 전문도", "Doctor treatment expertise", "people"),
       legacy("treatment_packages", "admin_treatment_packages.php", "시술 패키지 관리", "Treatment packages", "collection"),
     ],
   },

@@ -9,12 +9,13 @@ import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type Er
 import { Notice, Pill, Section } from "../hospitals/parts";
 import { showUnitToast } from "../treatment-units/UnitToast";
 import DoctorEditDialog, { type DoctorDialogResult } from "./DoctorEditDialog";
+import { LevelMark } from "./DoctorTreatmentsTab";
 import DoctorPhoto from "./DoctorPhoto";
 import HospitalCombo from "../payments/HospitalCombo";
 import DoctorReorder from "./DoctorReorder";
 import { fetchDoctorHospitals, fetchDoctors, fetchMe, type DoctorCard, type DoctorHospitalOption, type DoctorListData, type DoctorListQuery, type DoctorStatusFilter, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
-import { DOCTOR_SEARCH_MAX, doctorsHref, hasDoctorFilters, parseDoctorQuery, statusLabelKey } from "@/lib/doctors";
+import { DOCTOR_SEARCH_MAX, doctorsHref, hasDoctorFilters, levelLabelKey, levelSummary, parseDoctorQuery, statusLabelKey } from "@/lib/doctors";
 import { formatNumber } from "@/lib/format";
 import { pageWindow } from "@/lib/hospitals";
 import { useT } from "@/lib/locale";
@@ -258,6 +259,7 @@ function Card({ d, showHospital, canEdit, onOpen }: { d: DoctorCard; showHospita
   const wideMore = d.treatments.length - 3;
   const narrowMore = d.treatments.length - 2;
   const resigned = d.status === "resigned";
+  const levels = levelSummary(d.levelCounts);
   return (
     <li className={resigned ? "dc-card is-resigned" : d.status === "inactive" ? "dc-card is-inactive" : "dc-card"}>
       <div className="dc-card__top">
@@ -282,6 +284,16 @@ function Card({ d, showHospital, canEdit, onOpen }: { d: DoctorCard; showHospita
           {narrowMore > 0 ? <li className="chip chip--more dc-more--narrow">{t("d.card.more", { n: narrowMore })}</li> : null}
         </ul>
       )}
+      {levels.length > 0 ? (
+        <ul className="dc-dist" aria-label={t("d.ex.lvSummary")}>
+          {levels.map((x) => (
+            <li key={x.level} className="dc-dist__item">
+              <LevelMark level={x.level} />
+              {t(levelLabelKey(x.level))} <b>{x.n}</b>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       <div className="dc-card__foot">
         {!resigned && d.displayOrder !== null ? <span className="dc-card__order">{t("d.card.order", { n: d.displayOrder })}</span> : <span />}
         <button type="button" className="btn btn--ghost dc-card__btn" onClick={onOpen} aria-label={`${t(canEdit && !resigned ? "d.card.edit" : "d.card.view")}: ${name}`}>

@@ -8,15 +8,30 @@ export const MAX_NAME = 100;
 export const MAX_SPECIALTY = 100;
 export const MAX_QUALIFICATION = 2000;
 export const MAX_TREATMENTS = 500;
+export const LEVELS = ['basic', 'advanced', 'expert'] as const;
+export type Level = (typeof LEVELS)[number];
+export const MAX_CERTIFICATION = 500;
+export const MAX_CASE_COUNT = 2_147_483_647;
 /** The text field of the multipart edit body ("doctor", JSON) may not be larger than this. */
 export const MAX_DOCTOR_FIELD_BYTES = 64 * 1024;
+
+/** Level, number of cases and certification of one assigned treatment. */
+export interface TreatmentDetail {
+  id: number;
+  level: Level;
+  caseCount: number;
+  certification: string;
+}
 
 export interface DoctorEdit {
   name: string;
   hospitalId: number;
   specialty: string;
   qualification: string;
+  /** Every wanted treatment: the ones listed in `treatments` too. */
   treatmentIds: number[];
+  /** Treatments sent with level, cases and certification. Others in `treatmentIds` keep what is stored (new ones start as basic, 0 cases). */
+  treatmentDetails: TreatmentDetail[];
 }
 
 export type EditParse = { ok: true; edit: DoctorEdit } | { ok: false; body: { error: string; field?: string } };
@@ -60,7 +75,32 @@ export function parseEdit(raw: unknown, currentSpecialty: string): EditParse {
     if (typeof v !== 'number' || !Number.isInteger(v) || v <= 0 || v > 2_147_483_647) return bad('treatmentIds');
     ids.add(v);
   }
-  return { ok: true, edit: { name, hospitalId, specialty, qualification, treatmentIds: [...ids] } };
+
+  const details: TreatmentDetail[] = [];
+  if (o.treatments !== undefined) {
+    const items = o.treatments;
+    if (!Array.isArray(items) || items.length > MAX_TREATMENTS) return bad('treatments');
+    const seen = new Set<number>();
+    for (const item of items) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return bad('treatments');
+      const r = item as Record<string, unknown>;
+      const id = r.id;
+      if (typeof id !== 'number' || !Number.isInteger(id) || id <= 0 || id > 2_147_483_647 || seen.has(id)) return bad('treatments');
+      seen.add(id);
+      const level = r.level;
+      if (typeof level !== 'string' || !(LEVELS as readonly string[]).includes(level)) return bad('treatments', 'invalid_level');
+      const caseCount = r.caseCount;
+      if (typeof caseCount !== 'number' || !Number.isInteger(caseCount) || caseCount < 0 || caseCount > MAX_CASE_COUNT) return bad('treatments', 'invalid_case_count');
+      const certification = r.certification === undefined || r.certification === null ? '' : r.certification;
+      if (typeof certification !== 'string') return bad('treatments', 'invalid_certification');
+      const cert = certification.trim();
+      if ([...cert].length > MAX_CERTIFICATION || CONTROL.test(cert)) return bad('treatments', 'invalid_certification');
+      details.push({ id, level: level as Level, caseCount, certification: cert });
+      ids.add(id);
+    }
+  }
+  if (ids.size > MAX_TREATMENTS) return bad('treatments');
+  return { ok: true, edit: { name, hospitalId, specialty, qualification, treatmentIds: [...ids], treatmentDetails: details } };
 }
 
 /** The doctor row, locked for the rest of the transaction. */
@@ -108,6 +148,19 @@ export function assignTreatmentsQuery(doctorId: number, hospitalId: number, ids:
   return {
     sql: `INSERT INTO gangnamunni_doctor_treatments (doctor_id, hospital_id, treatment_id, case_count, speciality_level, is_active) VALUES ${rows}
           ON DUPLICATE KEY UPDATE hospital_id = VALUES(hospital_id), is_active = 1`,
+    values,
+  };
+}
+
+/** Assigns (or re-activates) treatments with the level, cases and certification the form sent; an empty certification is stored as NULL. */
+export function assignDetailedTreatmentsQuery(doctorId: number, hospitalId: number, items: TreatmentDetail[]): Query {
+  const rows = items.map(() => '(?, ?, ?, ?, ?, ?, 1)').join(', ');
+  const values: unknown[] = [];
+  for (const t of items) values.push(doctorId, hospitalId, t.id, t.caseCount, t.level, t.certification === '' ? null : t.certification);
+  return {
+    sql: `INSERT INTO gangnamunni_doctor_treatments (doctor_id, hospital_id, treatment_id, case_count, speciality_level, certification, is_active) VALUES ${rows}
+          ON DUPLICATE KEY UPDATE hospital_id = VALUES(hospital_id), case_count = VALUES(case_count), speciality_level = VALUES(speciality_level),
+                                  certification = VALUES(certification), is_active = 1, updated_at = NOW()`,
     values,
   };
 }

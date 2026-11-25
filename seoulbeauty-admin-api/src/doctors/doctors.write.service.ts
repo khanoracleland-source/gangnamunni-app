@@ -14,7 +14,7 @@ import {
 } from './doctors.order.logic';
 import { DoctorsService } from './doctors.service';
 import {
-  assignTreatmentsQuery, deactivateAllAssignmentsQuery, deactivateAssignmentsQuery, DoctorEdit, lockApprovedHospitalQuery, lockDoctorQuery, offeredTreatmentsQuery,
+  assignDetailedTreatmentsQuery, assignTreatmentsQuery, deactivateAllAssignmentsQuery, deactivateAssignmentsQuery, DoctorEdit, lockApprovedHospitalQuery, lockDoctorQuery, offeredTreatmentsQuery,
   parseEdit, removablePhoto, retireDoctorQuery, setActiveQuery, updateDoctorQuery,
 } from './doctors.write.logic';
 
@@ -164,7 +164,11 @@ export class DoctorsWriteService {
         keep = (await run(offeredTreatmentsQuery(edit.hospitalId, edit.treatmentIds))).map((r) => num(r.treatment_id)).filter((n) => n > 0);
       }
       await run(deactivateAssignmentsQuery(id, keep));
-      if (keep.length) await run(assignTreatmentsQuery(id, edit.hospitalId, keep));
+      const detailed = edit.treatmentDetails.filter((d) => keep.includes(d.id));
+      const detailedIds = new Set(detailed.map((d) => d.id));
+      const plain = keep.filter((t) => !detailedIds.has(t));
+      if (plain.length) await run(assignTreatmentsQuery(id, edit.hospitalId, plain));
+      if (detailed.length) await run(assignDetailedTreatmentsQuery(id, edit.hospitalId, detailed));
 
       await conn.commit();
       this.log.log(`doctor edited: id=${id} hospital=${edit.hospitalId}${oldHospital !== edit.hospitalId ? ` (was ${oldHospital})` : ''} treatments=${keep.length}${photoUrl ? ' photo=new' : ''}`);

@@ -69,7 +69,7 @@ describe('list SQL', () => {
 describe('answers', () => {
   it('maps a row, treats empty photo and a place below 1 as none', () => {
     expect(toListItem({ id: '4', hospital_id: 12, hospital_name: 'H', name: 'Kim', specialty: ' 일반의 ', qualification: 'a\nb', photo_url: '  ', status: 'active', display_order: 0 }, ['t'])).toEqual({
-      id: 4, name: 'Kim', hospitalId: 12, hospitalName: 'H', specialty: '일반의', qualification: 'a\nb', photoUrl: null, status: 'active', displayOrder: null, treatments: ['t'],
+      id: 4, name: 'Kim', hospitalId: 12, hospitalName: 'H', specialty: '일반의', qualification: 'a\nb', photoUrl: null, status: 'active', displayOrder: null, treatments: ['t'], levelCounts: { basic: 0, advanced: 0, expert: 0 },
     });
     expect(toListItem({ id: 1, display_order: 3, photo_url: 'uploads/doctors/a.jpg' }).displayOrder).toBe(3);
   });

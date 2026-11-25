@@ -2256,6 +2256,8 @@ export async function deleteFeeRate(id: number): Promise<WriteResult<Json>> {
 export const DOCTOR_PER_PAGE = 15;
 export type DoctorStatusFilter = "all" | "active" | "inactive" | "resigned";
 export type DoctorStatus = "active" | "inactive" | "resigned";
+export type DoctorLevel = "basic" | "advanced" | "expert";
+export type DoctorLevelCounts = Record<DoctorLevel, number>;
 export type DoctorListQuery = { hospitalId: number; search: string; status: DoctorStatusFilter; page: number; perPage: number };
 
 export type DoctorCard = {
@@ -2271,13 +2273,20 @@ export type DoctorCard = {
   /** Place among the active doctors of the hospital (1 = first); null = none yet. */
   displayOrder: number | null;
   treatments: string[];
+  /** How many of the assigned treatments are at each level. */
+  levelCounts: DoctorLevelCounts;
 };
 export type DoctorListData = { scope: Scope; stats: { total: number; hospitals: number; active: number }; total: number; page: number; perPage: number; items: DoctorCard[] };
 export type DoctorTreatmentOption = { id: number; name: string; category: string };
-export type DoctorFull = Omit<DoctorCard, "treatments"> & { experience: number; bio: string; treatments: DoctorTreatmentOption[] };
+/** An assigned treatment with the doctor's level, number of cases and certification for it. */
+export type DoctorTreatment = DoctorTreatmentOption & { level: DoctorLevel; caseCount: number; certification: string };
+export type DoctorFull = Omit<DoctorCard, "treatments" | "levelCounts"> & { experience: number; bio: string; treatments: DoctorTreatment[] };
 export type DoctorHospitalOption = { id: number; name: string };
 export type DoctorOrderItem = { id: number; name: string; specialty: string; photoUrl: string | null; position: number };
 export type DoctorOrderBoard = { hospitalId: number; orderable: boolean; total: number; items: DoctorOrderItem[] };
+
+const doctorLevel = (v: unknown): DoctorLevel => (v === "expert" ? "expert" : v === "advanced" ? "advanced" : "basic");
+const countOf = (v: unknown): number => Math.max(0, Math.trunc(num(v)));
 
 const doctorStatus = (v: unknown): DoctorStatus => (v === "resigned" ? "resigned" : v === "inactive" ? "inactive" : "active");
 const photoOf = (v: unknown): string | null => (str(v).trim() === "" ? null : str(v));
@@ -2295,6 +2304,7 @@ function doctorCard(raw: unknown): DoctorCard {
     status: doctorStatus(d.status),
     displayOrder: numOrNull(d.displayOrder),
     treatments: names(d.treatments),
+    levelCounts: { basic: countOf(obj(d.levelCounts).basic), advanced: countOf(obj(d.levelCounts).advanced), expert: countOf(obj(d.levelCounts).expert) },
   };
 }
 
@@ -2303,11 +2313,17 @@ const treatmentOption = (raw: unknown): DoctorTreatmentOption => {
   return { id: num(t.id), name: str(t.name), category: str(t.category) };
 };
 
+const doctorTreatment = (raw: unknown): DoctorTreatment => {
+  const t = obj(raw);
+  return { ...treatmentOption(t), level: doctorLevel(t.level), caseCount: countOf(t.caseCount), certification: str(t.certification) };
+};
+
 function doctorFull(raw: unknown): DoctorFull {
   const d = obj(raw);
-  const { treatments: _unused, ...base } = doctorCard(d);
+  const { treatments: _unused, levelCounts: _levels, ...base } = doctorCard(d);
   void _unused;
-  return { ...base, experience: num(d.experience), bio: str(d.bio), treatments: list(d.treatments).map(treatmentOption) };
+  void _levels;
+  return { ...base, experience: num(d.experience), bio: str(d.bio), treatments: list(d.treatments).map(doctorTreatment) };
 }
 
 export async function fetchDoctors(q: DoctorListQuery, signal?: AbortSignal): Promise<ApiResult<DoctorListData>> {
@@ -2369,12 +2385,22 @@ export async function fetchDoctorOrder(hospitalId: number, signal?: AbortSignal)
   };
 }
 
-export type DoctorEditInput = { name: string; hospitalId: number; specialty: string; qualification: string; treatmentIds: number[] };
+/** What the form sends for one assigned treatment. */
+export type DoctorTreatmentInput = { id: number; level: DoctorLevel; caseCount: number; certification: string };
+export type DoctorEditInput = {
+  name: string;
+  hospitalId: number;
+  specialty: string;
+  qualification: string;
+  treatmentIds: number[];
+  /** Level, cases and certification per treatment; a treatment only in `treatmentIds` keeps what is stored. */
+  treatments?: DoctorTreatmentInput[];
+};
 export type DoctorEditFailure = {
   ok: false;
   /** 0 = no answer (network down, proxy error page). */
   status: number;
-  /** "name_required", "hospital_required", "invalid_field", "invalid_type", "too_large", "doctor_resigned", "upload_failed", ...; "" when none. */
+  /** "name_required", "hospital_required", "invalid_field", "invalid_level", "invalid_case_count", "invalid_certification", "invalid_type", "too_large", "doctor_resigned", "upload_failed", ...; "" when none. */
   error: string;
   field: string;
 };

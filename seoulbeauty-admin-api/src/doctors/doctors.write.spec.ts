@@ -157,6 +157,54 @@ describe('admin API: doctors (edit, retire)', () => {
     expect(ins.values).toEqual([1, 12, 9, 'basic', 1, 12, 10, 'basic']);
   });
 
+  it('saves level, cases and certification of the treatments the hospital offers', async () => {
+    const r = await patch(1, body({
+      treatmentIds: [9],
+      treatments: [
+        { id: 9, level: 'expert', caseCount: 12, certification: ' Board ' },
+        { id: 10, level: 'advanced', caseCount: 0, certification: '' },
+        { id: 99, level: 'expert', caseCount: 5, certification: 'not offered here' },
+      ],
+    }));
+    expect(r.status).toBe(200);
+    const off = rwCalls.find((c) => c.sql.includes('is_active = 0') && c.sql.includes('NOT IN'))!;
+    expect(off.values).toEqual([1, [9, 10]]);
+    const inserts = rwCalls.filter((c) => c.sql.startsWith('INSERT INTO gangnamunni_doctor_treatments'));
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0].sql).toContain('speciality_level = VALUES(speciality_level)');
+    expect(inserts[0].values).toEqual([1, 12, 9, 12, 'expert', 'Board', 1, 12, 10, 0, 'advanced', null]);
+    expect(JSON.stringify(rwCalls)).not.toContain('not offered here');
+  });
+
+  it('a treatment sent only as an id keeps what is stored, one sent with details is rewritten', async () => {
+    const r = await patch(1, body({ treatmentIds: [9, 10], treatments: [{ id: 9, level: 'advanced', caseCount: 3, certification: '' }] }));
+    expect(r.status).toBe(200);
+    const inserts = rwCalls.filter((c) => c.sql.startsWith('INSERT INTO gangnamunni_doctor_treatments'));
+    expect(inserts).toHaveLength(2);
+    const plain = inserts.find((c) => !c.sql.includes('speciality_level = VALUES'))!;
+    expect(plain.values).toEqual([1, 12, 10, 'basic']);
+    expect(plain.sql).not.toContain('case_count = VALUES');
+    const detailed = inserts.find((c) => c.sql.includes('speciality_level = VALUES'))!;
+    expect(detailed.values).toEqual([1, 12, 9, 3, 'advanced', null]);
+  });
+
+  it('a wrong level, case count or certification is refused before anything is written', async () => {
+    const bad = [
+      [{ id: 9, level: 'master', caseCount: 1, certification: '' }, 'invalid_level'],
+      [{ id: 9, level: 'basic', caseCount: -3, certification: '' }, 'invalid_case_count'],
+      [{ id: 9, level: 'basic', caseCount: 1, certification: 'x'.repeat(501) }, 'invalid_certification'],
+    ] as const;
+    for (const [item, error] of bad) {
+      rwCalls.length = 0;
+      events.length = 0;
+      const r = await patch(1, body({ treatmentIds: [9], treatments: [item] }));
+      expect(r.status).toBe(400);
+      expect(r.body).toEqual({ error, field: 'treatments' });
+      expect(events).toEqual([]);
+      expect(rwCalls).toEqual([]);
+    }
+  });
+
   it('an empty treatment list switches every assignment off and inserts nothing', async () => {
     const r = await patch(1, body({ treatmentIds: [] }));
     expect(r.status).toBe(200);

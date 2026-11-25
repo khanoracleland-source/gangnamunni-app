@@ -111,7 +111,7 @@ export function statsQuery(s: Scope): Query {
 
 /** Names of the treatments each listed doctor is assigned to. */
 export const treatmentNamesQuery = (doctorIds: number[]): Query => ({
-  sql: `SELECT dt.doctor_id, tm.name
+  sql: `SELECT dt.doctor_id, tm.name, dt.speciality_level
           FROM gangnamunni_doctor_treatments dt
           JOIN gangnamunni_treatment_master tm ON tm.id = dt.treatment_id
          WHERE dt.is_active = 1 AND dt.doctor_id IN (?)
@@ -134,7 +134,7 @@ export function detailQuery(s: Scope, id: number, withOrder: boolean): Query {
 
 /** Treatments the doctor is assigned to at his hospital. */
 export const assignedTreatmentsQuery = (doctorId: number, hospitalId: number): Query => ({
-  sql: `SELECT tm.id, tm.name, tc.name AS category_name
+  sql: `SELECT tm.id, tm.name, tc.name AS category_name, dt.speciality_level, dt.case_count, dt.certification
           FROM gangnamunni_doctor_treatments dt
           JOIN gangnamunni_treatment_master tm ON tm.id = dt.treatment_id
      LEFT JOIN gangnamunni_treatment_categories tc ON tc.id = tm.category_id
@@ -166,6 +166,18 @@ export const orderColumnQuery = (): Query => ({
   values: [],
 });
 
+export type Level = 'basic' | 'advanced' | 'expert';
+export interface LevelCounts {
+  basic: number;
+  advanced: number;
+  expert: number;
+}
+/** A stored level the panel does not know counts as basic. */
+export const levelOf = (stored: unknown): Level => {
+  const v = str(stored);
+  return v === 'expert' || v === 'advanced' ? v : 'basic';
+};
+
 export interface DoctorListItem {
   id: number;
   name: string;
@@ -177,12 +189,14 @@ export interface DoctorListItem {
   status: 'active' | 'inactive' | 'resigned';
   displayOrder: number | null;
   treatments: string[];
+  /** How many of the listed treatments are at each level. */
+  levelCounts: LevelCounts;
 }
 
 const placeOrNull = (v: unknown): number | null => (v === null || v === undefined || num(v) < 1 ? null : Math.trunc(num(v)));
 const photoOrNull = (v: unknown): string | null => (str(v).trim() === '' ? null : str(v));
 
-export const toListItem = (r: Row, treatments: string[] = []): DoctorListItem => ({
+export const toListItem = (r: Row, treatments: string[] = [], levelCounts: LevelCounts = { basic: 0, advanced: 0, expert: 0 }): DoctorListItem => ({
   id: num(r.id),
   name: str(r.name),
   hospitalId: num(r.hospital_id),
@@ -193,6 +207,7 @@ export const toListItem = (r: Row, treatments: string[] = []): DoctorListItem =>
   status: statusOf(r.status),
   displayOrder: placeOrNull(r.display_order),
   treatments,
+  levelCounts,
 });
 
 export interface DoctorList {
@@ -210,9 +225,13 @@ export const emptyList = (s: Scope, q: DoctorListQuery): DoctorList => ({
 
 export function buildList(s: Scope, q: DoctorListQuery, stats: Row | undefined, total: number, rows: Row[], names: Row[]): DoctorList {
   const byDoctor = new Map<number, string[]>();
+  const levels = new Map<number, LevelCounts>();
   for (const n of names) {
     const id = num(n.doctor_id);
     byDoctor.set(id, [...(byDoctor.get(id) ?? []), str(n.name)]);
+    const counts = levels.get(id) ?? { basic: 0, advanced: 0, expert: 0 };
+    counts[levelOf(n.speciality_level)] += 1;
+    levels.set(id, counts);
   }
   return {
     scope: s.scope,
@@ -220,14 +239,14 @@ export function buildList(s: Scope, q: DoctorListQuery, stats: Row | undefined, 
     total,
     page: q.page,
     perPage: q.perPage,
-    items: rows.map((r) => toListItem(r, byDoctor.get(num(r.id)) ?? [])),
+    items: rows.map((r) => toListItem(r, byDoctor.get(num(r.id)) ?? [], levels.get(num(r.id)))),
   };
 }
 
-export interface DoctorDetail extends Omit<DoctorListItem, 'treatments'> {
+export interface DoctorDetail extends Omit<DoctorListItem, 'treatments' | 'levelCounts'> {
   experience: number;
   bio: string;
-  treatments: { id: number; name: string; category: string }[];
+  treatments: { id: number; name: string; category: string; level: Level; caseCount: number; certification: string }[];
 }
 
 export function buildDetail(r: Row, assigned: Row[]): DoctorDetail {
@@ -244,7 +263,14 @@ export function buildDetail(r: Row, assigned: Row[]): DoctorDetail {
     displayOrder: base.displayOrder,
     experience: Math.max(0, Math.trunc(num(r.experience))),
     bio: str(r.bio),
-    treatments: assigned.map((a) => ({ id: num(a.id), name: str(a.name), category: str(a.category_name) })),
+    treatments: assigned.map((a) => ({
+      id: num(a.id),
+      name: str(a.name),
+      category: str(a.category_name),
+      level: levelOf(a.speciality_level),
+      caseCount: Math.max(0, Math.trunc(num(a.case_count))),
+      certification: str(a.certification),
+    })),
   };
 }
 
