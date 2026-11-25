@@ -1401,6 +1401,16 @@ GRANT SELECT (id, consultation_id, kind, created_at) ON <DB_NAME>.gangnamunni_co
 Photos need `ADMIN_UPLOAD_ROOT` (the same absolute path of the PHP `gangnamunni` directory as in the other upload sections; reading only needs read and enter rights on it). Without it a photo answers 503 `uploads_unavailable`.
 Turning it off: `ADMIN_CONSULTATIONS_ENABLED=0` (all routes 404), then restart.
 
+23.3 **Do not set `ADMIN_CONSULTATIONS_WRITE=1` yet** (see below). Changing the status and writing the hospital's message (needs `ADMIN_CONSULTATIONS_ENABLED=1`; default off, then the two POST routes answer 404).
+`POST /v1/consultations/:id/status` (`approved`, `completed`, `rejected`, `contact_failed`; the same status again changes nothing) and `POST /v1/consultations/:id/message` (up to 1000 characters; empty clears it).
+Only a super admin and hospital accounts reach them (a viewer gets 403), the CSRF header is required, and a hospital account works on its own hospital only (anything else is 404). Statements run in one transaction.
+**Do not switch it on yet:** the pushes and in-app notices that the PHP page sends on `approved` / `contact_failed`, and the progress record, come in the next step. Until then keep using the PHP page for changes.
+```sql
+GRANT SELECT (id, hospital_id, status), UPDATE (status, hospital_message, hospital_message_at) ON <DB_NAME>.gangnamunni_consultations TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, hospital_id, status), UPDATE (status, hospital_message, hospital_message_at) ON <DB_NAME>.gangnamunni_consultations TO 'sb_admin_rw'@'localhost';
+```
+Without the GRANT (or without the history columns, for the message) the answer is `503 {"error":"write_unavailable"}` and nothing changes.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.

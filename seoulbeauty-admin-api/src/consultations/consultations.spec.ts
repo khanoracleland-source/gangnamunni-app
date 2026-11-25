@@ -4,7 +4,7 @@ import request from 'supertest';
 import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 import { MeModule } from '../me/me.module';
 import { ConsultationsModule } from './consultations.module';
-import { DB } from '../db/db.module';
+import { DB, DB_RW } from '../db/db.module';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'fs';
 import { tmpdir } from 'os';
 import * as path from 'path';
@@ -69,7 +69,7 @@ describe('admin API: consultations (read)', () => {
     process.env.ADMIN_CONSULTATIONS_ENABLED = '1';
     calls.length = 0;
     failWith = null;
-    @Global() @Module({ providers: [{ provide: DB, useValue: dbStub }], exports: [DB] }) class TestDbModule {}
+    @Global() @Module({ providers: [{ provide: DB, useValue: dbStub }, { provide: DB_RW, useValue: { get: () => null } }], exports: [DB, DB_RW] }) class TestDbModule {}
     const mod = await Test.createTestingModule({ imports: [TestDbModule, AdminAuthModule, MeModule, ConsultationsModule] }).compile();
     app = mod.createNestApplication();
     await app.init();

@@ -218,3 +218,24 @@ export function photoPath(id: number, rawUrls: unknown, index: number): { rel: s
   const m = new RegExp(`^uploads/consultations/${id}/([A-Za-z0-9_\\-]+\\.(jpg|jpeg|png|gif|webp))$`).exec(rel);
   return m ? { rel, name: m[1], type: PHOTO_TYPES[m[2].toLowerCase()] } : null;
 }
+
+// ---- writing ----
+
+/** The states an admin can move an application to (PHP: approve, complete, reject, contact failed). "pending" is only how it starts. */
+export const WRITE_STATUSES = ['approved', 'completed', 'rejected', 'contact_failed'] as const;
+export const MESSAGE_MAX = 1000;
+
+export function parseStatusBody(body: unknown): { status: string } | Fail {
+  const b = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : null;
+  if (!b || typeof b.status !== 'string' || !(WRITE_STATUSES as readonly string[]).includes(b.status)) return { error: 'invalid_field', field: 'status' };
+  return { status: b.status };
+}
+
+/** The message the member sees. Line breaks stay, other control characters go; empty clears the message. */
+export function parseMessageBody(body: unknown): { message: string } | Fail {
+  const b = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : null;
+  if (!b || typeof b.message !== 'string') return { error: 'invalid_field', field: 'message' };
+  const message = b.message.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim();
+  if (Array.from(message).length > MESSAGE_MAX) return { error: 'too_long', field: 'message' };
+  return { message };
+}
