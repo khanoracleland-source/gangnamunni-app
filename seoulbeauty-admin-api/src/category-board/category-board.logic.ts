@@ -1,4 +1,6 @@
+import { Query } from '../hospitals/hospitals.logic';
 import { TreatmentsAnswer } from '../treatments/treatments.logic';
+import { asObject, fieldError, FieldError, isFieldError, parseIdList } from '../treatments/treatments.write.logic';
 
 export interface BoardTreatment {
   id: number;
@@ -47,3 +49,25 @@ export function buildBoard(snap: TreatmentsAnswer): BoardAnswer {
   };
 }
 
+// ───────── writes ─────────
+export const ASSIGN_MAX = 200;
+
+/** Body of "add treatments to a category": a non-empty list of distinct treatment ids. */
+export function parseAssignBody(body: unknown): number[] | FieldError | { error: 'invalid_body' } {
+  const b = asObject(body);
+  if (!b) return { error: 'invalid_body' };
+  const ids = parseIdList(b.treatmentIds, 'treatmentIds', ASSIGN_MAX);
+  if (isFieldError(ids)) return ids;
+  return ids.length === 0 ? fieldError('treatmentIds', 'required') : ids;
+}
+
+/** Puts one treatment into a category at the given place of that category's list. */
+export const assignQuery = (treatmentId: number, categoryId: number, sortOrder: number): Query => ({
+  sql: 'UPDATE gangnamunni_treatment_master SET category_id = ?, sort_order = ? WHERE id = ?',
+  values: [categoryId, sortOrder, treatmentId],
+});
+/** Takes a treatment out of a category it still belongs to (a treatment moved elsewhere in the meantime is left alone). */
+export const detachQuery = (treatmentId: number, categoryId: number): Query => ({
+  sql: 'UPDATE gangnamunni_treatment_master SET category_id = NULL WHERE id = ? AND category_id = ?',
+  values: [treatmentId, categoryId],
+});
