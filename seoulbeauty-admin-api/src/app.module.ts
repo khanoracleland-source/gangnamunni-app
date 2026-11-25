@@ -14,6 +14,7 @@ import { MapConfigModule } from './map-config/map-config.module';
 import { TreatmentsModule } from './treatments/treatments.module';
 import { TreatmentUnitsModule } from './treatment-units/treatment-units.module';
 import { BookingsModule } from './bookings/bookings.module';
+import { ConsultationsModule } from './consultations/consultations.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BannersModule } from './banners/banners.module';
 import { CategoryBoardModule } from './category-board/category-board.module';
@@ -37,6 +38,7 @@ import { HealthController } from './health/health.controller';
     TreatmentsModule,
     TreatmentUnitsModule,
     BookingsModule,
+    ConsultationsModule,
     PaymentsModule,
     ModerationModule,
     BannersModule,

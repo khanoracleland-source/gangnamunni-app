@@ -362,6 +362,18 @@ export class BookingsWriteEnabledGuard implements CanActivate {
   }
 }
 
+/** Consultation requests (/v1/consultations*). Independent of the other switches; hospital roles still need ADMIN_HOSPITALS_ENABLED (see scopeOf). Only the exact value "1" turns it on. */
+export const consultationsEnabled = (): boolean => process.env.ADMIN_CONSULTATIONS_ENABLED === '1';
+
+/** With the switch off the consultation routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class ConsultationsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !consultationsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Booking payments and revenue (/v1/payments*), read only. Independent of the other switches; hospital roles still need ADMIN_HOSPITALS_ENABLED (see scopeOf). Only the exact value "1" turns it on. */
 export const paymentsEnabled = (): boolean => process.env.ADMIN_PAYMENTS_ENABLED === '1';
 

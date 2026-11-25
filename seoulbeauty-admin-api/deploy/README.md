@@ -1382,6 +1382,19 @@ FLUSH PRIVILEGES;
 `DELETE` is a table-level privilege (it can not be limited to columns): grant it only when you really turn the permanent delete on, and revoke it with `ADMIN_DOCTORS_DELETE=0` if it is not used.
 `seoulbeauty-admin-api/.env`: `ADMIN_DOCTORS_ORDER=1` and/or `ADMIN_DOCTORS_DELETE=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: set it to 0 + restart.
 
+## 23. Consultation requests (`ADMIN_CONSULTATIONS_ENABLED`, optional, read only so far; super admin and hospital accounts)
+`/v1/consultations` (list with counts, search, paging) and `/v1/consultations/hospitals` (hospital filter). A super admin sees every hospital, a hospital account only its own
+(and, like the other pages, only while `ADMIN_HOSPITALS_ENABLED=1`; an account without a bound hospital sees nothing). Newest first, 20 per page; the counts follow the hospital choice only.
+Detail, photos, changing the status and the hospital message come in later steps with their own switch.
+
+23.1 GRANTs (run as the DB admin; repeat each line for `'127.0.0.1'` and `'localhost'`; `gangnamunni_hospitals (id, name)` is already granted in section 17):
+```sql
+GRANT SELECT (id, hospital_id, hospital_name, consultation_type, name, phone, message, photo_urls, status, created_at) ON <DB_NAME>.gangnamunni_consultations TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, hospital_id, hospital_name, consultation_type, name, phone, message, photo_urls, status, created_at) ON <DB_NAME>.gangnamunni_consultations TO 'sb_admin_ro'@'localhost';
+```
+23.2 In `seoulbeauty-admin-api/.env`: `ADMIN_CONSULTATIONS_ENABLED=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Without the GRANT the routes answer 503 `consultations_unavailable`.
+Turning it off: `ADMIN_CONSULTATIONS_ENABLED=0` (all routes 404), then restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
