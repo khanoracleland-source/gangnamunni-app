@@ -1357,6 +1357,17 @@ FLUSH PRIVILEGES;
 
 `seoulbeauty-admin-api/.env`: `ADMIN_DOCTORS_WRITE=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_DOCTORS_WRITE=0` + restart.
 
+Level, cases and certification of each assigned treatment (list card counts, detail table, `treatments` in the edit body): these columns are granted per column, so add them too (without the read grant `GET /v1/doctors` and `GET /v1/doctors/:id` fail; without the write grant a save with `treatments` answers 503 `write_unavailable`). The `certification` column must exist (`SHOW COLUMNS FROM <DB_NAME>.gangnamunni_doctor_treatments LIKE 'certification'`).
+
+```sql
+GRANT SELECT (speciality_level, case_count, certification) ON <DB_NAME>.gangnamunni_doctor_treatments TO 'sb_admin_ro'@'127.0.0.1';
+GRANT INSERT (certification), UPDATE (case_count, speciality_level, certification, updated_at) ON <DB_NAME>.gangnamunni_doctor_treatments TO 'sb_admin_rw'@'127.0.0.1';
+-- the same for 'sb_admin_ro'@'localhost' and 'sb_admin_rw'@'localhost'
+FLUSH PRIVILEGES;
+```
+
+Order after `git pull`: grants first, then rebuild and restart `seoulbeauty-admin-api`, then rebuild `seoulbeauty-admin-web` (section "After each `git pull`" of its deploy README).
+
 ## 22. Doctor display order and permanent delete (`ADMIN_DOCTORS_ORDER`, `ADMIN_DOCTORS_DELETE`, optional)
 
 - `GET /v1/doctors/order?hospitalId=` (read, needs `ADMIN_DOCTORS_ENABLED`): the active doctors of one hospital in the app's order, positions 1..N; `orderable:false` while the `display_order` column does not exist yet.
