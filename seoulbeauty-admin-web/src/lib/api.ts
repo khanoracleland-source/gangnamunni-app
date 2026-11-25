@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -145,6 +145,8 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         adminsWrite: obj(d.features).adminsWrite === true,
         bookings: obj(d.features).bookings === true,
         bookingsWrite: obj(d.features).bookingsWrite === true,
+        consultations: obj(d.features).consultations === true,
+        consultationsWrite: obj(d.features).consultationsWrite === true,
         payments: obj(d.features).payments === true,
         moderation: obj(d.features).moderation === true,
         moderationWrite: obj(d.features).moderationWrite === true,
@@ -1878,6 +1880,59 @@ export async function changeBookingStatus(id: number, action: BookingAction, can
 export async function assignBookingDoctor(id: number, doctorId: number): Promise<WriteResult<{ doctorName: string }>> {
   const res = await sendJson("POST", `/v1/bookings/${encodeURIComponent(String(id))}/doctor`, { doctorId });
   return res.ok ? { ok: true, data: { doctorName: str(res.data.doctorName) } } : res;
+}
+
+// ───────── Consultation requests ─────────
+
+export type ConsultationRow = {
+  id: number; hospitalId: number; hospitalName: string; type: string; name: string; phone: string;
+  /** The lines the application form put in front of the text, e.g. "[관심 시술] 보톡스". */
+  tags: string[]; preview: string; photoCount: number; status: string; createdAt: string;
+};
+export type ConsultationStats = Record<"total" | "pending" | "approved" | "completed" | "rejected" | "contact_failed", number> & { oldestPendingAt: string | null };
+export type ConsultationList = { items: ConsultationRow[]; total: number; page: number; perPage: number; totalPages: number; stats: ConsultationStats };
+export type ConsultationHospital = { id: number; name: string; consultationCount: number; pendingCount: number };
+export type ConsultationsQuery = { hospitalId: number; status: string; q: string; page: number };
+
+const consultationRow = (v: unknown): ConsultationRow => {
+  const d = obj(v);
+  return {
+    id: num(d.id), hospitalId: num(d.hospitalId), hospitalName: str(d.hospitalName), type: str(d.type), name: str(d.name), phone: text(d.phone),
+    tags: list(d.tags).filter((x): x is string => typeof x === "string"), preview: str(d.preview), photoCount: num(d.photoCount), status: str(d.status), createdAt: str(d.createdAt),
+  };
+};
+
+/** The list, the counts above it (they follow only the hospital choice) and the page the server settled on. */
+export async function fetchConsultations(q: ConsultationsQuery, signal?: AbortSignal): Promise<ApiResult<ConsultationList>> {
+  const p = new URLSearchParams();
+  if (q.hospitalId > 0) p.set("hospital_id", String(q.hospitalId));
+  if (q.status) p.set("status", q.status);
+  if (q.q.trim()) p.set("q", q.q.trim());
+  if (q.page > 1) p.set("page", String(q.page));
+  const qs = p.toString();
+  const res = await getJson(`/v1/consultations${qs ? `?${qs}` : ""}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const s = obj(d.stats);
+  return {
+    ok: true,
+    data: {
+      items: list(d.items).map(consultationRow).filter((c) => c.id > 0),
+      total: num(d.total), page: Math.max(1, num(d.page)), perPage: Math.max(1, num(d.perPage)), totalPages: Math.max(1, num(d.totalPages)),
+      stats: { total: num(s.total), pending: num(s.pending), approved: num(s.approved), completed: num(s.completed), rejected: num(s.rejected), contact_failed: num(s.contact_failed), oldestPendingAt: typeof s.oldestPendingAt === "string" ? s.oldestPendingAt : null },
+    },
+  };
+}
+
+export async function fetchConsultationHospitals(signal?: AbortSignal): Promise<ApiResult<ConsultationHospital[]>> {
+  const res = await getJson("/v1/consultations/hospitals", signal);
+  if (!res.ok) return res;
+  return {
+    ok: true,
+    data: list(obj(res.data).items)
+      .map((h) => ({ id: num(obj(h).id), name: str(obj(h).name), consultationCount: num(obj(h).consultationCount), pendingCount: num(obj(h).pendingCount) }))
+      .filter((h) => h.id > 0),
+  };
 }
 
 export type BookingsExport = { hospitalIds: number[]; from: string; to: string; status: string };

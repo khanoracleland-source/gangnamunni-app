@@ -228,7 +228,7 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "payments", { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "consultations" | "payments", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
   doctors: { key: "doctors", href: "/doctors" },
   hospitalApply: { key: "hospital_apply", href: "/hospital-apply" },
@@ -236,6 +236,7 @@ const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatment
   treatmentUnits: { key: "treatment_units", href: "/treatment-units" },
   admins: { key: "admin_accounts", href: "/admins" },
   bookings: { key: "bookings", href: "/bookings" },
+  consultations: { key: "consultations", href: "/consultations" },
   payments: { key: "booking_revenue", href: "/payments" },
 };
 
