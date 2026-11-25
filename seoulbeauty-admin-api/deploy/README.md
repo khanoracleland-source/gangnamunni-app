@@ -1053,8 +1053,8 @@ GRANT SELECT (id, treatment_id, alias, lang), INSERT (treatment_id, alias, lang)
 GRANT SELECT (id, slug), INSERT (name, slug, icon, sort_order, is_active), UPDATE (name, slug, icon, sort_order, is_active), DELETE ON <DB_NAME>.gangnamunni_treatment_categories TO 'sb_admin_rw'@'127.0.0.1';
 -- home table mode: the row tc_table_mode. UPDATE cannot be limited to one row, so the write user may change any setting_value; the API only ever names tc_table_mode.
 GRANT SELECT (id, setting_key), INSERT (setting_key, setting_value, setting_group, description), UPDATE (setting_value) ON <DB_NAME>.gangnamunni_settings TO 'sb_admin_rw'@'127.0.0.1';
--- optional, after the matching migration
-GRANT UPDATE (revisit_days, revisit_strict) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
+-- optional, after the matching migration (INSERT is needed too: once the columns exist, creating a treatment writes them and is refused with 503 write_unavailable without it)
+GRANT INSERT (revisit_days, revisit_strict), UPDATE (revisit_days, revisit_strict) ON <DB_NAME>.gangnamunni_treatment_master TO 'sb_admin_rw'@'127.0.0.1';
 GRANT SELECT (id, tm_a_id, tm_b_id), INSERT (tm_a_id, tm_b_id), DELETE ON <DB_NAME>.gangnamunni_treatment_conflicts TO 'sb_admin_rw'@'127.0.0.1';
 -- and each statement again for 'sb_admin_rw'@'localhost'
 ```
