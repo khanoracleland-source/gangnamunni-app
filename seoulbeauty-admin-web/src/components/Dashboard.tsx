@@ -266,7 +266,7 @@ function SummaryView({ summary, period, features, onHelp }: { summary: Dashboard
   const link = (on: boolean | undefined, href: string): string | undefined => (on ? href : undefined);
   const hrefs = {
     bookCount: link(features?.bookings, `/bookings?${win}`),
-    bookAmount: link(features?.bookings, `/bookings?${win}`),
+    bookAmount: link(features?.payments, `/payments?${paidRange}`),
     bookCancel: link(features?.bookings, `/bookings?${win}&status_group=cancelled`),
     bookPending: link(features?.bookings, `/bookings?${win}&status=pending`),
     bookPaid: link(features?.payments, `/payments?${paidRange}`),
