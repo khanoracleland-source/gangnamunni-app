@@ -4184,22 +4184,18 @@ button.mb-stat:focus-visible { outline: none; box-shadow: var(--ring); }
 .mb-filters__q .input { padding-left: 36px; height: 44px; font-size: 16px; text-overflow: ellipsis; }
 .mb-seg { flex: 1 1 100%; display: flex; }
 .mb-seg button { flex: 1; min-height: 44px; font-size: 14px; }
-.mb-filters__s, .mb-filters__r { flex: 1 1 120px; min-width: 0; }
+.mb-filters__r { flex: 1 1 120px; min-width: 0; }
 .mb-filters .sel { width: 100%; height: 44px; }
-.mb-dir { flex: none; width: 44px; height: 44px; padding: 0; }
-.mb-dir svg { transform: rotate(90deg); transition: transform var(--t-fast) var(--ease); }
-.mb-dir.is-asc svg { transform: rotate(-90deg); }
 .mb-go { height: 44px; }
 @media (min-width: 640px) {
   .mb-filters__q { flex: 1 1 280px; }
   .mb-filters__q .input { height: 40px; font-size: 14px; }
   .mb-seg { flex: 0 0 auto; display: inline-flex; }
   .mb-seg button { flex: none; min-height: 32px; font-size: 13px; }
-  .mb-filters__s, .mb-filters__r { flex: 0 0 auto; min-width: 120px; }
-  .mb-filters .sel, .mb-dir, .mb-go { height: 40px; }
-  .mb-dir { width: 40px; }
+  .mb-filters__r { flex: 0 0 auto; min-width: 120px; }
+  .mb-filters .sel, .mb-go { height: 40px; }
 }
-@media (pointer: coarse) { .mb-seg button, .mb-filters .sel, .mb-dir, .mb-go, .mb-filters__q .input { min-height: 44px; height: 44px; } .mb-dir { width: 44px; } }
+@media (pointer: coarse) { .mb-seg button, .mb-filters .sel, .mb-go, .mb-filters__q .input { min-height: 44px; height: 44px; } }
 
 .mb-list { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .mb-list.is-busy { opacity: 0.6; transition: opacity var(--t-fast) var(--ease); }

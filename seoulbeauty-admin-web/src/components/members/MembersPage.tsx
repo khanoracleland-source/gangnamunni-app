@@ -13,7 +13,7 @@ import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
-import { DEFAULT_QUERY, PER_PAGE_CHOICES, SORTS, STATUS_FILTERS, dayOf, minuteOf, queryKey } from "@/lib/members";
+import { DEFAULT_QUERY, PER_PAGE_CHOICES, STATUS_FILTERS, dayOf, minuteOf, queryKey } from "@/lib/members";
 
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "error";
 const leaveToLogin = () => window.location.assign(PHP_ADMIN_URL);
@@ -157,15 +157,6 @@ function Board({ me }: { me: Me }) {
             <button key={s} type="button" aria-pressed={query.status === s} onClick={() => set({ status: s })}>{t(`mb.st.${s}` as MessageKey)}</button>
           ))}
         </div>
-        <label className="mb-filters__s">
-          <span className="sr-only">{t("mb.sort.label")}</span>
-          <select className="sel" value={query.sort} onChange={(e) => sortBy(e.target.value as MemberSort)} aria-label={t("mb.sort.label")}>
-            {SORTS.map((s) => <option key={s} value={s}>{t(`mb.sort.${s}` as MessageKey)}</option>)}
-          </select>
-        </label>
-        <button type="button" className={query.order === "asc" ? "btn btn--ghost mb-dir is-asc" : "btn btn--ghost mb-dir"} onClick={() => set({ order: query.order === "asc" ? "desc" : "asc" })} aria-label={t(query.order === "asc" ? "mb.sort.asc" : "mb.sort.desc")} title={t(query.order === "asc" ? "mb.sort.asc" : "mb.sort.desc")}>
-          <Icon name="chevron" size={16} />
-        </button>
         <label className="mb-filters__r">
           <span className="sr-only">{t("mb.f.rows")}</span>
           <select className="sel" value={query.perPage} onChange={(e) => set({ perPage: Number(e.target.value) })} aria-label={t("mb.f.rows")}>

@@ -1,9 +1,8 @@
 // Pure helpers of the members screen.
-import type { MemberFilter, MemberSort, MembersQuery, MemberStatus, WriteFailure } from "./api";
+import type { MemberFilter, MembersQuery, MemberStatus, WriteFailure } from "./api";
 import type { MessageKey } from "./i18n";
 
 export const PER_PAGE_CHOICES = [10, 20, 50, 100] as const;
-export const SORTS: readonly MemberSort[] = ["joined", "lastLogin", "no", "id", "name"];
 export const STATUS_FILTERS: readonly MemberFilter[] = ["all", "active", "blocked", "left"];
 export const DEFAULT_QUERY: MembersQuery = { search: "", status: "all", sort: "joined", order: "desc", page: 1, perPage: 20 };
 
