@@ -128,7 +128,7 @@ const MENU: MenuGroup[] = [
     key: "members_group",
     label: L("회원 관리", "Member management"),
     icon: "people",
-    items: [legacy("members", "admin_members.php", "회원 관리", "Members", "people")],
+    items: [{ key: "members", label: L("회원 관리", "Members"), icon: "people", status: "legacy", href: `${LEGACY}admin_members.php`, superOnly: true }],
   },
   {
     key: "report_block",
@@ -227,7 +227,7 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "consultations" | "payments", { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "consultations" | "payments" | "members", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
   doctors: { key: "doctors", href: "/doctors" },
   hospitalApply: { key: "hospital_apply", href: "/hospital-apply" },
@@ -237,6 +237,7 @@ const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatment
   bookings: { key: "bookings", href: "/bookings" },
   consultations: { key: "consultations", href: "/consultations" },
   payments: { key: "booking_revenue", href: "/payments" },
+  members: { key: "members", href: "/members" },
 };
 
 /**

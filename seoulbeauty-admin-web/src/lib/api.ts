@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; paymentsRefund: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; paymentsRefund: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean; members: boolean; membersWrite: boolean; membersPassword: boolean; membersActivity: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -157,6 +157,10 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         bannersWrite: obj(d.features).bannersWrite === true,
         categoryBoard: obj(d.features).categoryBoard === true,
         categoryBoardWrite: obj(d.features).categoryBoardWrite === true,
+        members: obj(d.features).members === true,
+        membersWrite: obj(d.features).membersWrite === true,
+        membersPassword: obj(d.features).membersPassword === true,
+        membersActivity: obj(d.features).membersActivity === true,
       },
     },
   };
@@ -2868,4 +2872,122 @@ export async function detachBoardTreatment(categoryId: number, treatmentId: numb
 export async function deleteBoardCategory(categoryId: number): Promise<WriteResult<BoardData & { detached: number }>> {
   const res = await sendJson("DELETE", boardPath(categoryId));
   return res.ok ? { ok: true, data: { ...boardData(res.data), detached: num(obj(res.data).detached) } } : res;
+}
+
+// ---- members (app users; super admin only) -----------------------------------------------------------------------
+
+export type MemberStatus = "active" | "blocked" | "left";
+export type MemberFilter = MemberStatus | "all";
+export type MemberSort = "joined" | "lastLogin" | "no" | "id" | "name";
+export type MemberRow = {
+  no: number; id: string; name: string; nick: string; email: string; phone: string;
+  joinedAt: string | null; lastLoginAt: string | null; status: MemberStatus;
+};
+export type MemberDetail = MemberRow & {
+  tel: string; sex: "M" | "F" | null; birth: string | null; addr1: string; addr2: string; loginIp: string;
+  smsConsent: boolean; mailConsent: boolean; blockedDate: string | null; leftDate: string | null;
+};
+export type MembersQuery = { search: string; status: MemberFilter; sort: MemberSort; order: "asc" | "desc"; page: number; perPage: number };
+export type MemberList = { items: MemberRow[]; total: number; page: number; perPage: number; totalPages: number };
+export type MemberSummary = { total: number; active: number; blocked: number; todayLogin: number; todayJoin: number };
+
+const memberStatus = (v: unknown): MemberStatus => (v === "blocked" || v === "left" ? v : "active");
+const dateOrNull = (v: unknown): string | null => (typeof v === "string" && v !== "" ? v : null);
+function memberRow(v: unknown): MemberRow {
+  const m = obj(v);
+  return {
+    no: num(m.no), id: str(m.id), name: str(m.name), nick: str(m.nick), email: str(m.email), phone: str(m.phone),
+    joinedAt: dateOrNull(m.joinedAt), lastLoginAt: dateOrNull(m.lastLoginAt), status: memberStatus(m.status),
+  };
+}
+function memberDetail(v: unknown): MemberDetail {
+  const m = obj(v);
+  return {
+    ...memberRow(v), tel: str(m.tel), sex: m.sex === "M" || m.sex === "F" ? m.sex : null, birth: dateOrNull(m.birth), addr1: str(m.addr1), addr2: str(m.addr2),
+    loginIp: str(m.loginIp), smsConsent: m.smsConsent === true, mailConsent: m.mailConsent === true, blockedDate: dateOrNull(m.blockedDate), leftDate: dateOrNull(m.leftDate),
+  };
+}
+const memberPath = (no: number): string => `/v1/members/${encodeURIComponent(String(no))}`;
+
+export async function fetchMembers(q: MembersQuery, signal?: AbortSignal): Promise<ApiResult<MemberList>> {
+  const p = new URLSearchParams();
+  if (q.search.trim()) p.set("search", q.search.trim());
+  if (q.status !== "all") p.set("status", q.status);
+  p.set("sort", q.sort);
+  p.set("order", q.order);
+  if (q.page > 1) p.set("page", String(q.page));
+  p.set("perPage", String(q.perPage));
+  const res = await getJson(`/v1/members?${p.toString()}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const perPage = Math.max(1, num(d.perPage));
+  const total = num(d.total);
+  return { ok: true, data: { items: list(d.items).map(memberRow).filter((m) => m.no > 0), total, page: Math.max(1, num(d.page)), perPage, totalPages: Math.max(1, Math.ceil(total / perPage)) } };
+}
+
+export async function fetchMemberSummary(signal?: AbortSignal): Promise<ApiResult<MemberSummary>> {
+  const res = await getJson("/v1/members/summary", signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return { ok: true, data: { total: num(d.total), active: num(d.active), blocked: num(d.blocked), todayLogin: num(d.todayLogin), todayJoin: num(d.todayJoin) } };
+}
+
+export async function fetchMember(no: number, signal?: AbortSignal): Promise<ApiResult<MemberDetail>> {
+  const res = await getJson(memberPath(no), signal);
+  return res.ok ? { ok: true, data: memberDetail(res.data) } : res;
+}
+
+/** The only two changes an admin can make to a member. */
+export async function changeMemberEmail(no: number, email: string): Promise<WriteResult<MemberDetail>> {
+  const res = await sendJson("PATCH", memberPath(no), { email });
+  return res.ok ? { ok: true, data: memberDetail(res.data) } : res;
+}
+/** The new password is only ever sent, never kept: the answer carries nothing of it. */
+export async function resetMemberPassword(no: number, password: string): Promise<WriteResult<Record<string, never>>> {
+  const res = await sendJson("POST", `${memberPath(no)}/password`, { password });
+  return res.ok ? { ok: true, data: {} } : res;
+}
+
+export type MemberPage<T> = { items: T[]; total: number; page: number; perPage: number; totalPages: number };
+function memberPage<T>(v: unknown, row: (r: unknown) => T): MemberPage<T> {
+  const d = obj(v);
+  const perPage = Math.max(1, num(d.perPage));
+  const total = num(d.total);
+  return { items: list(d.items).map(row), total, page: Math.max(1, num(d.page)), perPage, totalPages: Math.max(1, Math.ceil(total / perPage)) };
+}
+const memberTab = async <T>(no: number, tab: string, page: number, row: (r: unknown) => T, signal?: AbortSignal): Promise<ApiResult<MemberPage<T>>> => {
+  const res = await getJson(`${memberPath(no)}/${tab}${page > 1 ? `?page=${page}` : ""}`, signal);
+  return res.ok ? { ok: true, data: memberPage(res.data, row) } : res;
+};
+
+export type MemberConsultation = { id: number; hospitalName: string; type: string; message: string; status: string; createdAt: string };
+export type MemberBooking = { id: number; hospitalName: string; treatment: string; price: number; bookingDate: string; bookingTime: string; status: string; cancelReason: string; createdAt: string };
+export type MemberPointEntry = {
+  id: number; type: string; direction: "in" | "out" | "other"; amount: number; balance: number | null; reason: string; referenceType: string; referenceId: string; expiresAt: string; createdAt: string;
+};
+export type MemberPointTotals = { earned: number; used: number; expired: number; refunded: number; adjustedIn: number; adjustedOut: number };
+export type MemberPoints = MemberPage<MemberPointEntry> & { balance: number; totals: MemberPointTotals };
+export type MemberHistoryEntry = { id: number; adminUsername: string; adminRole: string; action: string; after: string | null; ip: string; createdAt: string };
+
+export const fetchMemberConsultations = (no: number, page: number, signal?: AbortSignal) =>
+  memberTab<MemberConsultation>(no, "consultations", page, (r) => { const c = obj(r); return { id: num(c.id), hospitalName: str(c.hospitalName), type: str(c.type), message: str(c.message), status: str(c.status), createdAt: str(c.createdAt) }; }, signal);
+export const fetchMemberBookings = (no: number, page: number, signal?: AbortSignal) =>
+  memberTab<MemberBooking>(no, "bookings", page, (r) => { const b = obj(r); return { id: num(b.id), hospitalName: str(b.hospitalName), treatment: str(b.treatment), price: num(b.price), bookingDate: str(b.bookingDate), bookingTime: str(b.bookingTime), status: str(b.status), cancelReason: str(b.cancelReason), createdAt: str(b.createdAt) }; }, signal);
+/** The history shows the new e-mail only; the old value and any password-related value are never read here. */
+export const fetchMemberHistory = (no: number, page: number, signal?: AbortSignal) =>
+  memberTab<MemberHistoryEntry>(no, "history", page, (r) => { const h = obj(r); return { id: num(h.id), adminUsername: str(h.adminUsername), adminRole: str(h.adminRole), action: str(h.action), after: h.action === "email_change" && typeof h.after === "string" ? h.after : null, ip: str(h.ip), createdAt: str(h.createdAt) }; }, signal);
+
+export async function fetchMemberPoints(no: number, page: number, signal?: AbortSignal): Promise<ApiResult<MemberPoints>> {
+  const res = await getJson(`${memberPath(no)}/points${page > 1 ? `?page=${page}` : ""}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const tt = obj(d.totals);
+  const base = memberPage(res.data, (r): MemberPointEntry => {
+    const e = obj(r);
+    return {
+      id: num(e.id), type: str(e.type), direction: e.direction === "in" || e.direction === "out" ? e.direction : "other", amount: num(e.amount), balance: numOrNull(e.balance),
+      reason: str(e.reason), referenceType: str(e.referenceType), referenceId: str(e.referenceId), expiresAt: str(e.expiresAt), createdAt: str(e.createdAt),
+    };
+  });
+  return { ok: true, data: { ...base, balance: num(d.balance), totals: { earned: num(tt.earned), used: num(tt.used), expired: num(tt.expired), refunded: num(tt.refunded), adjustedIn: num(tt.adjustedIn), adjustedOut: num(tt.adjustedOut) } } };
 }
