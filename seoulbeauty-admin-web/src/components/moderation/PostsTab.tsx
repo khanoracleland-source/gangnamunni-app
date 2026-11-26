@@ -13,7 +13,9 @@ import { usePostEdit } from "./usePostEdit";
 import { fetchModerationPosts, type ModerationPage, type PostItem } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatDay, formatNumber } from "@/lib/format";
+import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
+import { REPORT_REASONS, REPORT_STATUSES } from "@/lib/members";
 import { hasModerationFilters, moderationHref, PER_PAGE, STATE_LABEL, STATE_TONE, type ModerationView } from "@/lib/moderation";
 
 type State = { data: ModerationPage<PostItem> | null; failed: boolean; stale: boolean; settled: string };
@@ -67,6 +69,7 @@ export default function PostsTab({ view, canDecide, canEdit, canDelete }: { view
       <div className="mod-tool">
         <StatusSeg status={view.status} counts={data?.counts ?? null} onPick={(status) => go({ status })} />
         <SearchForm key={view.search} initial={view.search} placeholderKey="mod.f.searchPh.post" onSearch={(search) => go({ search })} />
+        <button type="button" className="btn btn--ghost mod-rep-only" aria-pressed={view.reported} onClick={() => go({ reported: !view.reported })}><Icon name="alert" size={16} />{t("mod.rep.only")}</button>
       </div>
 
       {!data && !failed ? <Skeleton /> : null}
@@ -78,7 +81,7 @@ export default function PostsTab({ view, canDecide, canEdit, canDelete }: { view
             <p className="list-head__count mod-meta" role="status" aria-live="polite">
               {busy ? t("mod.loading") : t("mod.count.post", { status: t(STATE_LABEL[view.status]), n: formatNumber(total) })}
             </p>
-            {filtered ? <Link className="txtbtn" href={moderationHref({ ...view, search: "", page: 1 })}>{t("mod.f.reset")}</Link> : null}
+            {filtered ? <Link className="txtbtn" href={moderationHref({ ...view, search: "", reported: false, page: 1 })}>{t("mod.f.reset")}</Link> : null}
           </div>
           {data.items.length === 0 ? (
             <div className="empty mod-empty">
@@ -109,6 +112,7 @@ function PostCard({ p, decision, onOpen }: { p: PostItem; decision: ReturnType<t
       <div className="mod-card__head">
         <Pill tone={STATE_TONE[p.state]}>{t(STATE_LABEL[p.state])}</Pill>
         {p.category !== "" ? <Pill tone="plain">{p.category}</Pill> : null}
+        {p.reportCount ? <Pill tone="err">{t("mod.rep.count", { n: formatNumber(p.reportCount) })}</Pill> : null}
         <span className="mod-card__date">{formatDay(p.createdAt)}</span>
       </div>
       <h3 className="mod-card__title" title={p.title}>
@@ -153,6 +157,7 @@ function PostDetail({ p, decision, canEdit, canDelete, reload, onClose }: { p: P
         <li title={t("mod.author.locked")}><Icon name="lock" size={14} /><span>{t("mod.author")}</span> <b translate="no">{p.author}</b></li>
       </ul>
       <Gallery images={p.images} />
+      <PostReports p={p} />
     </DetailDialog>
   );
   return (
@@ -160,5 +165,27 @@ function PostDetail({ p, decision, canEdit, canDelete, reload, onClose }: { p: P
       {win}
       {del.dialog}
     </>
+  );
+}
+
+/** Who reported the post and why (the newest few); shown to the platform admin only, like the whole tab. */
+function PostReports({ p }: { p: PostItem }) {
+  const t = useT();
+  if (!p.reportCount || !p.reports || p.reports.length === 0) return null;
+  const label = (list: readonly string[], v: string, prefix: string) => (list.includes(v) ? t(`${prefix}${v}` as MessageKey) : v);
+  return (
+    <section className="mod-rep" aria-label={t("mod.rep.title")}>
+      <h4 className="mod-rep__title">{t("mod.rep.title")} <span className="mod-rep__n">{formatNumber(p.reportCount)}</span></h4>
+      <ul className="mod-rep__list">
+        {p.reports.map((r) => (
+          <li key={r.id} className="mod-rep__item">
+            <div className="mod-rep__top"><b>{label(REPORT_REASONS, r.reason, "mb.bl.r.")}</b><span>{label(REPORT_STATUSES, r.status, "mb.bl.s.")}</span></div>
+            <div className="mod-rep__sub"><span translate="no">{r.reporter || "—"}</span> · {formatDay(r.createdAt)}</div>
+            {r.detail ? <p className="mod-rep__msg">{r.detail}</p> : null}
+          </li>
+        ))}
+      </ul>
+      {p.reportCount > p.reports.length ? <p className="mod-rep__more">{t("mod.rep.more", { n: formatNumber(p.reportCount - p.reports.length) })}</p> : null}
+    </section>
   );
 }

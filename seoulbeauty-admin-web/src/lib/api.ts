@@ -2549,9 +2549,13 @@ export type PostItem = {
   state: ModerationState;
   createdAt: string;
   revision: string;
+  /** What members reported about the post; null when the server could not read the reports. */
+  reportCount: number | null;
+  reports: PostReport[] | null;
 };
+export type PostReport = { id: number; reporter: string; reason: string; detail: string; status: string; createdAt: string };
 export type ModerationPage<T> = { status: ModerationState; page: number; perPage: number; hasMore: boolean; counts: ModerationCounts; items: T[] };
-export type ModerationQuery = { status: ModerationState; search: string; hospitalId: number; page: number };
+export type ModerationQuery = { status: ModerationState; search: string; hospitalId: number; page: number; reported: boolean };
 export type ModerationDecision = "approve" | "reject";
 
 const moderationState = (v: unknown): ModerationState => (v === "approved" || v === "rejected" ? v : "pending");
@@ -2562,6 +2566,7 @@ function moderationParams(q: ModerationQuery, withHospital: boolean): string {
   if (q.search !== "") params.set("search", q.search);
   if (withHospital && q.hospitalId > 0) params.set("hospitalId", String(q.hospitalId));
   if (q.page > 1) params.set("page", String(q.page));
+  if (!withHospital && q.reported) params.set("reported", "1");
   return params.toString();
 }
 
@@ -2610,6 +2615,10 @@ const postItem = (raw: unknown): PostItem => {
     state: moderationState(r.state),
     createdAt: str(r.createdAt),
     revision: str(r.revision),
+    reportCount: typeof r.reportCount === "number" ? r.reportCount : null,
+    reports: Array.isArray(r.reports)
+      ? r.reports.map((x) => { const q = obj(x); return { id: num(q.id), reporter: str(q.reporter), reason: str(q.reason), detail: str(q.detail), status: str(q.status), createdAt: str(q.createdAt) }; })
+      : null,
   };
 };
 

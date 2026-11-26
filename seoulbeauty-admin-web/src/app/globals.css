@@ -3478,6 +3478,17 @@ li.dc-acc { display: flex; flex-wrap: wrap; align-items: center; justify-content
 .mod-stars__n { font-size: 12px; color: var(--muted); letter-spacing: 0; }
 .mod-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .mod-chip { padding: 2px 10px; border-radius: var(--r-pill); background: var(--badge-bg); color: var(--badge-on); font-size: 12px; overflow-wrap: anywhere; }
+.mod-rep-only { min-height: 44px; }
+.mod-rep-only[aria-pressed="true"] { border-color: var(--down); color: var(--down); background: var(--down-bg); }
+.mod-rep { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.mod-rep__title { margin: 0 0 8px; font-size: 14px; line-height: 22px; }
+.mod-rep__n { margin-left: 4px; color: var(--down); font-weight: 700; }
+.mod-rep__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-rep__item { padding: 8px 12px; border-left: 2px solid var(--down); background: var(--surface-2); border-radius: 0 var(--r-sm) var(--r-sm) 0; font-size: 13px; line-height: 20px; }
+.mod-rep__top { display: flex; justify-content: space-between; gap: 8px; }
+.mod-rep__top span, .mod-rep__sub { color: var(--muted); }
+.mod-rep__msg { margin: 4px 0 0; overflow-wrap: anywhere; word-break: keep-all; }
+.mod-rep__more { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
 .mod-facts { list-style: none; margin: 0; padding: 8px 0 0; border-top: 1px solid var(--line); display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 .mod-facts li { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .mod-facts b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }

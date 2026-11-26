@@ -84,7 +84,7 @@ export default function ModerationPage() {
                 key={tab}
                 aria-current={view.tab === tab ? "page" : undefined}
                 className={view.tab === tab ? "mod-tab is-active" : "mod-tab"}
-                href={moderationHref({ ...view, tab, status: "pending", search: "", hospitalId: 0, page: 1 })}
+                href={moderationHref({ ...view, tab, status: "pending", search: "", hospitalId: 0, reported: false, page: 1 })}
                 replace
               >
                 {t(tab === "reviews" ? "mod.tab.reviews" : "mod.tab.community")}

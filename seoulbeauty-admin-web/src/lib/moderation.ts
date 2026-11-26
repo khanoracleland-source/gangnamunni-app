@@ -19,6 +19,7 @@ export function parseModerationView(params: { get(name: string): string | null }
     search: (params.get("search") ?? "").trim().slice(0, MODERATION_SEARCH_MAX),
     hospitalId: positive(params.get("hospitalId")),
     page: Math.min(100000, positive(params.get("page")) || 1),
+    reported: params.get("tab") === "community" && canSeeCommunity && params.get("reported") === "1",
   };
 }
 
@@ -29,12 +30,13 @@ export function moderationHref(v: ModerationView): string {
   if (v.status !== "pending") params.set("status", v.status);
   if (v.search !== "") params.set("search", v.search);
   if (v.tab === "reviews" && v.hospitalId > 0) params.set("hospitalId", String(v.hospitalId));
+  if (v.tab === "community" && v.reported) params.set("reported", "1");
   if (v.page > 1) params.set("page", String(v.page));
   const s = params.toString();
   return s === "" ? "/moderation" : `/moderation?${s}`;
 }
 
-export const hasModerationFilters = (v: ModerationView): boolean => v.search !== "" || v.hospitalId > 0;
+export const hasModerationFilters = (v: ModerationView): boolean => v.search !== "" || v.hospitalId > 0 || v.reported;
 
 export const STATE_LABEL: Record<ModerationState, MessageKey> = { pending: "mod.st.pending", approved: "mod.st.ok", rejected: "mod.st.no" };
 export const STATE_TONE: Record<ModerationState, "warn" | "on" | "err"> = { pending: "warn", approved: "on", rejected: "err" };

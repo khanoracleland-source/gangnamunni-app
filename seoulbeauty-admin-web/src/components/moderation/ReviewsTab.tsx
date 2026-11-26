@@ -102,7 +102,7 @@ export default function ReviewsTab({ view, hospitals, isSuper, canDecide, canEdi
             <p className="list-head__count mod-meta" role="status" aria-live="polite">
               {busy ? t("mod.loading") : t("mod.count.rev", { status: t(STATE_LABEL[view.status]), n: formatNumber(total) })}
             </p>
-            {hasModerationFilters(view) ? <Link className="txtbtn" href={moderationHref({ ...view, search: "", hospitalId: 0, page: 1 })}>{t("mod.f.reset")}</Link> : null}
+            {hasModerationFilters(view) ? <Link className="txtbtn" href={moderationHref({ ...view, search: "", hospitalId: 0, reported: false, page: 1 })}>{t("mod.f.reset")}</Link> : null}
           </div>
           {data.items.length === 0 ? (
             <div className="empty mod-empty">
