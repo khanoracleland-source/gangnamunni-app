@@ -1,6 +1,6 @@
 import { inflateRawSync } from 'node:zlib';
 import { buildXlsx } from './xlsx';
-import { actionsFor, parseExportQuery, parseListQuery, sheetName, transitionOf, isFail } from './bookings.logic';
+import { actionsFor, listQuery, parseExportQuery, parseListQuery, sheetName, transitionOf, isFail, ListFilters } from './bookings.logic';
 
 describe('booking flow', () => {
   it('follows pending -> checking -> confirmed -> completed, with a cancellation only while checking', () => {
@@ -19,6 +19,18 @@ describe('booking queries', () => {
     expect(isFail(parseListQuery({ status: 'bogus' }))).toBe(true);
     expect(isFail(parseListQuery({ from: '2026-02-30' }))).toBe(true);
     expect(isFail(parseListQuery({ status: 'confirmed', hospital_id: '12', page: '2' }))).toBe(false);
+  });
+  it('the dashboard window and the cancelled group are checked and become parameters', () => {
+    expect(parseListQuery({ created_days: '7', status_group: 'cancelled' })).toMatchObject({ createdDays: 7, statusGroup: 'cancelled' });
+    for (const bad of [{ created_days: '0' }, { created_days: '366' }, { created_days: '7; DROP' }, { status_group: 'paid' }, { status: 'pending', status_group: 'cancelled' }]) {
+      expect(isFail(parseListQuery(bad))).toBe(true);
+    }
+    const f = parseListQuery({ created_days: '30', status_group: 'cancelled' }) as ListFilters;
+    const q = listQuery({ scope: 'all', hospitalIds: [] } as never, f);
+    expect(q.sql).toContain('b.status IN (?, ?)');
+    expect(q.sql).toContain('b.created_at >= NOW() - INTERVAL ? DAY');
+    expect(q.values).toEqual(expect.arrayContaining(['cancelled', 'refunded', 30]));
+    expect(q.sql).not.toContain('cancelled');
   });
   it('the export needs a date range', () => {
     expect(isFail(parseExportQuery({}))).toBe(true);

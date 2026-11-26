@@ -3,7 +3,7 @@ import { listQuery, parseListQuery, scopeClause, splitMessage, toItem, toStats, 
 describe('consultations logic', () => {
   describe('parseListQuery', () => {
     it('empty query is page 1 with no filters', () => {
-      expect(parseListQuery({})).toEqual({ hospitalId: 0, status: '', q: '', page: 1 });
+      expect(parseListQuery({})).toEqual({ hospitalId: 0, status: '', createdDays: 0, q: '', page: 1 });
     });
     it('rejects an unknown status, a bad hospital and a bad page', () => {
       expect(parseListQuery({ status: 'nope' })).toEqual({ error: 'invalid_query', field: 'status' });
@@ -19,6 +19,15 @@ describe('consultations logic', () => {
     });
   });
 
+  describe('created window', () => {
+    it('is checked and becomes a parameter', () => {
+      expect(parseListQuery({ created_days: '7' })).toMatchObject({ createdDays: 7 });
+      for (const bad of ['0', '366', 'x', '7 OR 1']) expect(parseListQuery({ created_days: bad })).toEqual({ error: 'invalid_query', field: 'created_days' });
+      const q = listQuery({ scope: 'all', hospitalIds: [] } as never, parseListQuery({ created_days: '7' }) as never);
+      expect(q.sql).toContain('c.created_at >= NOW() - INTERVAL ? DAY');
+      expect(q.values).toContain(7);
+    });
+  });
   describe('scopeClause', () => {
     it('all: no hospital limit, one hospital when chosen', () => {
       expect(scopeClause({ scope: 'all', hospitalIds: [] }, 0)).toEqual({ sql: '1 = 1', values: [] });
@@ -34,7 +43,7 @@ describe('consultations logic', () => {
   });
 
   it('listQuery is parameterised and newest first, with search values as parameters', () => {
-    const q = listQuery({ scope: 'own', hospitalIds: [12] }, { hospitalId: 0, status: 'pending', q: "50%_'--", page: 3 });
+    const q = listQuery({ scope: 'own', hospitalIds: [12] }, { hospitalId: 0, status: 'pending', createdDays: 0, q: "50%_'--", page: 3 });
     expect(q.sql).toContain('ORDER BY c.created_at DESC, c.id DESC LIMIT ? OFFSET ?');
     expect(q.sql).not.toContain("'--");
     expect(q.values).toEqual([12, 'pending', "%50\\%\\_'--%", "%50\\%\\_'--%", "%50\\%\\_'--%", PER_PAGE, 2 * PER_PAGE]);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import Icon from "../Icon";
@@ -13,7 +14,7 @@ import { todayIso } from "@/lib/bookings";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { percentOf } from "@/lib/format";
 import { useT } from "@/lib/locale";
-import { defaultFilters, queryKey, rangeProblem, toQuery, won, type Filters } from "@/lib/payments";
+import { defaultFilters, filtersFromSearch, queryKey, rangeProblem, toQuery, won, type Filters } from "@/lib/payments";
 
 type Phase = "loading" | "ready" | "forbidden" | "redirecting" | "error";
 const leaveToLogin = () => window.location.assign(PHP_ADMIN_URL);
@@ -68,7 +69,9 @@ function Board({ me }: { me: Me }) {
   const t = useT();
   const own = me.admin.scope === "own";
   const today = todayIso();
-  const [filters, setFilters] = useState<Filters>(() => defaultFilters(today));
+  const searchParams = useSearchParams();
+  // A link (the dashboard cards) may carry the date range; without one it is the month so far.
+  const [filters, setFilters] = useState<Filters>(() => filtersFromSearch(searchParams, today));
   const [qInput, setQInput] = useState("");
   const [tick, setTick] = useState(0);
   const [page, setPage] = useState(1);

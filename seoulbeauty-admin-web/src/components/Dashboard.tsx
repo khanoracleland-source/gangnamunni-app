@@ -12,6 +12,7 @@ import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type Er
 import { fetchMe, fetchSummary, type Admin, type DashboardSummary, type Features } from "@/lib/api";
 import { PHP_ADMIN_URL, REFRESH_INTERVAL_MS } from "@/lib/config";
 import { formatClock, formatNumber, formatPercent, percentOf } from "@/lib/format";
+import { dayBefore, todayIso } from "@/lib/bookings";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 
@@ -169,7 +170,7 @@ export default function Dashboard() {
 
       {summary && features ? <Shortcuts features={features} pending={summary.catalog.hospitalsPending} /> : null}
 
-      {summary ? <SummaryView summary={summary} period={period} doctorsHref={features?.doctors ? "/doctors" : undefined} treatmentsHref={features?.treatments ? "/treatments" : undefined} onHelp={setHelp} /> : null}
+      {summary ? <SummaryView summary={summary} period={period} features={features} onHelp={setHelp} /> : null}
 
       <HelpDialog metric={help} days={days} onClose={() => setHelp(null)} />
     </AdminShell>
@@ -250,13 +251,30 @@ function Section({ id, title, desc, children }: { id: string; title: string; des
   );
 }
 
-function SummaryView({ summary, period, doctorsHref, treatmentsHref, onHelp }: { summary: DashboardSummary; period: Period; doctorsHref?: string; treatmentsHref?: string; onHelp: (id: MetricId) => void }) {
+function SummaryView({ summary, period, features, onHelp }: { summary: DashboardSummary; period: Period; features: Features | null; onHelp: (id: MetricId) => void }) {
   const t = useT();
   const { members, catalog } = summary;
   const days = period === "d7" ? 7 : 30;
   const b = summary.bookings[period];
   const consultations = summary.consultations[period];
   const cancelRate = percentOf(b.cancelled, b.count);
+
+  // Each card opens the page that holds its numbers, narrowed the way the card counts them (the same window and statuses).
+  const win = `created_days=${days}`;
+  const today = todayIso();
+  const paidRange = `from=${dayBefore(today, days)}&to=${today}`;
+  const link = (on: boolean | undefined, href: string): string | undefined => (on ? href : undefined);
+  const hrefs = {
+    bookCount: link(features?.bookings, `/bookings?${win}`),
+    bookAmount: link(features?.bookings, `/bookings?${win}`),
+    bookCancel: link(features?.bookings, `/bookings?${win}&status_group=cancelled`),
+    bookPending: link(features?.bookings, `/bookings?${win}&status=pending`),
+    bookPaid: link(features?.payments, `/payments?${paidRange}`),
+    bookRefund: link(features?.payments, `/payments?${paidRange}`),
+    consult: link(features?.consultations, `/consultations?${win}`),
+    doctors: link(features?.doctors, "/doctors"),
+    treatments: link(features?.treatments, "/treatments"),
+  };
 
   // An admin who is also a member must be counted once: overall = members + admins - those who are both.
   const both = Math.min(members.adminsAlsoMembers, members.total, members.admins);
@@ -286,12 +304,13 @@ function SummaryView({ summary, period, doctorsHref, treatmentsHref, onHelp }: {
 
       <Section id="sec-bookings" title={t("sec.bookings")} desc={t("sec.bookings.desc")}>
         <div className="grid">
-          <Metric id="bookCount" value={formatNumber(b.count)} unit="case" note={<Delta current={b.count} previous={b.prev.count} days={days} />} compare={{ current: b.count, previous: b.prev.count, currentText: formatNumber(b.count), previousText: formatNumber(b.prev.count) }} onHelp={onHelp} />
-          <Metric id="bookAmount" value={formatNumber(b.amount)} unit="won" note={<Delta current={b.amount} previous={b.prev.amount} days={days} />} compare={{ current: b.amount, previous: b.prev.amount, currentText: formatNumber(b.amount), previousText: formatNumber(b.prev.amount) }} onHelp={onHelp} />
-          <Metric id="bookPaid" value={formatNumber(b.paidAmount)} unit="won" note={<Delta current={b.paidAmount} previous={b.prev.paidAmount} days={days} />} compare={{ current: b.paidAmount, previous: b.prev.paidAmount, currentText: formatNumber(b.paidAmount), previousText: formatNumber(b.prev.paidAmount) }} onHelp={onHelp} />
-          <Metric id="bookRefund" value={formatNumber(b.refundedAmount)} unit="won" note={t("m.bookRefund.note", { days })} onHelp={onHelp} />
+          <Metric id="bookCount" href={hrefs.bookCount} value={formatNumber(b.count)} unit="case" note={<Delta current={b.count} previous={b.prev.count} days={days} />} compare={{ current: b.count, previous: b.prev.count, currentText: formatNumber(b.count), previousText: formatNumber(b.prev.count) }} onHelp={onHelp} />
+          <Metric id="bookAmount" href={hrefs.bookAmount} value={formatNumber(b.amount)} unit="won" note={<Delta current={b.amount} previous={b.prev.amount} days={days} />} compare={{ current: b.amount, previous: b.prev.amount, currentText: formatNumber(b.amount), previousText: formatNumber(b.prev.amount) }} onHelp={onHelp} />
+          <Metric id="bookPaid" href={hrefs.bookPaid} value={formatNumber(b.paidAmount)} unit="won" note={<Delta current={b.paidAmount} previous={b.prev.paidAmount} days={days} />} compare={{ current: b.paidAmount, previous: b.prev.paidAmount, currentText: formatNumber(b.paidAmount), previousText: formatNumber(b.prev.paidAmount) }} onHelp={onHelp} />
+          <Metric id="bookRefund" href={hrefs.bookRefund} value={formatNumber(b.refundedAmount)} unit="won" note={t("m.bookRefund.note", { days })} onHelp={onHelp} />
           <Metric
             id="bookCancel"
+            href={hrefs.bookCancel}
             value={formatNumber(b.cancelled)}
             unit="case"
             note={cancelRate === null ? t("m.bookCancel.noteNone") : t("m.bookCancel.note", { rate: formatPercent(cancelRate) })}
@@ -299,6 +318,7 @@ function SummaryView({ summary, period, doctorsHref, treatmentsHref, onHelp }: {
           />
           <Metric
             id="bookPending"
+            href={hrefs.bookPending}
             value={formatNumber(b.pending)}
             unit="case"
             note={
@@ -313,15 +333,15 @@ function SummaryView({ summary, period, doctorsHref, treatmentsHref, onHelp }: {
             }
             onHelp={onHelp}
           />
-          <Metric id="consult" value={formatNumber(consultations)} unit="case" note={t("m.consult.note", { days })} onHelp={onHelp} />
+          <Metric id="consult" href={hrefs.consult} value={formatNumber(consultations)} unit="case" note={t("m.consult.note", { days })} onHelp={onHelp} />
         </div>
       </Section>
 
       <Section id="sec-hospitals" title={t("sec.hospitals")} desc={t("sec.hospitals.desc")}>
         <div className="grid">
           <Metric id="hospitals" href="/hospitals" value={formatNumber(catalog.hospitals)} unit="place" note={t("m.hospitals.note", { n: formatNumber(catalog.hospitalsPending) })} onHelp={onHelp} />
-          <Metric id="doctors" href={doctorsHref} value={formatNumber(catalog.doctors)} unit="person" note={t("m.doctors.note")} onHelp={onHelp} />
-          <Metric id="treatments" href={treatmentsHref} value={formatNumber(catalog.treatments)} unit="item" note={t("m.treatments.note")} onHelp={onHelp} />
+          <Metric id="doctors" href={hrefs.doctors} value={formatNumber(catalog.doctors)} unit="person" note={t("m.doctors.note")} onHelp={onHelp} />
+          <Metric id="treatments" href={hrefs.treatments} value={formatNumber(catalog.treatments)} unit="item" note={t("m.treatments.note")} onHelp={onHelp} />
         </div>
       </Section>
     </>

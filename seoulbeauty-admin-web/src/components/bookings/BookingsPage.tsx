@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import Icon, { type IconName } from "../Icon";
@@ -11,7 +12,7 @@ import {
   assignBookingDoctor, changeBookingStatus, downloadBookingsExcel, fetchBookingDetail, fetchBookingHospitals, fetchBookings, fetchMe,
   type ApiResult, type BookingAction, type BookingDetail, type BookingHospital, type BookingList, type BookingRow, type Me, type WriteResult,
 } from "@/lib/api";
-import { BOOKING_STATUSES, EMPTY_FILTERS, dayBefore, isBookingStatus, pageButtons, queryKey, todayIso, toQuery, type BookingStatus, type Filters } from "@/lib/bookings";
+import { BOOKING_STATUSES, EMPTY_FILTERS, dayBefore, filtersFromSearch, isBookingStatus, pageButtons, queryKey, todayIso, toQuery, type BookingStatus, type Filters } from "@/lib/bookings";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
@@ -128,7 +129,9 @@ function Board({ me }: { me: Me }) {
   const canWrite = me.features.bookingsWrite;
   const closeLabel = t("m.close");
 
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const searchParams = useSearchParams();
+  // A link (the dashboard cards) opens the list already narrowed; later changes stay on this screen only.
+  const [filters, setFilters] = useState<Filters>(() => filtersFromSearch(searchParams));
   const [qInput, setQInput] = useState("");
   const [page, setPage] = useState(1);
   const [tick, setTick] = useState(0);
@@ -194,6 +197,8 @@ function Board({ me }: { me: Me }) {
   const set = (patch: Partial<Filters>) => {
     setFilters((f) => {
       const next = { ...f, ...patch };
+      // One status and the cancelled group cannot both apply (the server refuses it).
+      if (patch.status) next.statusGroup = "";
       // A start after the end would be refused by the server: the date that was not just typed gives way.
       if (next.from && next.to && next.from > next.to) {
         if (patch.from !== undefined) next.to = "";
@@ -256,7 +261,7 @@ function Board({ me }: { me: Me }) {
   const stats = list?.stats;
   const today = todayIso();
   const statTiles: { key: string; label: string; value: number; pressed: boolean; onClick: () => void; icon?: IconName }[] = [
-    { key: "all", label: t("bk.stat.all"), value: stats?.total ?? 0, pressed: !filters.status && !filters.from && !filters.to, onClick: () => set({ status: "", from: "", to: "" }) },
+    { key: "all", label: t("bk.stat.all"), value: stats?.total ?? 0, pressed: !filters.status && !filters.statusGroup && !filters.createdDays && !filters.from && !filters.to, onClick: () => set({ status: "", statusGroup: "", createdDays: 0, from: "", to: "" }) },
     ...(["pending", "hospital_checking", "confirmed", "completed", "cancelled"] as const).map((s) => ({
       key: s, label: t(stKey(s)), value: stats?.[s] ?? 0, pressed: filters.status === s, icon: STATUS_ICON[s], onClick: () => set({ status: filters.status === s ? "" : s }),
     })),
@@ -316,6 +321,12 @@ function Board({ me }: { me: Me }) {
         </label>
         <button type="button" className="btn btn--ghost bk-filters__reset" disabled={!dirty} onClick={reset}>{t("bk.f.reset")}</button>
       </form>
+
+      {filters.createdDays > 0 || filters.statusGroup ? (
+        <Notice action={<button type="button" className="btn btn--ghost btn--sm" onClick={() => set({ createdDays: 0, statusGroup: "" })}>{t("bk.win.clear")}</button>}>
+          {[filters.createdDays > 0 ? t("bk.win.created", { n: filters.createdDays }) : "", filters.statusGroup ? t("bk.win.cancelled") : ""].filter(Boolean).join(" · ")}
+        </Notice>
+      ) : null}
 
       {got === null ? <p className="muted" role="status">{t("bk.loading")}</p> : null}
 

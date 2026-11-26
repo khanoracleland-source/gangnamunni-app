@@ -1813,7 +1813,7 @@ export type BookingDetail = {
   answers: { question: string; yes: boolean }[];
   doctors: { id: number; name: string }[];
 };
-export type BookingsQuery = { hospitalId: number; status: string; from: string; to: string; q: string; page: number };
+export type BookingsQuery = { hospitalId: number; status: string; statusGroup: "" | "cancelled"; createdDays: number; from: string; to: string; q: string; page: number };
 
 const BOOKING_ACTIONS: readonly string[] = ["checking", "confirm", "cancel", "complete"];
 const STAT_KEYS = ["total", "pending", "hospital_checking", "confirmed", "completed", "cancelled", "refunded", "no_show", "today"] as const;
@@ -1832,6 +1832,8 @@ export async function fetchBookings(q: BookingsQuery, signal?: AbortSignal): Pro
   const p = new URLSearchParams();
   if (q.hospitalId > 0) p.set("hospital_id", String(q.hospitalId));
   if (q.status) p.set("status", q.status);
+  if (q.statusGroup) p.set("status_group", q.statusGroup);
+  if (q.createdDays > 0) p.set("created_days", String(q.createdDays));
   if (q.from) p.set("from", q.from);
   if (q.to) p.set("to", q.to);
   if (q.q.trim()) p.set("q", q.q.trim());
@@ -1892,7 +1894,7 @@ export type ConsultationRow = {
 export type ConsultationStats = Record<"total" | "pending" | "approved" | "completed" | "rejected" | "contact_failed", number> & { oldestPendingAt: string | null };
 export type ConsultationList = { items: ConsultationRow[]; total: number; page: number; perPage: number; totalPages: number; stats: ConsultationStats };
 export type ConsultationHospital = { id: number; name: string; consultationCount: number; pendingCount: number };
-export type ConsultationsQuery = { hospitalId: number; status: string; q: string; page: number };
+export type ConsultationsQuery = { hospitalId: number; status: string; createdDays: number; q: string; page: number };
 
 const consultationRow = (v: unknown): ConsultationRow => {
   const d = obj(v);
@@ -1907,6 +1909,7 @@ export async function fetchConsultations(q: ConsultationsQuery, signal?: AbortSi
   const p = new URLSearchParams();
   if (q.hospitalId > 0) p.set("hospital_id", String(q.hospitalId));
   if (q.status) p.set("status", q.status);
+  if (q.createdDays > 0) p.set("created_days", String(q.createdDays));
   if (q.q.trim()) p.set("q", q.q.trim());
   if (q.page > 1) p.set("page", String(q.page));
   const qs = p.toString();

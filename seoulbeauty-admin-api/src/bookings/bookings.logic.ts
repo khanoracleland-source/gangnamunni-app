@@ -52,11 +52,15 @@ export function parseDay(raw: unknown): string | null {
   return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]) ? v : null;
 }
 
-export interface ListFilters { hospitalId: number; status: string; from: string; to: string; q: string; page: number }
+export const MAX_CREATED_DAYS = 365;
+/** status_group=cancelled: cancelled and refunded together, the same count the dashboard card calls "cancellations". */
+export const CANCELLED_GROUP = ['cancelled', 'refunded'] as const;
+
+export interface ListFilters { hospitalId: number; status: string; statusGroup: '' | 'cancelled'; createdDays: number; from: string; to: string; q: string; page: number }
 
 /** The list query string. An unknown status or a malformed date is a 400, never silently ignored. */
 export function parseListQuery(raw: Record<string, unknown>): ListFilters | Fail {
-  const out: ListFilters = { hospitalId: 0, status: '', from: '', to: '', q: '', page: 1 };
+  const out: ListFilters = { hospitalId: 0, status: '', statusGroup: '', createdDays: 0, from: '', to: '', q: '', page: 1 };
   if (s(raw.hospital_id).trim() !== '') {
     const id = parsePositiveInt(raw.hospital_id);
     if (id === null) return { error: 'invalid_query', field: 'hospital_id' };
@@ -66,6 +70,15 @@ export function parseListQuery(raw: Record<string, unknown>): ListFilters | Fail
     const st = s(raw.status).trim();
     if (!(STATUSES as readonly string[]).includes(st)) return { error: 'invalid_query', field: 'status' };
     out.status = st;
+  }
+  if (s(raw.status_group).trim() !== '') {
+    if (s(raw.status_group).trim() !== 'cancelled' || out.status) return { error: 'invalid_query', field: 'status_group' };
+    out.statusGroup = 'cancelled';
+  }
+  if (s(raw.created_days).trim() !== '') {
+    const n = parsePositiveInt(raw.created_days);
+    if (n === null || n > MAX_CREATED_DAYS) return { error: 'invalid_query', field: 'created_days' };
+    out.createdDays = n;
   }
   for (const [key, prop] of [['from', 'from'], ['to', 'to']] as const) {
     if (s(raw[key]).trim() === '') continue;
@@ -108,6 +121,9 @@ function whereOf(scope: AdminScope, f: ListFilters): Query {
   const parts = [sc.sql];
   const values = [...sc.values];
   if (f.status) { parts.push('b.status = ?'); values.push(f.status); }
+  if (f.statusGroup === 'cancelled') { parts.push(`b.status IN (${CANCELLED_GROUP.map(() => '?').join(', ')})`); values.push(...CANCELLED_GROUP); }
+  // The booked-at window of the dashboard cards (created_at, not the visit day).
+  if (f.createdDays > 0) { parts.push('b.created_at >= NOW() - INTERVAL ? DAY AND b.created_at <= NOW()'); values.push(f.createdDays); }
   if (f.from) { parts.push('b.booking_date >= ?'); values.push(f.from); }
   if (f.to) { parts.push('b.booking_date <= ?'); values.push(f.to); }
   if (f.q) {

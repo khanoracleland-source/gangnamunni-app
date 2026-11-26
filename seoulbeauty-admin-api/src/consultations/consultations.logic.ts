@@ -25,11 +25,13 @@ export function parsePositiveInt(raw: unknown): number | null {
   return Number.isSafeInteger(n) ? n : null;
 }
 
-export interface ListFilters { hospitalId: number; status: string; q: string; page: number }
+export const MAX_CREATED_DAYS = 365;
+
+export interface ListFilters { hospitalId: number; status: string; createdDays: number; q: string; page: number }
 
 /** The list query string. An unknown status or a malformed number is a 400, never silently ignored. */
 export function parseListQuery(raw: Record<string, unknown>): ListFilters | Fail {
-  const out: ListFilters = { hospitalId: 0, status: '', q: '', page: 1 };
+  const out: ListFilters = { hospitalId: 0, status: '', createdDays: 0, q: '', page: 1 };
   if (s(raw.hospital_id).trim() !== '') {
     const id = parsePositiveInt(raw.hospital_id);
     if (id === null) return { error: 'invalid_query', field: 'hospital_id' };
@@ -39,6 +41,11 @@ export function parseListQuery(raw: Record<string, unknown>): ListFilters | Fail
     const st = s(raw.status).trim();
     if (!(STATUSES as readonly string[]).includes(st)) return { error: 'invalid_query', field: 'status' };
     out.status = st;
+  }
+  if (s(raw.created_days).trim() !== '') {
+    const n = parsePositiveInt(raw.created_days);
+    if (n === null || n > MAX_CREATED_DAYS) return { error: 'invalid_query', field: 'created_days' };
+    out.createdDays = n;
   }
   out.q = stripControl(s(raw.q)).slice(0, SEARCH_MAX);
   if (s(raw.page).trim() !== '') {
@@ -70,6 +77,8 @@ function whereOf(scope: AdminScope, f: ListFilters): Query {
   const parts = [sc.sql];
   const values = [...sc.values];
   if (f.status) { parts.push('c.status = ?'); values.push(f.status); }
+  // The requested-at window of the dashboard card.
+  if (f.createdDays > 0) { parts.push('c.created_at >= NOW() - INTERVAL ? DAY AND c.created_at <= NOW()'); values.push(f.createdDays); }
   if (f.q) {
     const like = `%${escapeLike(f.q)}%`;
     parts.push("(c.name LIKE ? ESCAPE '\\\\' OR c.phone LIKE ? ESCAPE '\\\\' OR c.hospital_name LIKE ? ESCAPE '\\\\')");

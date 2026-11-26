@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
 import Icon from "../Icon";
@@ -8,7 +9,7 @@ import { DetailSheet, DetailView } from "./ConsultationDetail";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import { fetchConsultationHospitals, fetchConsultations, fetchMe, type ApiResult, type ConsultationHospital, type ConsultationList, type ConsultationRow, type Me } from "@/lib/api";
 import { pageButtons } from "@/lib/bookings";
-import { CONSULTATION_STATUSES, EMPTY_FILTERS, TYPE_KEYS, isConsultationStatus, isStale, queryKey, tagValue, toQuery, type ConsultationStatus, type Filters } from "@/lib/consultations";
+import { CONSULTATION_STATUSES, EMPTY_FILTERS, TYPE_KEYS, filtersFromSearch, isConsultationStatus, isStale, queryKey, tagValue, toQuery, type ConsultationStatus, type Filters } from "@/lib/consultations";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
@@ -91,7 +92,9 @@ function Board({ me }: { me: Me }) {
   const wide = useWide();
   const canWrite = me.features.consultationsWrite;
 
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const searchParams = useSearchParams();
+  // A link (the dashboard card) opens the list already narrowed; later changes stay on this screen only.
+  const [filters, setFilters] = useState<Filters>(() => filtersFromSearch(searchParams));
   const [qInput, setQInput] = useState("");
   const [page, setPage] = useState(1);
   const [tick, setTick] = useState(0);
@@ -199,6 +202,12 @@ function Board({ me }: { me: Me }) {
             <div key={i} className="cs-row cs-row--skel" aria-hidden="true"><span className="cs-sk cs-sk--m" /><span className="cs-sk cs-sk--l" /></div>
           ))}
         </div>
+      ) : null}
+
+      {filters.createdDays > 0 ? (
+        <Notice action={<button type="button" className="btn btn--ghost btn--sm" onClick={() => set({ createdDays: 0 })}>{t("cs.win.clear")}</button>}>
+          {t("cs.win.created", { n: filters.createdDays })}
+        </Notice>
       ) : null}
 
       {list && rows.length === 0 && !loadingList ? (

@@ -5,11 +5,22 @@ export const CONSULTATION_STATUSES = ["pending", "approved", "completed", "rejec
 export type ConsultationStatus = (typeof CONSULTATION_STATUSES)[number];
 export const isConsultationStatus = (v: string): v is ConsultationStatus => (CONSULTATION_STATUSES as readonly string[]).includes(v);
 
-export type Filters = { hospitalId: number; status: ConsultationStatus | ""; q: string };
-export const EMPTY_FILTERS: Filters = { hospitalId: 0, status: "", q: "" };
+export type Filters = { hospitalId: number; status: ConsultationStatus | ""; createdDays: number; q: string };
+export const EMPTY_FILTERS: Filters = { hospitalId: 0, status: "", createdDays: 0, q: "" };
+
+/** The list a link from the dashboard opens: status and the requested-at window. Anything unknown is dropped. */
+export function filtersFromSearch(p: URLSearchParams): Filters {
+  const status = p.get("status") ?? "";
+  const days = Number(p.get("created_days") ?? "");
+  return {
+    ...EMPTY_FILTERS,
+    status: isConsultationStatus(status) ? status : "",
+    createdDays: Number.isInteger(days) && days > 0 && days <= 365 ? days : 0,
+  };
+}
 
 export const toQuery = (f: Filters, page: number): ConsultationsQuery => ({ ...f, page });
-export const queryKey = (q: ConsultationsQuery): string => JSON.stringify([q.hospitalId, q.status, q.q.trim(), q.page]);
+export const queryKey = (q: ConsultationsQuery): string => JSON.stringify([q.hospitalId, q.status, q.createdDays, q.q.trim(), q.page]);
 
 /** A request waiting longer than this is shown as late (the list marks its time). */
 export const STALE_AFTER_HOURS = 24;

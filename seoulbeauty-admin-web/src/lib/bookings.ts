@@ -5,11 +5,29 @@ export const BOOKING_STATUSES = ["pending", "hospital_checking", "confirmed", "c
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 export const isBookingStatus = (v: string): v is BookingStatus => (BOOKING_STATUSES as readonly string[]).includes(v);
 
-export type Filters = { hospitalId: number; status: BookingStatus | ""; from: string; to: string; q: string };
-export const EMPTY_FILTERS: Filters = { hospitalId: 0, status: "", from: "", to: "", q: "" };
+export type Filters = { hospitalId: number; status: BookingStatus | ""; statusGroup: "" | "cancelled"; createdDays: number; from: string; to: string; q: string };
+export const EMPTY_FILTERS: Filters = { hospitalId: 0, status: "", statusGroup: "", createdDays: 0, from: "", to: "", q: "" };
+
+const isDay = (v: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(v);
+/** The list a link from the dashboard opens: the address says which statuses, which booked-at window and which visit days. Anything unknown is dropped. */
+export function filtersFromSearch(p: URLSearchParams): Filters {
+  const status = p.get("status") ?? "";
+  const days = Number(p.get("created_days") ?? "");
+  const from = p.get("from") ?? "";
+  const to = p.get("to") ?? "";
+  const group = p.get("status_group") === "cancelled" && !isBookingStatus(status);
+  return {
+    ...EMPTY_FILTERS,
+    status: isBookingStatus(status) ? status : "",
+    statusGroup: group ? "cancelled" : "",
+    createdDays: Number.isInteger(days) && days > 0 && days <= 365 ? days : 0,
+    from: isDay(from) ? from : "",
+    to: isDay(to) ? to : "",
+  };
+}
 
 export const toQuery = (f: Filters, page: number): BookingsQuery => ({ ...f, page });
-export const queryKey = (q: BookingsQuery): string => JSON.stringify([q.hospitalId, q.status, q.from, q.to, q.q.trim(), q.page]);
+export const queryKey = (q: BookingsQuery): string => JSON.stringify([q.hospitalId, q.status, q.statusGroup, q.createdDays, q.from, q.to, q.q.trim(), q.page]);
 
 /** A day as yyyy-mm-dd, in the time zone the server counts its days in (Korea), whatever the browser's zone is. */
 export function todayIso(now: Date = new Date()): string {

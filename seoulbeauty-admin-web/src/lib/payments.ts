@@ -17,6 +17,14 @@ const parseDay = (iso: string): number => {
 /** The first of the month of `today` (a yyyy-mm-dd day) up to `today`: what the server uses when no dates are sent. */
 export const defaultFilters = (today: string): Filters => ({ hospitalId: 0, from: `${today.slice(0, 7)}-01`, to: today, q: "" });
 
+/** The range a link from the dashboard opens (from/to in the address); a missing or wrong range falls back to the month so far. */
+export function filtersFromSearch(p: URLSearchParams, today: string): Filters {
+  const base = defaultFilters(today);
+  const from = p.get("from") ?? "";
+  const to = p.get("to") ?? "";
+  return rangeProblem(from, to) === null ? { ...base, from, to } : base;
+}
+
 export const toQuery = (f: Filters, page: number): PaymentsQuery => ({ ...f, page });
 export const queryKey = (q: PaymentsQuery): string => JSON.stringify([q.hospitalId, q.from, q.to, q.q.trim(), q.page]);
 
