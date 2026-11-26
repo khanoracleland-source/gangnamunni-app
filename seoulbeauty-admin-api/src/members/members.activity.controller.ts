@@ -24,6 +24,9 @@ export class MembersActivityController {
   @Get('points')
   points(@Param('id') id: string, @Query() q: Record<string, unknown>) { return this.activity.points(parseMemberId(id), pagingOf(q)).then((v) => this.found(v)); }
 
+  @Get('blocks')
+  blocks(@Param('id') id: string, @Query() q: Record<string, unknown>) { return this.activity.blocks(parseMemberId(id), pagingOf(q)).then((v) => this.found(v)); }
+
   @Get('history')
   history(@Param('id') id: string, @Query() q: Record<string, unknown>) { return this.activity.history(parseMemberId(id), pagingOf(q)).then((v) => this.found(v)); }
 }

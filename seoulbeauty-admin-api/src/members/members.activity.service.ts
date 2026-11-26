@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
 import { Query } from '../hospitals/hospitals.logic';
 import {
-  bookingCountQuery, bookingListQuery, buildBookings, buildConsultations, buildHistory, buildPoints, consultationCountQuery, consultationListQuery,
+  blockCountQuery, blockedMembersQuery, blockListQuery, blockReportCountsQuery, blockReportsQuery, bookingCountQuery, bookingListQuery, buildBlocks, buildBookings, buildConsultations, buildHistory, buildPoints, consultationCountQuery, consultationListQuery,
   historyCountQuery, historyListQuery, Paging, pointBalanceQuery, pointCountQuery, pointListQuery, pointTotalsQuery,
 } from './members.activity.logic';
 
@@ -62,5 +62,19 @@ export class MembersActivityService {
     const no = Number(m.mb_no);
     const [total, rows] = await Promise.all([this.count(historyCountQuery(no)), this.rows(historyListQuery(no, p))]);
     return buildHistory(p, total, rows);
+  }
+
+  /** The members this member blocked, each with the reports this member filed about them (the reason for the block). */
+  async blocks(id: number, p: Paging) {
+    const m = await this.member(id);
+    if (!m) return null;
+    const [total, rows] = await Promise.all([this.count(blockCountQuery(String(m.mb_id))), this.rows(blockListQuery(String(m.mb_id), p))]);
+    const ids = [...new Set(rows.map((r) => String(r.blocked_id)))];
+    const members = ids.length ? await this.rows(blockedMembersQuery(ids)) : [];
+    const nos = members.map((x) => Number(x.mb_no)).filter((n) => n > 0);
+    const [reports, counts] = nos.length
+      ? await Promise.all([this.rows(blockReportsQuery(Number(m.mb_no), nos)), this.rows(blockReportCountsQuery(Number(m.mb_no), nos))])
+      : [[], []];
+    return buildBlocks(p, total, rows, members, reports, counts);
   }
 }

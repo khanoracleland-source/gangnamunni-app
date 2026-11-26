@@ -1618,3 +1618,20 @@ FLUSH PRIVILEGES;
 ```
 
 `seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_STATUS=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_STATUS=0` + restart.
+
+## 30. Members a member blocked, with the reasons (part of `ADMIN_MEMBERS_ACTIVITY`; read only; super admin only)
+
+`GET /v1/members/:id/blocks` (`?page=`, 20 rows per page, newest block first): the members this member blocked in the app (`gangnamunni_blocked_users`, `blocker_id` = the member's login id). Each row has the blocked member's name and state (active / blocked / left; none when the member no longer exists, then the stored name is shown), the date and the block's own reason (the app stores none), and the reasons: the reports this member filed about that member (`gangnamunni_content_reports`, `reporter_id` = this member, `reported_user_id` = the blocked one): the content type, a text excerpt, the report reason (spam, harassment, ...), the free text, the handling status and the date. The newest 5 reports are listed per blocked member, with the total number. Nothing is written. The tab is on with the other activity tabs, so run the SQL below before restarting the API.
+
+```sql
+-- Blocked members and reports (README section 30). Run as the DB admin, once. Safe to run again.
+GRANT SELECT (mb_no, mb_id, mb_nick, mb_name, mb_leave_date, mb_intercept_date) ON hms_saas.g5_member TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, blocker_id, blocked_id, blocked_name, reason, created_at) ON hms_saas.gangnamunni_blocked_users TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, reporter_id, reported_user_id, content_type, content_id, content_snippet, reason, reason_detail, status, created_at) ON hms_saas.gangnamunni_content_reports TO 'sb_admin_ro'@'127.0.0.1';
+
+GRANT SELECT (mb_no, mb_id, mb_nick, mb_name, mb_leave_date, mb_intercept_date) ON hms_saas.g5_member TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, blocker_id, blocked_id, blocked_name, reason, created_at) ON hms_saas.gangnamunni_blocked_users TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, reporter_id, reported_user_id, content_type, content_id, content_snippet, reason, reason_detail, status, created_at) ON hms_saas.gangnamunni_content_reports TO 'sb_admin_ro'@'localhost';
+
+FLUSH PRIVILEGES;
+```

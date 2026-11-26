@@ -1,5 +1,6 @@
 /** Pure parts of the member activity tabs: applications (consultations), bookings, points ledger and the audit journal. Read only. */
 import { num, positiveInt, Query, str } from '../hospitals/hospitals.logic';
+import { statusOf } from './members.logic';
 
 export const ACTIVITY_PER_PAGE = 20;
 const MAX_PAGE = 100_000;
@@ -111,3 +112,59 @@ export const buildHistory = (p: Paging, total: number, rows: Record<string, unkn
       ip: str(r.ip), createdAt: str(r.created_at),
     };
   }));
+
+/** Reports shown under one blocked member (the newest few; the real number comes with the item). */
+export const BLOCK_REPORTS_PER_USER = 5;
+
+/** Members this member blocked in the app (blocker_id holds the blocker's login id, newest first). */
+export const blockCountQuery = (mbId: string): Query => ({ sql: 'SELECT COUNT(*) AS cnt FROM gangnamunni_blocked_users WHERE blocker_id = ?', values: [mbId] });
+export const blockListQuery = (mbId: string, p: Paging): Query => ({
+  sql: `SELECT id, blocked_id, blocked_name, reason, created_at FROM gangnamunni_blocked_users WHERE blocker_id = ? ORDER BY created_at DESC, id DESC LIMIT ?, ?`,
+  values: [mbId, offsetOf(p), p.perPage],
+});
+/** The blocked members as they are now (name, state); a member who was removed from the table has no row. */
+export const blockedMembersQuery = (ids: string[]): Query => ({
+  sql: `SELECT mb_no, mb_id, mb_nick, mb_name, mb_leave_date, mb_intercept_date FROM g5_member WHERE mb_id IN (${ids.map(() => '?').join(', ')})`,
+  values: ids,
+});
+/** What the blocker reported about those members: this is the "why" (reports carry the reason, the content and its state). */
+export const blockReportsQuery = (reporterNo: number, targetNos: number[]): Query => ({
+  sql: `SELECT id, reported_user_id, content_type, content_id, content_snippet, reason, reason_detail, status, created_at
+        FROM gangnamunni_content_reports WHERE reporter_id = ? AND reported_user_id IN (${targetNos.map(() => '?').join(', ')})
+        ORDER BY created_at DESC, id DESC LIMIT 500`,
+  values: [reporterNo, ...targetNos],
+});
+export const blockReportCountsQuery = (reporterNo: number, targetNos: number[]): Query => ({
+  sql: `SELECT reported_user_id, COUNT(*) AS cnt FROM gangnamunni_content_reports WHERE reporter_id = ? AND reported_user_id IN (${targetNos.map(() => '?').join(', ')}) GROUP BY reported_user_id`,
+  values: [reporterNo, ...targetNos],
+});
+
+export function buildBlocks(
+  p: Paging, total: number, rows: Record<string, unknown>[], members: Record<string, unknown>[],
+  reports: Record<string, unknown>[], counts: Record<string, unknown>[],
+): Page<Record<string, unknown>> {
+  const byId = new Map(members.map((m) => [str(m.mb_id), m]));
+  const countOf = new Map(counts.map((c) => [num(c.reported_user_id), num(c.cnt)]));
+  const reportsOf = new Map<number, Record<string, unknown>[]>();
+  for (const r of reports) {
+    const key = num(r.reported_user_id);
+    const list = reportsOf.get(key) || [];
+    if (list.length < BLOCK_REPORTS_PER_USER) {
+      list.push({
+        id: num(r.id), contentType: str(r.content_type), contentId: num(r.content_id), snippet: str(r.content_snippet).slice(0, SNIPPET),
+        reason: str(r.reason), detail: str(r.reason_detail).slice(0, SNIPPET), status: str(r.status), createdAt: str(r.created_at),
+      });
+    }
+    reportsOf.set(key, list);
+  }
+  return pageOf(p, total, rows.map((r) => {
+    const m = byId.get(str(r.blocked_id));
+    const no = m ? num(m.mb_no) : 0;
+    return {
+      id: num(r.id), userNo: no || null, userId: str(r.blocked_id),
+      name: m ? str(m.mb_nick) || str(m.mb_name) || str(r.blocked_name) : str(r.blocked_name),
+      status: m ? statusOf(m) : null, reason: str(r.reason), blockedAt: str(r.created_at),
+      reportCount: countOf.get(no) || 0, reports: reportsOf.get(no) || [],
+    };
+  }));
+}
