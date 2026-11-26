@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, HttpException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { DB_RW, RwConnection, RwDb, RwDbProvider } from '../db/db.module';
-import { MemberDetail, statusOf } from './members.logic';
-import { AuditAction, hashPassword, planEdit, planPassword, RESET_LIMIT_PER_HOUR } from './members.write.logic';
+import { kstDays, MemberDetail, statusOf } from './members.logic';
+import { AuditAction, hashPassword, planEdit, planPassword, planStatus, RESET_LIMIT_PER_HOUR } from './members.write.logic';
 import { MembersService } from './members.service';
 
 type Row = Record<string, unknown>;
@@ -142,5 +142,44 @@ export class MembersWriteService {
     // Field names only, never a value.
     this.log.log(`member write: admin=${actor.id} target=${id} action=password_reset`);
     return { ok: true };
+  }
+
+  /**
+   * Blocks, unblocks or lets a member leave (soft: the row stays), in one transaction with the audit row.
+   * The date columns hold the day as YYYYMMDD in Korea time, the way the site and the app read them. Blocking and leaving also end every
+   * sign-in of the member (the credential epoch moves, the remembered / app tokens are deleted). Rules: a member who has left cannot be changed
+   * (409 member_left); only an active member can leave (a blocked one answers 409 member_blocked); the state the member is already in is a no-op.
+   * 400 invalid, 404 no such member, 503 write side unavailable.
+   */
+  async changeStatus(actor: WriteActor, id: number, body: unknown): Promise<MemberDetail> {
+    const planned = planStatus(body);
+    if (!planned.ok) throw new BadRequestException({ error: 'invalid', fields: planned.errors });
+    if (id <= 0) throw new NotFoundException({ error: 'not_found' });
+    const target = planned.status;
+    const today = kstDays().today.replace(/-/g, '');
+    const changed = await this.guarded(() =>
+      this.transaction(async (conn) => {
+        const [rows] = (await conn.query('SELECT mb_no, mb_id, mb_leave_date, mb_intercept_date FROM g5_member WHERE mb_no = ? LIMIT 1 FOR UPDATE', [id])) as any;
+        const member = (Array.isArray(rows) ? rows[0] : undefined) as Row | undefined;
+        if (!member) throw new NotFoundException({ error: 'not_found' });
+        const state = statusOf(member);
+        if (state === 'left') throw new ConflictException({ error: 'member_left' });
+        if (state === target) return false;
+        if (target === 'left' && state === 'blocked') throw new ConflictException({ error: 'member_blocked' });
+        const ends = "mb_cred_epoch = mb_cred_epoch + 1, mb_lost_certify = ''";
+        const sql = target === 'blocked' ? `UPDATE g5_member SET mb_intercept_date = ?, ${ends} WHERE mb_no = ?`
+          : target === 'left' ? `UPDATE g5_member SET mb_leave_date = ?, ${ends} WHERE mb_no = ?`
+          : "UPDATE g5_member SET mb_intercept_date = '' WHERE mb_no = ?";
+        const [updated] = (await conn.query(sql, target === 'active' ? [id] : [today, id])) as any;
+        if (Number(updated?.affectedRows) !== 1) throw new ServiceUnavailableException({ error: 'write_unavailable' });
+        if (target !== 'active') await conn.query('DELETE FROM sso_tokens WHERE g5_mb_id = ?', [s(member.mb_id)]);
+        await this.journal(conn, actor, member, target === 'blocked' ? 'block' : target === 'left' ? 'leave' : 'unblock', state, target);
+        return true;
+      }),
+    );
+    this.log.log(`member write: admin=${actor.id} target=${id} action=status:${target} changed=${changed}`);
+    const fresh = await this.reads.detail(id);
+    if (!fresh) throw new NotFoundException({ error: 'not_found' });
+    return fresh;
   }
 }

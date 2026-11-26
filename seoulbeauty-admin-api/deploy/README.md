@@ -1595,3 +1595,22 @@ Nothing to add for this API: it is not exposed by Apache. Browsers reach it only
 - Image and photo URLs are returned as stored: either absolute (`https://…`) or relative to the PHP admin directory
   (`uploads/hospitals/<id>/…`). Document files are not served by this API; the PHP admin (`hospital_document.php`) opens them (they can be uploaded, replaced and deleted here: section 11).
 - Time windows use the connection time zone `+09:00` (KST), set by the API on every connection.
+
+## 29. Member status: block, unblock, leave (`ADMIN_MEMBERS_STATUS`, optional; needs 26 and 27; super admin only)
+
+`POST /v1/members/:id/status` with `{"status": "blocked" | "active" | "left"}`; no reason is asked. The answer is the member as it is now. Any other key answers 400 `invalid`.
+Rules: an active member can be blocked or can leave; a blocked member can be made active again (unblock) but cannot leave (409 `member_blocked`: unblock first); a member who has left cannot be changed (409 `member_left`); asking for the state the member is already in changes nothing.
+Leaving is soft: the row stays (the PHP admin deleted it for good), `mb_leave_date` gets today's date (Korea time, `YYYYMMDD`) and the member can no longer sign in.
+One transaction: the member row is locked, `mb_intercept_date` (block, cleared on unblock) or `mb_leave_date` (leave) is set; blocking and leaving also move the credential epoch (`mb_cred_epoch`, `mb_lost_certify` cleared) and delete the member's rows of `sso_tokens`, so every sign-in ends. A row `block` / `unblock` / `leave` (before and after state, who, whom, IP) goes to `gangnamunni_member_audit`. If any step fails nothing is changed (503). No other system (HMS) is touched.
+Needs `ADMIN_MEMBERS_ENABLED=1` and `ADMIN_MEMBERS_STATUS=1`, the write user of section 6 and sections 26 and 27 (audit table, `sso_tokens` right).
+
+Database, as the DB admin, once (replace `hms_saas`; safe to run again):
+
+```sql
+-- Member status (README section 29). Run as the DB admin, once. Safe to run again. Needs sections 26 and 27.
+GRANT UPDATE (mb_intercept_date, mb_leave_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (mb_intercept_date, mb_leave_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+`seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_STATUS=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_STATUS=0` + restart.

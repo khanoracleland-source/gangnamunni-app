@@ -512,6 +512,17 @@ export class MembersPasswordEnabledGuard implements CanActivate {
   }
 }
 
+/** Blocking, unblocking and letting a member leave. Needs the members page on as well; only the exact value "1" turns it on. */
+export const membersStatusEnabled = (): boolean => membersEnabled() && process.env.ADMIN_MEMBERS_STATUS === '1';
+
+@Injectable()
+export class MembersStatusEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !membersStatusEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Member activity tabs (applications, bookings, points, history). Read only; needs the members page on as well. */
 export const membersActivityEnabled = (): boolean => membersEnabled() && process.env.ADMIN_MEMBERS_ACTIVITY === '1';
 

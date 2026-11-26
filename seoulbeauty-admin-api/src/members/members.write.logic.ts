@@ -30,7 +30,7 @@ export function planEdit(body: unknown): EditPlan {
 }
 
 /** The words of the audit journal (one per kind of change). */
-export type AuditAction = 'email_change' | 'password_reset';
+export type AuditAction = 'email_change' | 'password_reset' | 'block' | 'unblock' | 'leave';
 
 // ---- password reset ---------------------------------------------------------------------------------------------
 
@@ -68,4 +68,21 @@ export function matchesHash(password: string, hash: string): boolean {
   const want = Buffer.from(p[3], 'base64');
   const got = pbkdf2Sync(password, p[2], Number(p[1]), want.length, 'sha256');
   return want.length === got.length && timingSafeEqual(want, got);
+}
+
+/** The states an admin can put a member in: blocked, active again (unblock) or left (soft: the row stays, the member can no longer sign in). */
+export const STATUS_TARGETS = ['blocked', 'active', 'left'] as const;
+export type StatusTarget = (typeof STATUS_TARGETS)[number];
+export type StatusPlan = { ok: true; status: StatusTarget } | { ok: false; errors: Record<string, string> };
+
+/** Validates the body of a status change: exactly {"status": "blocked" | "active" | "left"}. */
+export function planStatus(body: unknown): StatusPlan {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { ok: false, errors: { body: 'bad_format' } };
+  const b = body as Record<string, unknown>;
+  const found: [string, string][] = [];
+  for (const key of Object.keys(b)) if (key !== 'status') found.push([key, 'not_allowed']);
+  if (!('status' in b)) found.push(['status', 'required']);
+  else if (typeof b.status !== 'string' || !(STATUS_TARGETS as readonly string[]).includes(b.status)) found.push(['status', 'bad_format']);
+  if (found.length > 0) return { ok: false, errors: Object.fromEntries(found) };
+  return { ok: true, status: b.status as StatusTarget };
 }
