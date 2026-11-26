@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; paymentsRefund: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -148,6 +148,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         consultations: obj(d.features).consultations === true,
         consultationsWrite: obj(d.features).consultationsWrite === true,
         payments: obj(d.features).payments === true,
+        paymentsRefund: obj(d.features).paymentsRefund === true,
         moderation: obj(d.features).moderation === true,
         moderationWrite: obj(d.features).moderationWrite === true,
         moderationEdit: obj(d.features).moderationEdit === true,
@@ -2250,6 +2251,59 @@ export async function createFeeRate(input: { payMethod: "card" | "bank_transfer"
 }
 export async function deleteFeeRate(id: number): Promise<WriteResult<Json>> {
   return sendJson("DELETE", `/v1/payments/fee-rates/${id}`);
+}
+
+
+// ───────── Payment detail and refund ─────────
+
+export type RefundBlock = "not_pg" | "no_tid" | "not_paid" | "method_unsupported" | "booking_not_cancelled" | "nothing_left";
+const REFUND_BLOCKS: readonly RefundBlock[] = ["not_pg", "no_tid", "not_paid", "method_unsupported", "booking_not_cancelled", "nothing_left"];
+export type RefundHistoryRow = { id: number; paymentId: number; bookingId: number; amount: number; actorName: string; status: string; reason: string; createdAt: string; patientName: string; hospitalName: string };
+export type PaymentDetail = {
+  item: PaymentRow;
+  /** The treatment price: what the customer paid plus the points that covered part of it. */
+  grossAmount: number;
+  pointsUsed: number;
+  method: string;
+  provider: string;
+  /** The gateway transaction id, masked by the server. */
+  tid: string;
+  /** `enabled`: the server has refunds switched on; `allowed`: this payment can be refunded now (else `block` says why); `amount`: what would be returned. */
+  refund: { enabled: boolean; allowed: boolean; block: RefundBlock | null; amount: number };
+  history: RefundHistoryRow[];
+};
+export type RefundHistory = { items: RefundHistoryRow[]; page: number; perPage: number; hasMore: boolean };
+
+const refundHistoryRow = (v: unknown): RefundHistoryRow => {
+  const d = obj(v);
+  return { id: num(d.id), paymentId: num(d.paymentId), bookingId: num(d.bookingId), amount: num(d.amount), actorName: str(d.actorName), status: str(d.status), reason: str(d.reason), createdAt: str(d.createdAt), patientName: str(d.patientName), hospitalName: str(d.hospitalName) };
+};
+
+export async function fetchPaymentDetail(id: number, signal?: AbortSignal): Promise<ApiResult<PaymentDetail>> {
+  const res = await getJson(`/v1/payments/item/${encodeURIComponent(String(id))}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  const r = obj(d.refund);
+  const block = REFUND_BLOCKS.find((b) => b === r.block) ?? null;
+  return {
+    ok: true,
+    data: {
+      item: paymentRow(d.item), grossAmount: num(d.grossAmount), pointsUsed: num(d.pointsUsed), method: str(d.method), provider: str(d.provider), tid: str(d.tid),
+      refund: { enabled: r.enabled === true, allowed: r.allowed === true, block, amount: num(r.amount) }, history: list(d.history).map(refundHistoryRow),
+    },
+  };
+}
+
+export async function fetchRefundHistory(page: number, signal?: AbortSignal): Promise<ApiResult<RefundHistory>> {
+  const res = await getJson(`/v1/payments/refunds?page=${page}`, signal);
+  if (!res.ok) return res;
+  const d = obj(res.data);
+  return { ok: true, data: { items: list(d.items).map(refundHistoryRow), page: Math.max(1, num(d.page)), perPage: Math.max(1, num(d.perPage)), hasMore: d.hasMore === true } };
+}
+
+/** Full refund through the payment gateway. `requestId` (64 hex) makes a repeated send harmless; the same id is kept for a retry after an unknown outcome. */
+export async function refundPayment(id: number, requestId: string, reason: string): Promise<WriteResult<Json>> {
+  return sendJson("POST", `/v1/payments/${encodeURIComponent(String(id))}/refund`, { requestId, reason });
 }
 
 

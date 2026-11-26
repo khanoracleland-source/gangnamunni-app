@@ -71,3 +71,13 @@ export function niceMax(max: number): number {
 
 /** An axis label: millions from one million up ("12.5백만" is written by the screen), plain thousands below. */
 export const axisIsMillions = (top: number): boolean => top >= 1000000;
+
+/** The refund reasons the server accepts (the text is stored with the refund and sent to the gateway); the screen shows them translated. */
+export const REFUND_REASONS: readonly string[] = ["고객 변심", "병원 사정", "시술 불가", "기타"];
+
+/** 32 random bytes as 64 hex characters: one id per refund attempt, so sending the same attempt twice can never refund twice. */
+export function newRequestId(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
