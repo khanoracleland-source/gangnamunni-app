@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
-import { BookingsTab, ConsultationsTab, HistoryTab, PointsTab } from "./ActivityTabs";
+import { BlocksTab, BookingsTab, ConsultationsTab, HistoryTab, PointsTab } from "./ActivityTabs";
 import { EmailDialog, PasswordDialog, StatusDialog } from "./MemberDialogs";
 import StatusPill from "./StatusPill";
 import { fetchMember, type ApiResult, type Features, type MemberDetail } from "@/lib/api";
@@ -13,7 +13,7 @@ import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 import { dayOf, minuteOf } from "@/lib/members";
 
-type Tab = "info" | "consultations" | "bookings" | "points" | "history";
+type Tab = "info" | "consultations" | "bookings" | "points" | "blocks" | "history";
 
 /** One member: a side sheet on wide screens, a bottom sheet on phones. Info plus the activity tabs; e-mail and password are the only changes. */
 export default function MemberSheet({ no, features, onClose, onChanged }: { no: number; features: Features; onClose: () => void; onChanged: () => void }) {
@@ -53,7 +53,7 @@ export default function MemberSheet({ no, features, onClose, onChanged }: { no: 
 
   const m = got?.res.ok ? got.res.data : null;
   const failed = got?.key === key && !got.res.ok;
-  const tabs: Tab[] = features.membersActivity ? ["info", "consultations", "bookings", "points", "history"] : ["info"];
+  const tabs: Tab[] = features.membersActivity ? ["info", "consultations", "bookings", "points", "blocks", "history"] : ["info"];
   const canWrite = !!m && m.status !== "left";
   const showEmail = canWrite && features.membersWrite;
   const showPassword = canWrite && features.membersPassword;
@@ -70,7 +70,7 @@ export default function MemberSheet({ no, features, onClose, onChanged }: { no: 
 
   let body: ReactNode;
   if (m) {
-    body = tab === "info" ? <InfoPane m={m} /> : tab === "consultations" ? <ConsultationsTab no={m.no} /> : tab === "bookings" ? <BookingsTab no={m.no} /> : tab === "points" ? <PointsTab no={m.no} /> : <HistoryTab key={changes} no={m.no} />;
+    body = tab === "info" ? <InfoPane m={m} /> : tab === "consultations" ? <ConsultationsTab no={m.no} /> : tab === "bookings" ? <BookingsTab no={m.no} /> : tab === "points" ? <PointsTab no={m.no} /> : tab === "blocks" ? <BlocksTab key={changes} no={m.no} /> : <HistoryTab key={changes} no={m.no} />;
   } else if (failed) {
     body = <Notice tone="warn" icon="alert" action={<button type="button" className="btn btn--ghost btn--sm" onClick={() => setRetry((n) => n + 1)}>{t("state.retry")}</button>}>{t("mb.err.detail")}</Notice>;
   } else {

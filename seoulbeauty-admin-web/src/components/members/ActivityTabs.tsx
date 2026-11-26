@@ -4,14 +4,15 @@ import { useEffect, useState, type ReactNode } from "react";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import {
-  fetchMemberBookings, fetchMemberConsultations, fetchMemberHistory, fetchMemberPoints,
-  type ApiResult, type MemberBooking, type MemberConsultation, type MemberHistoryEntry, type MemberPage, type MemberPointEntry, type MemberPoints,
+  fetchMemberBlocks, fetchMemberBookings, fetchMemberConsultations, fetchMemberHistory, fetchMemberPoints,
+  type ApiResult, type MemberBlock, type MemberBooking, type MemberConsultation, type MemberHistoryEntry, type MemberPage, type MemberPointEntry, type MemberPoints,
 } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
-import { BOOKING_STATUSES, POINT_TYPES, dayOf, minuteOf } from "@/lib/members";
+import { BOOKING_STATUSES, POINT_TYPES, REPORT_CONTENT_TYPES, REPORT_REASONS, REPORT_STATUSES, dayOf, minuteOf } from "@/lib/members";
+import StatusPill from "./StatusPill";
 
 /** Reads one page of a member's tab; the last answer stays on screen while the next page loads. */
 function usePaged<T>(no: number, load: (no: number, page: number, signal: AbortSignal) => Promise<ApiResult<T>>) {
@@ -134,6 +135,43 @@ export function PointsTab({ no }: { no: number }) {
         )}
       </Frame>
     </>
+  );
+}
+
+/** Members this member blocked. Under each one: the reports this member filed about them, which is why they blocked them. */
+export function BlocksTab({ no }: { no: number }) {
+  const t = useT();
+  const s = usePaged<MemberPage<MemberBlock>>(no, fetchMemberBlocks);
+  const known = <T extends readonly string[]>(list: T, v: string, prefix: string) => ((list as readonly string[]).includes(v) ? t(`${prefix}${v}` as MessageKey) : v);
+  return (
+    <Frame s={s} empty="mb.bl.empty">
+      {(d) => (
+        <ul className="mb-rows">
+          {d.items.map((b) => (
+            <li key={b.id} className="mb-row">
+              <div className="mb-row__top"><b className="mb-ell">{b.name || b.userId || "—"}</b>{b.status ? <StatusPill status={b.status} /> : <span className="mb-row__muted">{t("mb.bl.gone")}</span>}</div>
+              <div className="mb-row__sub">{b.userId}{b.userNo ? ` · #${b.userNo}` : ""} · {t("mb.bl.at", { date: minuteOf(b.blockedAt) })}</div>
+              {b.reason ? <p className="mb-row__msg">{t("mb.bl.reason", { reason: b.reason })}</p> : null}
+              {b.reports.length === 0 ? <p className="mb-row__msg mb-row__muted">{t("mb.bl.noreport")}</p> : (
+                <>
+                  <div className="mb-row__sub">{t("mb.bl.reports", { n: formatNumber(b.reportCount) })}</div>
+                  <ul className="mb-sub">
+                    {b.reports.map((r) => (
+                      <li key={r.id} className="mb-sub__item">
+                        <div className="mb-row__top"><b className="mb-ell">{known(REPORT_REASONS, r.reason, "mb.bl.r.")}</b><span className="mb-row__muted">{known(REPORT_STATUSES, r.status, "mb.bl.s.")}</span></div>
+                        <div className="mb-row__sub">{minuteOf(r.createdAt)} · {known(REPORT_CONTENT_TYPES, r.contentType, "mb.bl.c.")}</div>
+                        {r.snippet ? <p className="mb-row__msg">{r.snippet}</p> : null}
+                        {r.detail ? <p className="mb-row__msg">{t("mb.bl.detail", { text: r.detail })}</p> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Frame>
   );
 }
 

@@ -41,5 +41,8 @@ export function writeErrorKey(res: WriteFailure, scope: "em" | "pw" | "st"): Mes
   return "mb.w.generic";
 }
 
+export const REPORT_REASONS = ["spam", "harassment", "hate_speech", "sexual", "violence", "misinformation", "copyright", "other"] as const;
+export const REPORT_CONTENT_TYPES = ["review", "qna", "community", "chat", "comment", "tip", "event"] as const;
+export const REPORT_STATUSES = ["pending", "investigating", "resolved", "dismissed"] as const;
 export const BOOKING_STATUSES = ["pending", "hospital_checking", "confirmed", "completed", "cancelled", "refunded", "no_show"] as const;
 export const POINT_TYPES = ["earn", "use", "refund", "expire", "admin_add", "admin_sub", "earn_cancel", "admin"] as const;

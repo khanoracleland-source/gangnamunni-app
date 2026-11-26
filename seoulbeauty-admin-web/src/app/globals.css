@@ -4298,6 +4298,8 @@ button.mb-stat:focus-visible { outline: none; box-shadow: var(--ring); }
 .mb-row { padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
 .mb-row__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; line-height: 22px; }
 .mb-row__sub { color: var(--muted); font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
+.mb-sub { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.mb-sub__item { padding: 8px 12px; border-left: 2px solid var(--line); background: var(--surface-2); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 .mb-row__msg { margin: 4px 0 0; font-size: 13px; line-height: 20px; overflow-wrap: anywhere; word-break: keep-all; }
 .mb-row__muted, .mb-bk { flex: none; color: var(--muted); font-size: 12px; font-weight: 600; }
 .mb-amt { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; }

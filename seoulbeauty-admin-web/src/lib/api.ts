@@ -2975,6 +2975,10 @@ export type MemberPointTotals = { earned: number; used: number; expired: number;
 export type MemberPoints = MemberPage<MemberPointEntry> & { balance: number; totals: MemberPointTotals };
 export type MemberHistoryEntry = { id: number; adminUsername: string; adminRole: string; action: string; after: string | null; ip: string; createdAt: string };
 
+export type MemberBlockReport = { id: number; contentType: string; contentId: number; snippet: string; reason: string; detail: string; status: string; createdAt: string };
+/** A member this member blocked; `reports` are what the blocker reported about them (the reason for the block). */
+export type MemberBlock = { id: number; userNo: number | null; userId: string; name: string; status: "active" | "blocked" | "left" | null; reason: string; blockedAt: string; reportCount: number; reports: MemberBlockReport[] };
+
 export const fetchMemberConsultations = (no: number, page: number, signal?: AbortSignal) =>
   memberTab<MemberConsultation>(no, "consultations", page, (r) => { const c = obj(r); return { id: num(c.id), hospitalName: str(c.hospitalName), type: str(c.type), message: str(c.message), status: str(c.status), createdAt: str(c.createdAt) }; }, signal);
 export const fetchMemberBookings = (no: number, page: number, signal?: AbortSignal) =>
@@ -2982,6 +2986,17 @@ export const fetchMemberBookings = (no: number, page: number, signal?: AbortSign
 /** The history shows the new e-mail only; the old value and any password-related value are never read here. */
 export const fetchMemberHistory = (no: number, page: number, signal?: AbortSignal) =>
   memberTab<MemberHistoryEntry>(no, "history", page, (r) => { const h = obj(r); return { id: num(h.id), adminUsername: str(h.adminUsername), adminRole: str(h.adminRole), action: str(h.action), after: h.action === "email_change" && typeof h.after === "string" ? h.after : null, ip: str(h.ip), createdAt: str(h.createdAt) }; }, signal);
+
+export const fetchMemberBlocks = (no: number, page: number, signal?: AbortSignal) =>
+  memberTab<MemberBlock>(no, "blocks", page, (r) => {
+    const b = obj(r);
+    const s = str(b.status);
+    return {
+      id: num(b.id), userNo: num(b.userNo) || null, userId: str(b.userId), name: str(b.name), status: s === "active" || s === "blocked" || s === "left" ? s : null,
+      reason: str(b.reason), blockedAt: str(b.blockedAt), reportCount: num(b.reportCount),
+      reports: list(b.reports).map((x) => { const q = obj(x); return { id: num(q.id), contentType: str(q.contentType), contentId: num(q.contentId), snippet: str(q.snippet), reason: str(q.reason), detail: str(q.detail), status: str(q.status), createdAt: str(q.createdAt) }; }),
+    };
+  }, signal);
 
 export async function fetchMemberPoints(no: number, page: number, signal?: AbortSignal): Promise<ApiResult<MemberPoints>> {
   const res = await getJson(`${memberPath(no)}/points${page > 1 ? `?page=${page}` : ""}`, signal);
