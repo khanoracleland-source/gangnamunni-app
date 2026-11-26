@@ -608,6 +608,11 @@ if (!isset($admin_page_description) && isset($menu_descriptions[$admin_current])
         <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="sbCollapseAll()" title="전체 접기"><i class="bi bi-chevron-bar-contract"></i></button>
     </div>
     <div class="ms-auto d-flex align-items-center gap-2">
+        <!-- 새 관리자 패널 바로가기 -->
+        <a href="https://hms.seoulbeauty.app/admin-next" class="btn btn-sm btn-primary d-flex align-items-center gap-1" id="newAdminLink" title="새 관리자 패널">
+            <i class="bi bi-stars"></i>
+            <span class="d-none d-md-inline" style="font-size:12px;font-weight:600;">새 어드민</span>
+        </a>
         <!-- 알림 벨 -->
         <div class="dropdown">
             <button class="btn btn-sm btn-outline-secondary position-relative" id="notifBellBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="알림">
