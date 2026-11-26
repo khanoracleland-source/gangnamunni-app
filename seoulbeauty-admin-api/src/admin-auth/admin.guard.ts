@@ -398,6 +398,18 @@ export class PaymentsEnabledGuard implements CanActivate {
   }
 }
 
+/** Refunding a booking payment through Inicis (POST /v1/payments/:id/refund). Needs ADMIN_PAYMENTS_ENABLED=1, the write user DB_RW_* and the Inicis refund settings. Only the exact value "1" turns it on. */
+export const paymentsRefundEnabled = (): boolean => paymentsEnabled() && process.env.ADMIN_PAYMENTS_REFUND === '1';
+
+/** With ADMIN_PAYMENTS_REFUND off the refund route answers 404 as if it did not exist. */
+@Injectable()
+export class PaymentsRefundEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !paymentsRefundEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Payment fee rates (GET/POST /v1/payments/fee-rates). Needs ADMIN_PAYMENTS_ENABLED=1 as well; the write user DB_RW_* is needed for POST. Only the exact value "1" turns it on. */
 export const paymentsFeesEnabled = (): boolean => paymentsEnabled() && process.env.ADMIN_PAYMENTS_FEES === '1';
 
