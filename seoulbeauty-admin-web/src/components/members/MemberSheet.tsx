@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import { BookingsTab, ConsultationsTab, HistoryTab, PointsTab } from "./ActivityTabs";
-import { EmailDialog, PasswordDialog } from "./MemberDialogs";
+import { EmailDialog, PasswordDialog, StatusDialog } from "./MemberDialogs";
 import StatusPill from "./StatusPill";
 import { fetchMember, type ApiResult, type Features, type MemberDetail } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
@@ -22,8 +22,9 @@ export default function MemberSheet({ no, features, onClose, onChanged }: { no: 
   const tabsId = useId();
   const [tab, setTab] = useState<Tab>("info");
   const [retry, setRetry] = useState(0);
+  const [changes, setChanges] = useState(0);
   const [got, setGot] = useState<{ key: string; res: ApiResult<MemberDetail> } | null>(null);
-  const [dialog, setDialog] = useState<"email" | "password" | null>(null);
+  const [dialog, setDialog] = useState<"email" | "password" | "block" | "unblock" | "leave" | null>(null);
   const key = `${no}#${retry}`;
 
   useEffect(() => {
@@ -56,16 +57,20 @@ export default function MemberSheet({ no, features, onClose, onChanged }: { no: 
   const canWrite = !!m && m.status !== "left";
   const showEmail = canWrite && features.membersWrite;
   const showPassword = canWrite && features.membersPassword;
+  const showBlock = !!m && m.status === "active" && features.membersStatus;
+  const showUnblock = !!m && m.status === "blocked" && features.membersStatus;
+  const showLeave = showBlock;
 
   const done = (fresh?: MemberDetail) => {
     setDialog(null);
+    setChanges((n) => n + 1);
     if (fresh) setGot({ key, res: { ok: true, data: fresh } });
     onChanged();
   };
 
   let body: ReactNode;
   if (m) {
-    body = tab === "info" ? <InfoPane m={m} /> : tab === "consultations" ? <ConsultationsTab no={m.no} /> : tab === "bookings" ? <BookingsTab no={m.no} /> : tab === "points" ? <PointsTab no={m.no} /> : <HistoryTab no={m.no} />;
+    body = tab === "info" ? <InfoPane m={m} /> : tab === "consultations" ? <ConsultationsTab no={m.no} /> : tab === "bookings" ? <BookingsTab no={m.no} /> : tab === "points" ? <PointsTab no={m.no} /> : <HistoryTab key={changes} no={m.no} />;
   } else if (failed) {
     body = <Notice tone="warn" icon="alert" action={<button type="button" className="btn btn--ghost btn--sm" onClick={() => setRetry((n) => n + 1)}>{t("state.retry")}</button>}>{t("mb.err.detail")}</Notice>;
   } else {
@@ -92,13 +97,17 @@ export default function MemberSheet({ no, features, onClose, onChanged }: { no: 
       ) : null}
       <div className="mb-sheet__body" id={`${tabsId}-panel`} role={tabs.length > 1 ? "tabpanel" : undefined} aria-labelledby={tabs.length > 1 ? `${tabsId}-${tab}` : undefined}>{body}</div>
       {m && m.status === "left" ? <p className="mb-sheet__note"><Icon name="info" size={15} />{t("mb.a.left")}</p> : null}
-      {showEmail || showPassword ? (
+      {showEmail || showPassword || showBlock || showUnblock ? (
         <footer className="mb-sheet__foot">
+          {showBlock ? <button type="button" className="btn btn--reject" onClick={() => setDialog("block")}>{t("mb.a.block")}</button> : null}
+          {showLeave ? <button type="button" className="btn btn--reject" onClick={() => setDialog("leave")}>{t("mb.a.leave")}</button> : null}
+          {showUnblock ? <button type="button" className="btn btn--ghost" onClick={() => setDialog("unblock")}>{t("mb.a.unblock")}</button> : null}
           {showEmail ? <button type="button" className="btn btn--ghost" onClick={() => setDialog("email")}>{t("mb.a.email")}</button> : null}
           {showPassword ? <button type="button" className="btn btn--primary" onClick={() => setDialog("password")}>{t("mb.a.password")}</button> : null}
         </footer>
       ) : null}
       {m && dialog === "email" ? <EmailDialog m={m} onClose={() => setDialog(null)} onDone={done} /> : null}
+      {m && (dialog === "block" || dialog === "unblock" || dialog === "leave") ? <StatusDialog m={m} action={dialog} onClose={() => setDialog(null)} onDone={done} /> : null}
       {m && dialog === "password" ? <PasswordDialog m={m} onClose={() => setDialog(null)} onDone={() => done()} /> : null}
     </dialog>,
     document.body,

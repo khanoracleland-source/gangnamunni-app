@@ -5,8 +5,9 @@ import { createPortal } from "react-dom";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import { showUnitToast } from "../treatment-units/UnitToast";
-import { changeMemberEmail, resetMemberPassword, type MemberDetail } from "@/lib/api";
+import { changeMemberEmail, changeMemberStatus, resetMemberPassword, type MemberDetail } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
+import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 import { PASSWORD_RE, writeErrorKey } from "@/lib/members";
 
@@ -140,6 +141,44 @@ export function PasswordDialog({ m, onClose, onDone }: { m: MemberDetail; onClos
           <button type="submit" className="btn btn--primary" disabled={busy} aria-busy={busy}>{busy ? t("cs.a.working") : t("mb.pw.save")}</button>
         </div>
       </form>
+    </Modal>
+  );
+}
+
+/** Confirms one status change (block, unblock, leave). No reason is asked. A refusal stays inside the dialog; the toast comes after it closes. */
+export function StatusDialog({ m, action, onClose, onDone }: { m: MemberDetail; action: "block" | "unblock" | "leave"; onClose: () => void; onDone: (fresh: MemberDetail) => void }) {
+  const t = useT();
+  const titleId = useId();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const target = action === "block" ? "blocked" : action === "unblock" ? "active" : "left";
+
+  const confirm = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const res = await changeMemberStatus(m.no, target);
+    if (!res.ok && res.status === 401) {
+      window.location.assign(PHP_ADMIN_URL);
+      return;
+    }
+    if (res.ok) {
+      showUnitToast({ tone: "ok", message: t(`mb.st.${action}.ok` as MessageKey), closeLabel: t("mb.d.close") });
+      onDone(res.data);
+      return;
+    }
+    setError(t(writeErrorKey(res, "st")));
+    setBusy(false);
+  };
+
+  return (
+    <Modal title={t(`mb.st.${action}.title` as MessageKey)} titleId={titleId} busy={busy} onClose={onClose}>
+      <p className="dialog__text">{t(`mb.st.${action}.body` as MessageKey, { id: m.id })}</p>
+      {error ? <div className="dialog__err"><Notice tone="warn" icon="alert">{error}</Notice></div> : null}
+      <div className="dialog__foot mb-foot">
+        <button type="button" className="btn btn--ghost" onClick={onClose} disabled={busy} data-autofocus="">{t("mb.cancel")}</button>
+        <button type="button" className={action === "unblock" ? "btn btn--primary" : "btn btn--reject"} onClick={() => void confirm()} disabled={busy} aria-busy={busy}>{busy ? t("cs.a.working") : t(`mb.a.${action}` as MessageKey)}</button>
+      </div>
     </Modal>
   );
 }

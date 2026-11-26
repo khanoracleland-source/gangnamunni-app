@@ -146,9 +146,9 @@ export function HistoryTab({ no }: { no: number }) {
         <ul className="mb-rows">
           {d.items.map((h) => (
             <li key={h.id} className="mb-row">
-              <div className="mb-row__top"><b className="mb-ell">{h.action === "email_change" || h.action === "password_reset" ? t(`mb.hi.a.${h.action}` as MessageKey) : h.action}</b></div>
+              <div className="mb-row__top"><b className="mb-ell">{["email_change", "password_reset", "block", "unblock", "leave"].includes(h.action) ? t(`mb.hi.a.${h.action}` as MessageKey) : h.action}</b></div>
               <div className="mb-row__sub">{minuteOf(h.createdAt)} · {t("mb.hi.by", { name: h.adminUsername })}</div>
-              {h.after ? <p className="mb-row__msg">{t("mb.hi.new", { email: h.after })}</p> : null}
+              {h.action === "email_change" && h.after ? <p className="mb-row__msg">{t("mb.hi.new", { email: h.after })}</p> : null}
             </li>
           ))}
         </ul>

@@ -24,15 +24,16 @@ export function minuteOf(value: string | null): string {
 export const PASSWORD_RE = /^(?=.*[A-Za-z])(?=.*[0-9])(?=.*[^A-Za-z0-9\s])[\x21-\x7E]{9,20}$/;
 
 /** The text key for a refused change; `scope` picks the field messages of that dialog. */
-export function writeErrorKey(res: WriteFailure, scope: "em" | "pw"): MessageKey {
+export function writeErrorKey(res: WriteFailure, scope: "em" | "pw" | "st"): MessageKey {
   if (res.status === 0) return "mb.w.network";
   if (res.status === 401) return "mb.w.forbidden";
   if (res.status === 403) return "mb.w.forbidden";
   if (res.status === 404) return "mb.w.notfound";
   if (res.status === 429) return "mb.w.too_many";
   if (res.status === 503) return "mb.w.unavailable";
-  if (res.status === 409) return res.error === "email_taken" ? "mb.em.err.taken" : res.error === "member_left" ? "mb.w.left" : "mb.w.generic";
+  if (res.status === 409) return res.error === "email_taken" ? "mb.em.err.taken" : res.error === "member_left" ? "mb.w.left" : res.error === "member_blocked" ? "mb.st.err.blocked" : "mb.w.generic";
   if (res.status === 400) {
+    if (scope === "st") return "mb.w.generic";
     const code = scope === "em" ? res.fields.email : res.fields.password;
     if (code === "required") return `mb.${scope}.err.required` as MessageKey;
     if (code === "bad_format") return `mb.${scope}.err.bad_format` as MessageKey;

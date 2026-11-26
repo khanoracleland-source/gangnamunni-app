@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; paymentsRefund: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean; members: boolean; membersWrite: boolean; membersPassword: boolean; membersActivity: boolean };
+export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; paymentsRefund: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean; members: boolean; membersWrite: boolean; membersPassword: boolean; membersActivity: boolean; membersStatus: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -161,6 +161,7 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         membersWrite: obj(d.features).membersWrite === true,
         membersPassword: obj(d.features).membersPassword === true,
         membersActivity: obj(d.features).membersActivity === true,
+        membersStatus: obj(d.features).membersStatus === true,
       },
     },
   };
@@ -2940,6 +2941,11 @@ export async function fetchMember(no: number, signal?: AbortSignal): Promise<Api
 /** The only two changes an admin can make to a member. */
 export async function changeMemberEmail(no: number, email: string): Promise<WriteResult<MemberDetail>> {
   const res = await sendJson("PATCH", memberPath(no), { email });
+  return res.ok ? { ok: true, data: memberDetail(res.data) } : res;
+}
+/** Blocks, unblocks or lets a member leave (soft: the row stays). The answer is the member as it is now. */
+export async function changeMemberStatus(no: number, status: "blocked" | "active" | "left"): Promise<WriteResult<MemberDetail>> {
+  const res = await sendJson("POST", `${memberPath(no)}/status`, { status });
   return res.ok ? { ok: true, data: memberDetail(res.data) } : res;
 }
 /** The new password is only ever sent, never kept: the answer carries nothing of it. */
