@@ -1462,6 +1462,23 @@ admin (`admin_bookings.php`, `sql/booking_payment_previews.sql`, `sql/platform_p
 code to `ALREADY_CANCELLED_CODES` in `src/payments/payments.refund.logic.ts` (the PHP admin has the same open item). Bank-transfer payments are not refundable here yet.
 Turning it off: `ADMIN_PAYMENTS_REFUND=0`, restart (the route answers 404, the panel hides the button).
 
+## 25. Members (`ADMIN_MEMBERS_ENABLED`, optional, read only so far; super admin only)
+
+`GET /v1/members` (search, status filter, sorting, paging), `/v1/members/summary` (counters) and `/v1/members/:id` (detail) for the new members screen. Hospital accounts get 403.
+Search looks in login id, name, nick, e-mail and mobile number; status is `active`, `blocked` (not left, block date set) or `left` (leave date set); the sort keys are `joined`, `lastLogin`, `no`, `id`, `name`, `point`. Block and leave dates are read in both stored formats (`YYYYMMDD` and `YYYY-MM-DD`). The password hash is never selected.
+Needs `ADMIN_MEMBERS_ENABLED=1`. Nothing is written.
+
+Database (as root; the read-only user, add only what is missing in `SHOW GRANTS FOR 'sb_admin_ro'@'127.0.0.1'`):
+
+```sql
+GRANT SELECT (mb_no, mb_id, mb_name, mb_nick, mb_email, mb_hp, mb_tel, mb_sex, mb_birth, mb_addr1, mb_addr2, mb_point, mb_datetime, mb_today_login,
+  mb_login_ip, mb_leave_date, mb_intercept_date, mb_sms, mb_mailling, mb_memo) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'127.0.0.1';
+-- the same for 'sb_admin_ro'@'localhost'
+FLUSH PRIVILEGES;
+```
+
+`seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_ENABLED=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_ENABLED=0` + restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.

@@ -19,6 +19,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { BannersModule } from './banners/banners.module';
 import { CategoryBoardModule } from './category-board/category-board.module';
 import { ModerationModule } from './moderation/moderation.module';
+import { MembersModule } from './members/members.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -43,6 +44,7 @@ import { HealthController } from './health/health.controller';
     ModerationModule,
     BannersModule,
     CategoryBoardModule,
+    MembersModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

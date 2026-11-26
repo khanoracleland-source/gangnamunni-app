@@ -476,6 +476,18 @@ export class AdminsAccessGuard implements CanActivate {
   }
 }
 
+/** Members (/v1/members*). Independent of the other switches; super admin only. Only the exact value "1" turns it on. */
+export const membersEnabled = (): boolean => process.env.ADMIN_MEMBERS_ENABLED === '1';
+
+/** With ADMIN_MEMBERS_ENABLED off the members routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class MembersEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !membersEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 
