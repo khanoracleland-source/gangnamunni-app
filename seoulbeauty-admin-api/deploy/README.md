@@ -1527,7 +1527,7 @@ FLUSH PRIVILEGES;
 ## 27. Resetting a member's password (`ADMIN_MEMBERS_PASSWORD`, optional; needs 26; super admin only)
 
 `POST /v1/members/:id/password` with `{"password": "..."}`. The super admin chooses the new password (9-20 printable ASCII characters with a letter, a digit and a special character, the same rule as the app) and tells it to the member by phone; the answer is `{"ok": true}` and never contains a password.
-Only an active member: a blocked member answers 409 `member_blocked`, one who has left 409 `member_left`. At most 3 resets of the same member within one hour, then 429 `too_many`. Any other key in the body answers 400 `invalid`.
+An active or a blocked member; one who has left answers 409 `member_left`. At most 3 resets of the same member within one hour, then 429 `too_many`. Any other key in the body answers 400 `invalid`.
 One transaction: the member row is locked, the Gnuboard hash (`sha256:12000:...`, the one the site and the app read) replaces `mb_password`, the credential epoch moves (`mb_cred_epoch`, `mb_lost_certify` cleared) and the remembered / app tokens are deleted from `sso_tokens`, so every sign-in of the member ends and the new password is needed. A row `password_reset` (who, whom, IP; no password) goes to `gangnamunni_member_audit`. If any step fails nothing is changed (503). No other system (HMS) is touched.
 Needs `ADMIN_MEMBERS_ENABLED=1` and `ADMIN_MEMBERS_PASSWORD=1`, the write user of section 6 and section 26 (audit table).
 

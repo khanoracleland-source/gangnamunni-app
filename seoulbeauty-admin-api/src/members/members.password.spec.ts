@@ -118,13 +118,14 @@ describe('admin API: members password reset', () => {
     expect(JSON.stringify(r.body)).not.toContain(PASSWORD);
   });
 
-  it('refuses a blocked member and one who has left (409) without changing anything', async () => {
-    const blocked = await reset('/v1/members/6/password', { password: PASSWORD });
-    expect([blocked.status, blocked.body]).toEqual([409, { error: 'member_blocked' }]);
+  it('allows a blocked member, refuses one who has left (409) without changing anything', async () => {
     const left = await reset('/v1/members/7/password', { password: PASSWORD });
     expect([left.status, left.body]).toEqual([409, { error: 'member_left' }]);
     expect(rwCalls.some((c) => c.sql.startsWith('UPDATE') || c.sql.startsWith('DELETE') || c.sql.startsWith('INSERT'))).toBe(false);
     expect(commits).toBe(0);
+    const blocked = await reset('/v1/members/6/password', { password: PASSWORD });
+    expect([blocked.status, blocked.body]).toEqual([200, { ok: true }]);
+    expect(commits).toBe(1);
   });
 
   it('allows three resets per hour and refuses the fourth (429)', async () => {

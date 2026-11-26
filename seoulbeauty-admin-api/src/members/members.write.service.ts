@@ -110,9 +110,9 @@ export class MembersWriteService {
   }
 
   /**
-   * Sets a new password for one active member and ends every sign-in of that member (the credential epoch moves, the remembered / app tokens are
+   * Sets a new password for one member (active or blocked, not one who has left) and ends every sign-in of that member (the credential epoch moves, the remembered / app tokens are
    * deleted), in one transaction with the audit row. The password itself is never written to the journal or the log.
-   * 400 invalid, 404 no such member, 409 member_blocked / member_left, 429 too_many (more than the hourly limit), 503 write side unavailable.
+   * 400 invalid, 404 no such member, 409 member_left, 429 too_many (more than the hourly limit), 503 write side unavailable.
    */
   async resetPassword(actor: WriteActor, id: number, body: unknown): Promise<{ ok: true }> {
     const planned = planPassword(body);
@@ -126,7 +126,6 @@ export class MembersWriteService {
         if (!member) throw new NotFoundException({ error: 'not_found' });
         const state = statusOf(member);
         if (state === 'left') throw new ConflictException({ error: 'member_left' });
-        if (state === 'blocked') throw new ConflictException({ error: 'member_blocked' });
         // The member row is locked, so two resets of the same member cannot both pass this count.
         const [counted] = (await conn.query(
           "SELECT COUNT(*) AS cnt FROM gangnamunni_member_audit WHERE member_no = ? AND action = 'password_reset' AND created_at >= NOW() - INTERVAL 1 HOUR", [id],
