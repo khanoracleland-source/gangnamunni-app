@@ -49,5 +49,11 @@
     "setupFilesAfterEnv": [
       "<rootDir>/test/jest.tmpdir.js"
     ]
+  },
+  "overrides": {
+    "test-exclude": "^8.0.0"
+  },
+  "allowScripts": {
+    "@parcel/watcher": false
   }
 }
