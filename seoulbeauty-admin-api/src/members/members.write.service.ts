@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, HttpException, Inject, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { DB_RW, RwConnection, RwDb, RwDbProvider } from '../db/db.module';
-import { MemberDetail } from './members.logic';
-import { AuditAction, planEdit } from './members.write.logic';
+import { MemberDetail, statusOf } from './members.logic';
+import { AuditAction, hashPassword, planEdit, planPassword, RESET_LIMIT_PER_HOUR } from './members.write.logic';
 import { MembersService } from './members.service';
 
 type Row = Record<string, unknown>;
@@ -107,5 +107,39 @@ export class MembersWriteService {
     const fresh = await this.reads.detail(id);
     if (!fresh) throw new NotFoundException({ error: 'not_found' });
     return fresh;
+  }
+
+  /**
+   * Sets a new password for one active member and ends every sign-in of that member (the credential epoch moves, the remembered / app tokens are
+   * deleted), in one transaction with the audit row. The password itself is never written to the journal or the log.
+   * 400 invalid, 404 no such member, 409 member_blocked / member_left, 429 too_many (more than the hourly limit), 503 write side unavailable.
+   */
+  async resetPassword(actor: WriteActor, id: number, body: unknown): Promise<{ ok: true }> {
+    const planned = planPassword(body);
+    if (!planned.ok) throw new BadRequestException({ error: 'invalid', fields: planned.errors });
+    if (id <= 0) throw new NotFoundException({ error: 'not_found' });
+    const hash = hashPassword(planned.password);
+    await this.guarded(() =>
+      this.transaction(async (conn) => {
+        const [rows] = (await conn.query('SELECT mb_no, mb_id, mb_leave_date, mb_intercept_date FROM g5_member WHERE mb_no = ? LIMIT 1 FOR UPDATE', [id])) as any;
+        const member = (Array.isArray(rows) ? rows[0] : undefined) as Row | undefined;
+        if (!member) throw new NotFoundException({ error: 'not_found' });
+        const state = statusOf(member);
+        if (state === 'left') throw new ConflictException({ error: 'member_left' });
+        if (state === 'blocked') throw new ConflictException({ error: 'member_blocked' });
+        // The member row is locked, so two resets of the same member cannot both pass this count.
+        const [counted] = (await conn.query(
+          "SELECT COUNT(*) AS cnt FROM gangnamunni_member_audit WHERE member_no = ? AND action = 'password_reset' AND created_at >= NOW() - INTERVAL 1 HOUR", [id],
+        )) as any;
+        if ((Number(Array.isArray(counted) ? counted[0]?.cnt : 0) || 0) >= RESET_LIMIT_PER_HOUR) throw new HttpException({ error: 'too_many' }, 429);
+        const [updated] = (await conn.query("UPDATE g5_member SET mb_password = ?, mb_cred_epoch = mb_cred_epoch + 1, mb_lost_certify = '' WHERE mb_no = ?", [hash, id])) as any;
+        if (Number(updated?.affectedRows) !== 1) throw new ServiceUnavailableException({ error: 'write_unavailable' });
+        await conn.query('DELETE FROM sso_tokens WHERE g5_mb_id = ?', [s(member.mb_id)]);
+        await this.journal(conn, actor, member, 'password_reset', null, null);
+      }),
+    );
+    // Field names only, never a value.
+    this.log.log(`member write: admin=${actor.id} target=${id} action=password_reset`);
+    return { ok: true };
   }
 }

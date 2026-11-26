@@ -1524,6 +1524,33 @@ FLUSH PRIVILEGES;
 
 `seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_WRITE=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_WRITE=0` + restart (the journal stays).
 
+## 27. Resetting a member's password (`ADMIN_MEMBERS_PASSWORD`, optional; needs 26; super admin only)
+
+`POST /v1/members/:id/password` with `{"password": "..."}`. The super admin chooses the new password (9-20 printable ASCII characters with a letter, a digit and a special character, the same rule as the app) and tells it to the member by phone; the answer is `{"ok": true}` and never contains a password.
+Only an active member: a blocked member answers 409 `member_blocked`, one who has left 409 `member_left`. At most 3 resets of the same member within one hour, then 429 `too_many`. Any other key in the body answers 400 `invalid`.
+One transaction: the member row is locked, the Gnuboard hash (`sha256:12000:...`, the one the site and the app read) replaces `mb_password`, the credential epoch moves (`mb_cred_epoch`, `mb_lost_certify` cleared) and the remembered / app tokens are deleted from `sso_tokens`, so every sign-in of the member ends and the new password is needed. A row `password_reset` (who, whom, IP; no password) goes to `gangnamunni_member_audit`. If any step fails nothing is changed (503). No other system (HMS) is touched.
+Needs `ADMIN_MEMBERS_ENABLED=1` and `ADMIN_MEMBERS_PASSWORD=1`, the write user of section 6 and section 26 (audit table).
+
+Database, as the DB admin, once (replace `hms_saas`; safe to run again). `DELETE` cannot be limited to columns: it is a table-wide right on `sso_tokens`, the only one this user gets here:
+
+```sql
+-- Password reset of members (README section 27). Run as the DB admin, once. Safe to run again. Needs section 26 (the audit table).
+-- Replace hms_saas by the database that holds g5_member.
+GRANT SELECT (mb_leave_date, mb_intercept_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (mb_password, mb_cred_epoch, mb_lost_certify) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (member_no, action, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (g5_mb_id), DELETE ON hms_saas.sso_tokens TO 'sb_admin_rw'@'127.0.0.1';
+
+GRANT SELECT (mb_leave_date, mb_intercept_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
+GRANT UPDATE (mb_password, mb_cred_epoch, mb_lost_certify) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
+GRANT SELECT (member_no, action, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_rw'@'localhost';
+GRANT SELECT (g5_mb_id), DELETE ON hms_saas.sso_tokens TO 'sb_admin_rw'@'localhost';
+
+FLUSH PRIVILEGES;
+```
+
+`seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_PASSWORD=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_PASSWORD=0` + restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
