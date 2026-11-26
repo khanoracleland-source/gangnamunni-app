@@ -91,7 +91,7 @@ export function PeriodBoard({ hospitalId, period, custom, stage, onStage, tick, 
 const rate = (r: SectionRow): string => (r.feeRateBp === null ? "" : `${bpToPercent(r.feeRateBp)}%`);
 
 /** One row of a section as a table row; the columns differ per section. */
-function Cells({ stage, r, own }: { stage: SectionStage; r: SectionRow; own: boolean }) {
+function Cells({ stage, r, own, onOpen }: { stage: SectionStage; r: SectionRow; own: boolean; onOpen: (id: number) => void }) {
   const t = useT();
   const visit = `${monthDay(r.visitDate)} ${r.visitTime}`;
   const dash = <span className="muted">—</span>;
@@ -108,6 +108,7 @@ function Cells({ stage, r, own }: { stage: SectionStage; r: SectionRow; own: boo
       {stage !== "held" ? <td className="pay-r">{r.fee === null ? dash : wonOrDash(r.fee)}</td> : null}
       {stage !== "held" ? <td className="pay-r pay-strong">{r.settlement === null ? dash : won(r.settlement)}</td> : null}
       {stage === "counted" ? <td className="pay-nowrap">{r.payoutDate ? monthDay(r.payoutDate) : t("pay.col.afterTreatment")}</td> : null}
+      <td><button type="button" className="btn btn--ghost btn--sm" onClick={() => onOpen(r.id)}>{t("pay.rf.open")}</button></td>
     </>
   );
 }
@@ -127,6 +128,7 @@ function Head({ stage, own }: { stage: SectionStage; own: boolean }) {
       {stage !== "held" ? <th scope="col" className="pay-r">{t("pay.col.fee")}</th> : null}
       {stage !== "held" ? <th scope="col" className="pay-r">{t("pay.col.settlement")}</th> : null}
       {stage === "counted" ? <th scope="col">{t("pay.col.payoutDue")}</th> : null}
+      <th scope="col"><span className="sr-only">{t("pay.rf.col.action")}</span></th>
     </tr>
   );
 }
@@ -134,7 +136,7 @@ function Head({ stage, own }: { stage: SectionStage; own: boolean }) {
 export type SectionFilters = { hospitalId: number; q: string };
 
 /** The three sections: 보류, 반영 and 입금, each a list of bookings with its own columns. Dates are sent only once the user chose them. */
-export function Sections({ filters, stage, range, own, tick, onLeave }: { filters: SectionFilters; stage: SectionStage; range: { from: string; to: string } | null; own: boolean; tick: number; onLeave?: () => void }) {
+export function Sections({ filters, stage, range, own, tick, onLeave, onOpen }: { filters: SectionFilters; stage: SectionStage; range: { from: string; to: string } | null; own: boolean; tick: number; onLeave?: () => void; onOpen: (id: number) => void }) {
   const t = useT();
   const [page, setPage] = useState(1);
   const [retry, setRetry] = useState(0);
@@ -188,7 +190,7 @@ export function Sections({ filters, stage, range, own, tick, onLeave }: { filter
                 <div className="pay-tbl-wrap">
                   <table className="tbl pay-tbl pay-tbl--stage">
                     <thead><Head stage={stage} own={own} /></thead>
-                    <tbody>{data.items.map((r) => <tr key={r.id}><Cells stage={stage} r={r} own={own} /></tr>)}</tbody>
+                    <tbody>{data.items.map((r) => <tr key={r.id}><Cells stage={stage} r={r} own={own} onOpen={onOpen} /></tr>)}</tbody>
                   </table>
                 </div>
                 <ul className="pay-cards">
@@ -211,6 +213,7 @@ export function Sections({ filters, stage, range, own, tick, onLeave }: { filter
                           </>
                         )}
                       </dl>
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => onOpen(r.id)}>{t("pay.rf.open")}</button>
                     </li>
                   ))}
                 </ul>

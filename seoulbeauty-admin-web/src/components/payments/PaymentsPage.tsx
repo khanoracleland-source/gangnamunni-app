@@ -6,6 +6,8 @@ import AdminShell from "../AdminShell";
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import CompareCharts from "./CompareCharts";
+import PaymentDrawer from "./PaymentDrawer";
+import RefundHistory from "./RefundHistory";
 import { GroupTable, PaymentRows, Tabs, type Tab } from "./PaymentsTables";
 import SimplePayments from "./PaymentsSimple";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
@@ -76,6 +78,8 @@ function Board({ me }: { me: Me }) {
   const [tick, setTick] = useState(0);
   const [page, setPage] = useState(1);
   const [tab, setTab] = useState<Tab>("list");
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [historyKey, setHistoryKey] = useState(0);
   const [hospitals, setHospitals] = useState<{ id: number; name: string }[]>([]);
   const [got, setGot] = useState<{ key: string; res: ApiResult<PaymentList> } | null>(null);
   // null = not known yet; false = the fee switch is off on the server (404): the page keeps its old shape.
@@ -232,15 +236,19 @@ function Board({ me }: { me: Me }) {
         <section className="pay-list">
           <Tabs tab={effTab} own={own} onTab={setTab} />
           <div id="pay-panel" role="tabpanel" aria-labelledby={`pay-tab-${effTab}`}>
-            {effTab !== "list" && filters.q.trim() ? <p className="muted pay-qnote">{t("pay.groupNoQ")}</p> : null}
+            {effTab !== "list" && effTab !== "refunds" && filters.q.trim() ? <p className="muted pay-qnote">{t("pay.groupNoQ")}</p> : null}
             {effTab === "list" ? (
-              got?.res.ok ? <PaymentRows list={got.res.data} loading={loading} own={own} dirty={dirty} onPage={setPage} onReset={reset} /> : null
+              got?.res.ok ? <PaymentRows list={got.res.data} loading={loading} own={own} dirty={dirty} onPage={setPage} onReset={reset} onOpen={setOpenId} /> : null
+            ) : effTab === "refunds" ? (
+              <RefundHistory key={historyKey} own={own} />
             ) : (
               <GroupTable kind={effTab} hospitalId={filters.hospitalId} from={filters.from} to={filters.to} />
             )}
           </div>
         </section>
       ) : null}
+
+      {openId !== null ? <PaymentDrawer key={openId} id={openId} onClose={() => setOpenId(null)} onChanged={() => { setTick((n) => n + 1); setHistoryKey((n) => n + 1); }} /> : null}
     </div>
   );
 }

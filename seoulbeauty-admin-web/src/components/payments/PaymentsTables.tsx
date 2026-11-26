@@ -12,12 +12,12 @@ import { PHP_ADMIN_URL } from "@/lib/config";
 import { useT } from "@/lib/locale";
 import { monthDay, monthDayTime, won, wonOrDash } from "@/lib/payments";
 
-export type Tab = "list" | "hospitals" | "treatments";
+export type Tab = "list" | "hospitals" | "treatments" | "refunds";
 
 /** The three views of the same filters: the payments, the hospitals and the treatments (hospital accounts have no hospitals view). */
 export function Tabs({ tab, own, onTab, withoutList = false }: { tab: Tab; own: boolean; onTab: (t: Tab) => void; withoutList?: boolean }) {
   const t = useT();
-  const tabs: Tab[] = (own ? ["list", "treatments"] : ["list", "hospitals", "treatments"]).filter((k) => !(withoutList && k === "list")) as Tab[];
+  const tabs: Tab[] = (own ? ["list", "treatments", "refunds"] : ["list", "hospitals", "treatments", "refunds"]).filter((k) => !(withoutList && k === "list")) as Tab[];
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     const i = tabs.indexOf(tab);
@@ -78,7 +78,7 @@ export function Pager({ list, onPage }: { list: { page: number; perPage: number;
 }
 
 /** The ledger rows: a table from 921px wide, cards below. */
-export function PaymentRows({ list, loading, own, dirty, onPage, onReset }: { list: PaymentList; loading: boolean; own: boolean; dirty: boolean; onPage: (n: number) => void; onReset: () => void }) {
+export function PaymentRows({ list, loading, own, dirty, onPage, onReset, onOpen }: { list: PaymentList; loading: boolean; own: boolean; dirty: boolean; onPage: (n: number) => void; onReset: () => void; onOpen: (id: number) => void }) {
   const t = useT();
   const rows = list.items;
   if (rows.length === 0) {
@@ -98,14 +98,14 @@ export function PaymentRows({ list, loading, own, dirty, onPage, onReset }: { li
           <colgroup>
             <col style={{ width: 104 }} /><col style={{ width: 104 }} />
             {!own ? <col style={{ width: 132 }} /> : null}
-            <col style={{ width: 140 }} /><col style={{ width: 72 }} /><col style={{ width: 88 }} /><col style={{ width: 76 }} /><col style={{ width: 96 }} />
+            <col style={{ width: 140 }} /><col style={{ width: 72 }} /><col style={{ width: 88 }} /><col style={{ width: 76 }} /><col style={{ width: 96 }} /><col style={{ width: 72 }} />
           </colgroup>
           <thead>
             <tr>
               <th scope="col">{t("pay.col.paidAt")}</th><th scope="col">{t("pay.col.patient")}</th>
               {!own ? <th scope="col">{t("pay.col.hospital")}</th> : null}
               <th scope="col">{t("pay.col.treatment")}</th><th scope="col">{t("pay.col.visit")}</th>
-              <th scope="col" className="pay-r">{t("pay.col.amount")}</th><th scope="col" className="pay-r">{t("pay.col.refunded")}</th><th scope="col">{t("pay.col.status")}</th>
+              <th scope="col" className="pay-r">{t("pay.col.amount")}</th><th scope="col" className="pay-r">{t("pay.col.refunded")}</th><th scope="col">{t("pay.col.status")}</th><th scope="col"><span className="sr-only">{t("pay.rf.col.action")}</span></th>
             </tr>
           </thead>
           <tbody>
@@ -119,6 +119,7 @@ export function PaymentRows({ list, loading, own, dirty, onPage, onReset }: { li
                 <td className="pay-r">{won(r.amount)}</td>
                 <td className="pay-r">{wonOrDash(r.refundedAmount)}</td>
                 <td><Stage row={r} /></td>
+                <td><button type="button" className="btn btn--ghost btn--sm" onClick={() => onOpen(r.id)}>{t("pay.rf.open")}</button></td>
               </tr>
             ))}
           </tbody>
@@ -137,6 +138,7 @@ export function PaymentRows({ list, loading, own, dirty, onPage, onReset }: { li
               <dt>{t("pay.col.amount")}</dt><dd className="pay-r">{won(r.amount)}</dd>
               <dt>{t("pay.col.refunded")}</dt><dd className="pay-r">{wonOrDash(r.refundedAmount)}</dd>
             </dl>
+            <button type="button" className="btn btn--ghost btn--sm" onClick={() => onOpen(r.id)}>{t("pay.rf.open")}</button>
           </li>
         ))}
       </ul>

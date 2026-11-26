@@ -6,7 +6,9 @@ import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import HospitalCombo from "./HospitalCombo";
 import { GroupTable } from "./PaymentsTables";
+import PaymentDrawer from "./PaymentDrawer";
 import { PeriodBoard, Sections, Totals } from "./PaymentStages";
+import RefundHistory from "./RefundHistory";
 import type { BoardPeriod, SectionStage } from "@/lib/api";
 import { useT } from "@/lib/locale";
 import { rangeProblem } from "@/lib/payments";
@@ -23,6 +25,10 @@ export default function SimplePayments({ own, isSuper, hospitals, hospitalName }
   const [q, setQ] = useState("");
   const [range, setRange] = useState<{ from: string; to: string } | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  // The payment whose panel is open, and a counter that reloads the lists and the history after a refund.
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [changed, setChanged] = useState(0);
 
   // Dates count only when both are chosen and make a valid range.
   const problem = from && to ? rangeProblem(from, to) : null;
@@ -76,8 +82,14 @@ export default function SimplePayments({ own, isSuper, hospitals, hospitalName }
       </details>
       {problem ? <Notice tone="warn" icon="alert">{t(`pay.range.${problem}` as never)}</Notice> : null}
 
-      <PeriodBoard hospitalId={hospitalId} period={period} custom={custom} stage={stage} onStage={setStage} tick={0} onRange={setRange} />
-      <Sections filters={{ hospitalId, q }} stage={stage} range={range} own={own} tick={0} />
+      <PeriodBoard hospitalId={hospitalId} period={period} custom={custom} stage={stage} onStage={setStage} tick={changed} onRange={setRange} />
+      <Sections filters={{ hospitalId, q }} stage={stage} range={range} own={own} tick={changed} onOpen={setOpenId} />
+
+      <details className="pay-details" onToggle={(e) => setHistoryOpen((e.currentTarget as HTMLDetailsElement).open)}>
+        <summary>{t("pay.rh.title")}</summary>
+        {historyOpen ? <RefundHistory key={changed} own={own} /> : null}
+      </details>
+      {openId !== null ? <PaymentDrawer key={openId} id={openId} onClose={() => setOpenId(null)} onChanged={() => setChanged((n) => n + 1)} /> : null}
 
       {isSuper ? (
         <details className="pay-details" onToggle={(e) => setMoreOpen((e.currentTarget as HTMLDetailsElement).open)}>
@@ -85,7 +97,7 @@ export default function SimplePayments({ own, isSuper, hospitals, hospitalName }
           {moreOpen && range ? (
             <div className="pay-more">
               <GroupTable kind="hospitals" hospitalId={hospitalId} from={range.from} to={range.to} />
-              <Totals hospitalId={hospitalId} from={range.from} to={range.to} tick={0} />
+              <Totals hospitalId={hospitalId} from={range.from} to={range.to} tick={changed} />
             </div>
           ) : null}
         </details>
