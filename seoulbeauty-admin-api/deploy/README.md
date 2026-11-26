@@ -1479,6 +1479,51 @@ FLUSH PRIVILEGES;
 
 `seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_ENABLED=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_ENABLED=0` + restart.
 
+## 26. Changing a member's e-mail and the audit journal (`ADMIN_MEMBERS_WRITE`, optional; needs 25; super admin only)
+
+`PATCH /v1/members/:id` with `{"email": "..."}`. The e-mail is the only field of a member that can be edited; any other key answers 400 `invalid` (`not_allowed`). The e-mail is stored lower-cased; an address another member already has answers 409 `email_taken`; the same address as now changes nothing and writes no journal row. The address check and the update run in one transaction that locks only the member being changed; `g5_member.mb_email` has no unique key, so two super admins setting the same new address on two different members at the very same moment could both succeed (accepted: rare, manual action).
+Every change is one transaction: the member row is locked, the e-mail updated and a row written to `gangnamunni_member_audit` (who: admin id, login name, role, IP; whom: member number and id; what: `email_change` with the old and new e-mail). If the journal row cannot be written the e-mail is not changed either. Without the write user, the table or the GRANTs the route answers 503 `write_unavailable`.
+Needs the write user of section 6 and `ADMIN_MEMBERS_ENABLED=1`, `ADMIN_MEMBERS_WRITE=1`.
+
+Database, as the DB admin, once (replace `hms_saas` by the database that holds `g5_member`; safe to run again). The write user gets `SELECT (mb_no, mb_id, mb_email)` and `UPDATE (mb_email)` on `g5_member` and `INSERT` on the journal, nothing else:
+
+```sql
+-- Audit journal of member changes (README section 26). Run as the DB admin, once. Safe to run again.
+-- Replace hms_saas by the database that holds g5_member (the DB_NAME of the API .env).
+CREATE TABLE IF NOT EXISTS hms_saas.gangnamunni_member_audit (
+  id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  admin_id       INT UNSIGNED NOT NULL,
+  admin_username VARCHAR(191) NOT NULL DEFAULT '',
+  admin_role     VARCHAR(50)  NOT NULL DEFAULT '',
+  member_no      INT NOT NULL,
+  member_id      VARCHAR(30)  NOT NULL DEFAULT '',
+  action         VARCHAR(40)  NOT NULL,
+  before_value   VARCHAR(255) NULL,
+  after_value    VARCHAR(255) NULL,
+  ip             VARCHAR(45)  NOT NULL DEFAULT '',
+  created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_member (member_no, created_at),
+  KEY idx_admin (admin_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Write user: change the e-mail of a member and journal it. Nothing else of g5_member can be written.
+GRANT SELECT (mb_no, mb_id, mb_email) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (mb_email) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT ON hms_saas.gangnamunni_member_audit TO 'sb_admin_rw'@'127.0.0.1';
+-- Read-only user: the history of a member.
+GRANT SELECT (id, admin_id, admin_username, admin_role, member_no, member_id, action, before_value, after_value, ip, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_ro'@'127.0.0.1';
+
+GRANT SELECT (mb_no, mb_id, mb_email) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
+GRANT UPDATE (mb_email) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
+GRANT INSERT ON hms_saas.gangnamunni_member_audit TO 'sb_admin_rw'@'localhost';
+GRANT SELECT (id, admin_id, admin_username, admin_role, member_no, member_id, action, before_value, after_value, ip, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_ro'@'localhost';
+
+FLUSH PRIVILEGES;
+```
+
+`seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_WRITE=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_WRITE=0` + restart (the journal stays).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.

@@ -488,6 +488,18 @@ export class MembersEnabledGuard implements CanActivate {
   }
 }
 
+/** Editing members (the e-mail). Needs the members page on as well; only the exact value "1" turns it on. */
+export const membersWriteEnabled = (): boolean => membersEnabled() && process.env.ADMIN_MEMBERS_WRITE === '1';
+
+/** With the write switch off the writing members routes answer 404 as if they did not exist; nothing else is looked at. */
+@Injectable()
+export class MembersWriteEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !membersWriteEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 
