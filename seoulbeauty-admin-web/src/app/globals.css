@@ -4118,3 +4118,38 @@ html[data-theme="dark"] .btn--approve { color: #0B1422; }
 }
 @media (pointer: coarse) { .cs-confirm .btn, .cs-d__edit, .cs-d__foot .btn { min-height: 44px; } }
 .cs-sheet .cs-d__foot .btn { min-height: 44px; }
+
+/* ───────── Payment panel and refund ───────── */
+dialog.dialog.pay-drawer { width: min(440px, 100%); height: 100dvh; max-height: 100dvh; margin: 0 0 0 auto; border-radius: var(--r-xl) 0 0 var(--r-xl); border-right: 0; }
+.pay-dr { display: flex; flex-direction: column; gap: 16px; }
+.pay-dr .dialog__head { margin-bottom: 0; }
+.pay-dr__name { font-size: 18px; line-height: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.pay-dr__sum { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 14px 16px; background: var(--surface-2); border-radius: var(--r-md); font-size: 14px; }
+.pay-dr__sum > div { display: flex; justify-content: space-between; gap: 12px; }
+.pay-dr__sum dt { color: var(--muted); }
+.pay-dr__sum dd { margin: 0; font-variant-numeric: tabular-nums; }
+.pay-dr__strong { padding-top: 8px; border-top: 1px solid var(--line); font-weight: 700; font-size: 15px; }
+.pay-dr__due dd, .pay-dr__due dt { color: var(--rise); font-weight: 600; }
+.pay-dr__info { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 13px; }
+.pay-dr__info dt { color: var(--muted); }
+.pay-dr__info dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.pay-dr__mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.pay-dr__h { margin: 0 0 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; }
+.pay-dr__hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.pay-dr__hist li { display: flex; flex-direction: column; gap: 2px; padding-left: 12px; border-left: 2px solid var(--accent); }
+.pay-dr__foot { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+.pay-dr__go { width: 100%; min-height: 44px; font-weight: 700; }
+.pay-dr__why { font-size: 13px; }
+.pay-dr__confirm { display: flex; flex-direction: column; gap: 12px; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line); }
+.pay-dr__amount { font-size: 15px; }
+.pay-dr__amount strong { color: var(--rise); }
+.pay-dr__reasons { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.pay-dr__reasons legend { padding: 0; margin-bottom: 8px; font-size: 13px; font-weight: 600; }
+.pay-dr__chip { position: relative; display: inline-flex; }
+.pay-dr__chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.pay-dr__chip span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--control-line); border-radius: var(--r-md); background: var(--surface); font-size: 13px; font-weight: 600; }
+.pay-dr__chip input:checked + span { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.pay-dr__chip input:focus-visible + span { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--focus); }
+.pay-scroll { overflow-x: auto; }
+.pay-more-btn { display: flex; justify-content: center; margin-top: 12px; }
+@media (max-width: 520px) { dialog.dialog.pay-drawer { border-radius: 0; } }
