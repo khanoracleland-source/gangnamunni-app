@@ -25,6 +25,15 @@ export class V1ExceptionFilter extends BaseExceptionFilter {
       res.status(404).json({ error: typeof body === 'object' && body?.error === 'no_document' ? 'no_document' : 'not_found' });
       return;
     }
+    // A body that is not valid JSON reaches here as Nest's own 400 ("Bad Request" with the parser's message). That message can quote a piece of
+    // the body (a password, say), so it is replaced by our code and never returned. Our own 400s carry {error: '<code>'} and pass untouched.
+    if (exception instanceof HttpException && exception.getStatus() === 400) {
+      const body = exception.getResponse() as { error?: unknown } | string;
+      if (typeof body === 'string' || body?.error === 'Bad Request') {
+        res.status(400).json({ error: 'invalid' });
+        return;
+      }
+    }
     if (!(exception instanceof HttpException)) {
       const e = exception as { message?: string; stack?: string };
       this.log.error(`unexpected error on ${path}: ${e?.message ?? String(exception)}`, e?.stack);

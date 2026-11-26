@@ -128,6 +128,19 @@ describe('admin API: members password reset', () => {
     expect(commits).toBe(1);
   });
 
+  it('a body that is not valid JSON answers 400 invalid and the password is neither logged nor returned', async () => {
+    const written: string[] = [];
+    const spies = [jest.spyOn(process.stderr, 'write'), jest.spyOn(process.stdout, 'write')].map((s) =>
+      s.mockImplementation(((c: unknown) => { written.push(String(c)); return true; }) as any));
+    try {
+      const r = await request(app.getHttpServer()).post('/v1/members/5/password').set(HEADERS).set('Cookie', SUPER).send(`{"password":"${PASSWORD}"`);
+      expect([r.status, r.body]).toEqual([400, { error: 'invalid' }]);
+      expect(JSON.stringify(r.body)).not.toContain(PASSWORD);
+    } finally { spies.forEach((s) => s.mockRestore()); }
+    expect(written.join('')).not.toContain(PASSWORD);
+    expect(rwCalls.length).toBe(0);
+  });
+
   it('allows three resets per hour and refuses the fourth (429)', async () => {
     recentResets = 2;
     expect((await reset('/v1/members/5/password', { password: PASSWORD })).status).toBe(200);
