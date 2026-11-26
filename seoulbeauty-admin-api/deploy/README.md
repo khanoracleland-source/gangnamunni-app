@@ -1432,6 +1432,36 @@ The notices use the same rights and Firebase file as the booking notices: the `g
 Without the first two GRANTs (or without the history columns, for the message) the answer is `503 {"error":"write_unavailable"}` and nothing changes.
 Turning writing off: `ADMIN_CONSULTATIONS_WRITE=0`, then restart.
 
+## 24. Refund of booking payments (`ADMIN_PAYMENTS_REFUND`, optional; needs 18)
+
+Adds the refund to `/admin-next/payments`: the detail panel of a payment, a "전액 환불" button and the refund history. A refund is always the whole of what the
+customer paid and has not got back (`amount - refunded_amount`; points that covered part of the price are not refunded). It is offered only for an Inicis payment
+whose booking is already cancelled (cancel the booking first). A super admin refunds any hospital's payment, a hospital account only its own.
+The refund asks Inicis (INIAPI) to cancel the card payment, then records it the way the PHP admin does under the same payment lock: the request row, the evidence
+event, the payment row (`refunded`), the booking (`refunded`) and the audit row; the customer gets the "취소·환불" push. A refund whose answer from Inicis is unknown
+(timeout, broken answer) stays `pending`, the screen says to check the Inicis console, and no further refund of that payment is accepted until it is settled by hand.
+Routes: `GET /v1/payments/item/:id`, `GET /v1/payments/refunds?page=`, `POST /v1/payments/:id/refund` ({requestId: 64 hex, reason}).
+24.1 Environment (`.env` of the admin API, see `.env.example`): `ADMIN_PAYMENTS_REFUND=1`, `INICIS_MID`, `INICIS_INIAPI_KEY`, `INICIS_CLIENT_IP`, `INICIS_MODE`
+(`live` only on the live server). Needs the write user (section 6) and a restart.
+24.2 GRANTs (repeat each line for `'127.0.0.1'` and `'localhost'`):
+```sql
+GRANT SELECT (id, booking_id, patient_name, patient_phone, treatment_name, hospital_name, paid_at, refunded_at, provider_transaction_id, merchant_uid) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, payment_id, booking_id, amount, actor_name, status, created_at) ON <DB_NAME>.gangnamunni_refund_audit TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (payment_id, status, reason, completed_at) ON <DB_NAME>.gangnamunni_payment_refund_requests TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, booking_id, hospital_id, hospital_name, patient_name, patient_phone, treatment_name, amount, refunded_amount, status, paid_at, refunded_at, provider,
+  provider_transaction_id, merchant_uid, payment_type, funds_recipient, pay_method, points_used) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT UPDATE (refunded_amount, refunded_at, status) ON <DB_NAME>.gangnamunni_platform_payments TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (id, status, refund_status, booking_date, booking_time), UPDATE (status, refund_status, updated_at) ON <DB_NAME>.gangnamunni_bookings TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE (status, completed_at) ON <DB_NAME>.gangnamunni_payment_refund_requests TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT ON <DB_NAME>.gangnamunni_payment_events TO 'sb_admin_rw'@'127.0.0.1';
+GRANT INSERT ON <DB_NAME>.gangnamunni_refund_audit TO 'sb_admin_rw'@'127.0.0.1';
+```
+(drop `pay_method` / `points_used` from the lists while ADMIN_PAYMENTS_FEES / ADMIN_PAYMENTS_POINTS are off and the columns do not exist). The three tables are created by the PHP
+admin (`admin_bookings.php`, `sql/booking_payment_previews.sql`, `sql/platform_payments_schema.sql`); they must exist before the switch is turned on.
+24.3 First live test: refund one small real payment of a cancelled booking and check it in the Inicis console; if Inicis answers "already cancelled" with a code, add the
+code to `ALREADY_CANCELLED_CODES` in `src/payments/payments.refund.logic.ts` (the PHP admin has the same open item). Bank-transfer payments are not refundable here yet.
+Turning it off: `ADMIN_PAYMENTS_REFUND=0`, restart (the route answers 404, the panel hides the button).
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.
