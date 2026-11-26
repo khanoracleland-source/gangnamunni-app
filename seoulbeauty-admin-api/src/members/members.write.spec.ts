@@ -27,7 +27,7 @@ describe('admin API: members write (e-mail only)', () => {
     query: jest.fn(async (sql: string, values: unknown[] = []) => {
       if (sql.includes('WHERE mb_no = ?')) {
         const m = members[values[0] as number];
-        return [m ? [{ ...m, mb_name: '김서연', mb_point: 10, mb_leave_date: '', mb_intercept_date: '' }] : []];
+        return [m ? [{ ...m, mb_name: '김서연', mb_leave_date: '', mb_intercept_date: '' }] : []];
       }
       throw new Error(`unexpected read-only sql: ${sql}`);
     }),

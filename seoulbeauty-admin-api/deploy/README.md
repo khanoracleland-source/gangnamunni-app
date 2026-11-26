@@ -1465,13 +1465,13 @@ Turning it off: `ADMIN_PAYMENTS_REFUND=0`, restart (the route answers 404, the p
 ## 25. Members (`ADMIN_MEMBERS_ENABLED`, optional, read only so far; super admin only)
 
 `GET /v1/members` (search, status filter, sorting, paging), `/v1/members/summary` (counters) and `/v1/members/:id` (detail) for the new members screen. Hospital accounts get 403.
-Search looks in login id, name, nick, e-mail and mobile number; status is `active`, `blocked` (not left, block date set) or `left` (leave date set); the sort keys are `joined`, `lastLogin`, `no`, `id`, `name`, `point`. Block and leave dates are read in both stored formats (`YYYYMMDD` and `YYYY-MM-DD`). The password hash is never selected.
+Search looks in login id, name, nick, e-mail and mobile number; status is `active`, `blocked` (not left, block date set) or `left` (leave date set); the sort keys are `joined`, `lastLogin`, `no`, `id`, `name`. There is no point column: the old `mb_point` is not the points the app uses (the ledger, see section 28). Block and leave dates are read in both stored formats (`YYYYMMDD` and `YYYY-MM-DD`). The password hash is never selected.
 Needs `ADMIN_MEMBERS_ENABLED=1`. Nothing is written.
 
 Database (as root; the read-only user, add only what is missing in `SHOW GRANTS FOR 'sb_admin_ro'@'127.0.0.1'`):
 
 ```sql
-GRANT SELECT (mb_no, mb_id, mb_name, mb_nick, mb_email, mb_hp, mb_tel, mb_sex, mb_birth, mb_addr1, mb_addr2, mb_point, mb_datetime, mb_today_login,
+GRANT SELECT (mb_no, mb_id, mb_name, mb_nick, mb_email, mb_hp, mb_tel, mb_sex, mb_birth, mb_addr1, mb_addr2, mb_datetime, mb_today_login,
   mb_login_ip, mb_leave_date, mb_intercept_date, mb_sms, mb_mailling, mb_memo) ON <DB_NAME>.g5_member TO 'sb_admin_ro'@'127.0.0.1';
 -- the same for 'sb_admin_ro'@'localhost'
 FLUSH PRIVILEGES;
@@ -1556,20 +1556,20 @@ FLUSH PRIVILEGES;
 `GET /v1/members/:id/consultations`, `/bookings`, `/points`, `/history` (`?page=`, 20 rows per page, newest first). Nothing is written.
 - consultations: the member's applications (date, hospital, type, status, first 300 characters of the message). Matched by `mb_id`, and also by phone number for ones made without signing in; a table without `mb_id` falls back to the phone number alone.
 - bookings: when and at which hospital (booking date and time, treatment, price, status, cancel reason).
-- points: the ledger balance (`gangnamunni_points`, the number the app shows), totals by kind, and every entry with its reason and reference (what the points were used for). `legacyBalance` is the old `g5_member.mb_point`, returned only for comparison.
+- points: the ledger balance (`gangnamunni_points`, the number the app shows), totals by kind, and every entry with its reason and reference (what the points were used for).
 - history: what admins changed for the member (e-mail change, password reset). A password reset never carries a value.
 
 Database, as the DB admin, once (replace `hms_saas`; safe to run again):
 
 ```sql
 -- Member activity (README section 28). Run as the DB admin, once. Safe to run again.
-GRANT SELECT (mb_no, mb_id, mb_hp, mb_point) ON hms_saas.g5_member TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (mb_no, mb_id, mb_hp) ON hms_saas.g5_member TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (id, hospital_id, hospital_name, consultation_type, message, status, created_at, phone) ON hms_saas.gangnamunni_consultations TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (id, hospital_id, hospital_name, treatment, price, booking_date, booking_time, status, cancel_reason, created_at, mb_id) ON hms_saas.gangnamunni_bookings TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (id, member_id, type, amount, balance, reason, reference_type, reference_id, expires_at, created_at) ON hms_saas.gangnamunni_points TO 'sb_admin_ro'@'127.0.0.1';
 GRANT SELECT (id, admin_username, admin_role, member_no, action, before_value, after_value, ip, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_ro'@'127.0.0.1';
 
-GRANT SELECT (mb_no, mb_id, mb_hp, mb_point) ON hms_saas.g5_member TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (mb_no, mb_id, mb_hp) ON hms_saas.g5_member TO 'sb_admin_ro'@'localhost';
 GRANT SELECT (id, hospital_id, hospital_name, consultation_type, message, status, created_at, phone) ON hms_saas.gangnamunni_consultations TO 'sb_admin_ro'@'localhost';
 GRANT SELECT (id, hospital_id, hospital_name, treatment, price, booking_date, booking_time, status, cancel_reason, created_at, mb_id) ON hms_saas.gangnamunni_bookings TO 'sb_admin_ro'@'localhost';
 GRANT SELECT (id, member_id, type, amount, balance, reason, reference_type, reference_id, expires_at, created_at) ON hms_saas.gangnamunni_points TO 'sb_admin_ro'@'localhost';

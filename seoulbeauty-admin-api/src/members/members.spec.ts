@@ -15,7 +15,7 @@ describe('admin API: members (read)', () => {
   const realFetch = global.fetch;
   const sqls: { sql: string; values: unknown[] }[] = [];
   const member = {
-    mb_no: 5, mb_id: 'kim01', mb_name: '김서연', mb_nick: 'seo', mb_email: 'a@b.kr', mb_hp: '010-1111-2222', mb_point: 1200,
+    mb_no: 5, mb_id: 'kim01', mb_name: '김서연', mb_nick: 'seo', mb_email: 'a@b.kr', mb_hp: '010-1111-2222',
     mb_datetime: '2026-01-02 03:04:05', mb_today_login: '2026-11-26 09:00:00', mb_leave_date: '', mb_intercept_date: '',
     mb_tel: '', mb_sex: 'F', mb_birth: '19900131', mb_addr1: 'a1', mb_addr2: 'a2', mb_login_ip: '1.2.3.4', mb_sms: 1, mb_mailling: 1, mb_memo: 'vip',
   };
@@ -75,7 +75,7 @@ describe('admin API: members (read)', () => {
     const r = await get('/v1/members?perPage=10&status=active&sort=name&order=asc', SUPER);
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ total: 1, page: 1, perPage: 10 });
-    expect(r.body.items[0]).toMatchObject({ no: 5, id: 'kim01', name: '김서연', phone: '010-1111-2222', point: 1200, status: 'active' });
+    expect(r.body.items[0]).toMatchObject({ no: 5, id: 'kim01', name: '김서연', phone: '010-1111-2222', status: 'active' });
     expect(JSON.stringify(r.body)).not.toMatch(/password|mb_memo/i);
     expect(sqls.every((c) => !c.sql.includes('mb_password'))).toBe(true);
     expect(r.headers['cache-control']).toContain('no-store');

@@ -3,8 +3,8 @@ import { buildSummary, countQuery, detailQuery, kstDays, listQuery, normalizeLis
 describe('members logic', () => {
   it('normalizes the list state and falls back to the defaults', () => {
     expect(normalizeListQuery({})).toEqual({ search: '', status: 'all', sort: 'joined', order: 'desc', page: 1, perPage: 20 });
-    expect(normalizeListQuery({ search: '  kim ', status: 'blocked', sort: 'point', order: 'asc', page: '3', perPage: '50' })).toEqual({
-      search: 'kim', status: 'blocked', sort: 'point', order: 'asc', page: 3, perPage: 50,
+    expect(normalizeListQuery({ search: '  kim ', status: 'blocked', sort: 'name', order: 'asc', page: '3', perPage: '50' })).toEqual({
+      search: 'kim', status: 'blocked', sort: 'name', order: 'asc', page: 3, perPage: 50,
     });
     expect(normalizeListQuery({ status: 'x', sort: 'mb_password', order: 'sideways', page: '-4', perPage: '7' })).toMatchObject({
       status: 'all', sort: 'joined', order: 'desc', page: 1, perPage: 20,
@@ -57,13 +57,13 @@ describe('members logic', () => {
 
   it('shapes a member and reads both stored date formats', () => {
     const row = {
-      mb_no: 5, mb_id: 'kim01', mb_name: '김서연', mb_nick: 'seo', mb_email: 'a@b.kr', mb_hp: '010-1111-2222', mb_point: 1200,
+      mb_no: 5, mb_id: 'kim01', mb_name: '김서연', mb_nick: 'seo', mb_email: 'a@b.kr', mb_hp: '010-1111-2222',
       mb_datetime: '2026-01-02 03:04:05', mb_today_login: '0000-00-00 00:00:00', mb_leave_date: '', mb_intercept_date: '2026-11-26',
       mb_tel: '', mb_sex: 'F', mb_birth: '19900131', mb_addr1: 'a1', mb_addr2: 'a2', mb_login_ip: '1.2.3.4', mb_sms: 1, mb_mailling: 0, mb_memo: 'm',
       mb_password: 'sha256:secret',
     };
     expect(toListItem(row)).toEqual({
-      no: 5, id: 'kim01', name: '김서연', nick: 'seo', email: 'a@b.kr', phone: '010-1111-2222', point: 1200,
+      no: 5, id: 'kim01', name: '김서연', nick: 'seo', email: 'a@b.kr', phone: '010-1111-2222',
       joinedAt: '2026-01-02 03:04:05', lastLoginAt: null, status: 'blocked',
     });
     const d = toDetail(row);

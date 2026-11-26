@@ -7,7 +7,7 @@ export const MAX_PAGE = 100_000;
 export const MAX_SEARCH = 100;
 
 export type MemberStatus = 'all' | 'active' | 'blocked' | 'left';
-export type MemberSort = 'joined' | 'lastLogin' | 'no' | 'id' | 'name' | 'point';
+export type MemberSort = 'joined' | 'lastLogin' | 'no' | 'id' | 'name';
 export type SortOrder = 'asc' | 'desc';
 
 /** API sort key -> column. The only way a column name ever reaches the SQL text. */
@@ -17,7 +17,6 @@ const SORT_COLUMNS: Record<MemberSort, string> = {
   no: 'mb_no',
   id: 'mb_id',
   name: 'mb_name',
-  point: 'mb_point',
 };
 const isSort = (v: string): v is MemberSort => Object.prototype.hasOwnProperty.call(SORT_COLUMNS, v);
 
@@ -75,7 +74,7 @@ function listWhere(q: MemberListQuery): Query {
   return { sql: parts.length ? parts.join(' AND ') : '1=1', values };
 }
 
-const LIST_COLUMNS = 'mb_no, mb_id, mb_name, mb_nick, mb_email, mb_hp, mb_point, mb_datetime, mb_today_login, mb_leave_date, mb_intercept_date';
+const LIST_COLUMNS = 'mb_no, mb_id, mb_name, mb_nick, mb_email, mb_hp, mb_datetime, mb_today_login, mb_leave_date, mb_intercept_date';
 const DETAIL_COLUMNS = `${LIST_COLUMNS}, mb_tel, mb_sex, mb_birth, mb_addr1, mb_addr2, mb_login_ip, mb_sms, mb_mailling, mb_memo`;
 
 export function listQuery(q: MemberListQuery): Query {
@@ -126,7 +125,6 @@ export interface MemberListItem {
   nick: string;
   email: string;
   phone: string;
-  point: number;
   joinedAt: string | null;
   lastLoginAt: string | null;
   status: 'active' | 'blocked' | 'left';
@@ -182,7 +180,6 @@ export const toListItem = (r: Row): MemberListItem => ({
   nick: str(r.mb_nick),
   email: str(r.mb_email),
   phone: str(r.mb_hp),
-  point: num(r.mb_point),
   joinedAt: dateTimeOrNull(r.mb_datetime),
   lastLoginAt: dateTimeOrNull(r.mb_today_login),
   status: statusOf(r),

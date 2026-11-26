@@ -12,7 +12,7 @@ describe('admin API: member activity (read)', () => {
   const stub = {
     query: jest.fn(async (sql: string, values: unknown[] = []) => {
       sqls.push({ sql, values });
-      if (sql.includes('FROM g5_member')) return [values[0] === 5 ? [{ mb_no: 5, mb_id: 'kim01', mb_hp: '010-1111-2222', mb_point: 1200 }] : []];
+      if (sql.includes('FROM g5_member')) return [values[0] === 5 ? [{ mb_no: 5, mb_id: 'kim01', mb_hp: '010-1111-2222' }] : []];
       if (sql.includes('COUNT(*)')) return [[{ cnt: 1 }]];
       if (sql.includes('FROM gangnamunni_consultations')) return [[{ id: 9, hospital_id: 3, hospital_name: 'H', consultation_type: 'x', message: 'hi', status: 'new', created_at: '2026-11-01 10:00:00' }]];
       if (sql.includes('FROM gangnamunni_bookings')) return [[{ id: 4, hospital_id: 3, hospital_name: 'H', treatment: 'T', price: 100, booking_date: '2026-12-01', booking_time: '10:00', status: 'pending', created_at: '2026-11-01 10:00:00' }]];
@@ -55,10 +55,10 @@ describe('admin API: member activity (read)', () => {
   it('unknown member -> 404 on every tab', async () => {
     for (const t of ['consultations', 'bookings', 'points', 'history']) expect((await get(`/v1/members/99/${t}`)).status).toBe(404);
   });
-  it('points: ledger balance, totals, entries and the legacy number', async () => {
+  it('points: ledger balance, totals and entries', async () => {
     const r = await get('/v1/members/5/points');
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ balance: 300, legacyBalance: 1200, total: 1, totals: { earned: 500, used: 200 } });
+    expect(r.body).toMatchObject({ balance: 300, total: 1, totals: { earned: 500, used: 200 } });
     expect(r.body.items[0]).toMatchObject({ direction: 'out', referenceType: 'booking', referenceId: '4' });
     expect(sqls.filter((s) => s.sql.includes('gangnamunni_points')).every((s) => s.values[0] === 5)).toBe(true);
   });

@@ -21,7 +21,7 @@ export class MembersActivityService {
 
   private async member(id: number): Promise<Row | null> {
     if (id <= 0) return null;
-    return (await this.rows({ sql: 'SELECT mb_no, mb_id, mb_hp, mb_point FROM g5_member WHERE mb_no = ? LIMIT 1', values: [id] }))[0] || null;
+    return (await this.rows({ sql: 'SELECT mb_no, mb_id, mb_hp FROM g5_member WHERE mb_no = ? LIMIT 1', values: [id] }))[0] || null;
   }
 
   async consultations(id: number, p: Paging) {
@@ -53,7 +53,7 @@ export class MembersActivityService {
     const no = Number(m.mb_no);
     const [total, bal, totals, rows] = await Promise.all([
       this.count(pointCountQuery(no)), this.rows(pointBalanceQuery(no)), this.rows(pointTotalsQuery(no)), this.rows(pointListQuery(no, p))]);
-    return buildPoints(p, total, bal, totals, rows, m.mb_point);
+    return buildPoints(p, total, bal, totals, rows);
   }
 
   async history(id: number, p: Paging) {

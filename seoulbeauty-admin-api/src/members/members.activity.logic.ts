@@ -82,16 +82,16 @@ export function buildPointTotals(rows: Record<string, unknown>[]): PointTotals {
   };
 }
 
-export interface PointsAnswer extends Page<Record<string, unknown>> { balance: number; legacyBalance: number; totals: PointTotals }
-export function buildPoints(p: Paging, total: number, balanceRows: Record<string, unknown>[], totalRows: Record<string, unknown>[], rows: Record<string, unknown>[], legacy: unknown): PointsAnswer {
+export interface PointsAnswer extends Page<Record<string, unknown>> { balance: number; totals: PointTotals }
+export function buildPoints(p: Paging, total: number, balanceRows: Record<string, unknown>[], totalRows: Record<string, unknown>[], rows: Record<string, unknown>[]): PointsAnswer {
   return {
     ...pageOf(p, total, rows.map((r) => ({
       id: num(r.id), type: str(r.type), direction: CREDIT.includes(str(r.type)) ? 'in' : DEBIT.includes(str(r.type)) ? 'out' : 'other',
       amount: num(r.amount), balance: r.balance === null || r.balance === undefined ? null : num(r.balance), reason: str(r.reason),
       referenceType: str(r.reference_type), referenceId: str(r.reference_id), expiresAt: str(r.expires_at), createdAt: str(r.created_at),
     }))),
-    // The ledger is what the app shows; g5_member.mb_point is the old Gnuboard number and is only returned for comparison.
-    balance: balanceRows.length ? num(balanceRows[0].balance) : 0, legacyBalance: num(legacy), totals: buildPointTotals(totalRows),
+    // The ledger is what the app shows; g5_member.mb_point is the old Gnuboard number, it is not used anywhere.
+    balance: balanceRows.length ? num(balanceRows[0].balance) : 0, totals: buildPointTotals(totalRows),
   };
 }
 
