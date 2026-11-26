@@ -1537,11 +1537,13 @@ Database, as the DB admin, once (replace `hms_saas`; safe to run again). `DELETE
 -- Password reset of members (README section 27). Run as the DB admin, once. Safe to run again. Needs section 26 (the audit table).
 -- Replace hms_saas by the database that holds g5_member.
 GRANT SELECT (mb_leave_date, mb_intercept_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (mb_cred_epoch) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
 GRANT UPDATE (mb_password, mb_cred_epoch, mb_lost_certify) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
 GRANT SELECT (member_no, action, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_rw'@'127.0.0.1';
 GRANT SELECT (g5_mb_id), DELETE ON hms_saas.sso_tokens TO 'sb_admin_rw'@'127.0.0.1';
 
 GRANT SELECT (mb_leave_date, mb_intercept_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
+GRANT SELECT (mb_cred_epoch) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
 GRANT UPDATE (mb_password, mb_cred_epoch, mb_lost_certify) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
 GRANT SELECT (member_no, action, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_rw'@'localhost';
 GRANT SELECT (g5_mb_id), DELETE ON hms_saas.sso_tokens TO 'sb_admin_rw'@'localhost';
@@ -1608,7 +1610,9 @@ Database, as the DB admin, once (replace `hms_saas`; safe to run again):
 
 ```sql
 -- Member status (README section 29). Run as the DB admin, once. Safe to run again. Needs sections 26 and 27.
+GRANT SELECT (mb_cred_epoch) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
 GRANT UPDATE (mb_intercept_date, mb_leave_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (mb_cred_epoch) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
 GRANT UPDATE (mb_intercept_date, mb_leave_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
 FLUSH PRIVILEGES;
 ```
