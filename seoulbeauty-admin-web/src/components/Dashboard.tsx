@@ -169,7 +169,7 @@ export default function Dashboard() {
 
       {summary && features ? <Shortcuts features={features} pending={summary.catalog.hospitalsPending} /> : null}
 
-      {summary ? <SummaryView summary={summary} period={period} onHelp={setHelp} /> : null}
+      {summary ? <SummaryView summary={summary} period={period} doctorsHref={features?.doctors ? "/doctors" : undefined} treatmentsHref={features?.treatments ? "/treatments" : undefined} onHelp={setHelp} /> : null}
 
       <HelpDialog metric={help} days={days} onClose={() => setHelp(null)} />
     </AdminShell>
@@ -250,7 +250,7 @@ function Section({ id, title, desc, children }: { id: string; title: string; des
   );
 }
 
-function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; period: Period; onHelp: (id: MetricId) => void }) {
+function SummaryView({ summary, period, doctorsHref, treatmentsHref, onHelp }: { summary: DashboardSummary; period: Period; doctorsHref?: string; treatmentsHref?: string; onHelp: (id: MetricId) => void }) {
   const t = useT();
   const { members, catalog } = summary;
   const days = period === "d7" ? 7 : 30;
@@ -320,8 +320,8 @@ function SummaryView({ summary, period, onHelp }: { summary: DashboardSummary; p
       <Section id="sec-hospitals" title={t("sec.hospitals")} desc={t("sec.hospitals.desc")}>
         <div className="grid">
           <Metric id="hospitals" href="/hospitals" value={formatNumber(catalog.hospitals)} unit="place" note={t("m.hospitals.note", { n: formatNumber(catalog.hospitalsPending) })} onHelp={onHelp} />
-          <Metric id="doctors" value={formatNumber(catalog.doctors)} unit="person" note={t("m.doctors.note")} onHelp={onHelp} />
-          <Metric id="treatments" value={formatNumber(catalog.treatments)} unit="item" note={t("m.treatments.note")} onHelp={onHelp} />
+          <Metric id="doctors" href={doctorsHref} value={formatNumber(catalog.doctors)} unit="person" note={t("m.doctors.note")} onHelp={onHelp} />
+          <Metric id="treatments" href={treatmentsHref} value={formatNumber(catalog.treatments)} unit="item" note={t("m.treatments.note")} onHelp={onHelp} />
         </div>
       </Section>
     </>
