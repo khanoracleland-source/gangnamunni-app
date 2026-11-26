@@ -1551,6 +1551,36 @@ FLUSH PRIVILEGES;
 
 `seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_PASSWORD=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_PASSWORD=0` + restart.
 
+## 28. Member activity (`ADMIN_MEMBERS_ACTIVITY`, optional; needs 25 and 26; read only; super admin only)
+
+`GET /v1/members/:id/consultations`, `/bookings`, `/points`, `/history` (`?page=`, 20 rows per page, newest first). Nothing is written.
+- consultations: the member's applications (date, hospital, type, status, first 300 characters of the message). Matched by `mb_id`, and also by phone number for ones made without signing in; a table without `mb_id` falls back to the phone number alone.
+- bookings: when and at which hospital (booking date and time, treatment, price, status, cancel reason).
+- points: the ledger balance (`gangnamunni_points`, the number the app shows), totals by kind, and every entry with its reason and reference (what the points were used for). `legacyBalance` is the old `g5_member.mb_point`, returned only for comparison.
+- history: what admins changed for the member (e-mail change, password reset). A password reset never carries a value.
+
+Database, as the DB admin, once (replace `hms_saas`; safe to run again):
+
+```sql
+-- Member activity (README section 28). Run as the DB admin, once. Safe to run again.
+GRANT SELECT (mb_no, mb_id, mb_hp, mb_point) ON hms_saas.g5_member TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, hospital_id, hospital_name, consultation_type, message, status, created_at, phone) ON hms_saas.gangnamunni_consultations TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, hospital_id, hospital_name, treatment, price, booking_date, booking_time, status, cancel_reason, created_at, mb_id) ON hms_saas.gangnamunni_bookings TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, member_id, type, amount, balance, reason, reference_type, reference_id, expires_at, created_at) ON hms_saas.gangnamunni_points TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, admin_username, admin_role, member_no, action, before_value, after_value, ip, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_ro'@'127.0.0.1';
+
+GRANT SELECT (mb_no, mb_id, mb_hp, mb_point) ON hms_saas.g5_member TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, hospital_id, hospital_name, consultation_type, message, status, created_at, phone) ON hms_saas.gangnamunni_consultations TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, hospital_id, hospital_name, treatment, price, booking_date, booking_time, status, cancel_reason, created_at, mb_id) ON hms_saas.gangnamunni_bookings TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, member_id, type, amount, balance, reason, reference_type, reference_id, expires_at, created_at) ON hms_saas.gangnamunni_points TO 'sb_admin_ro'@'localhost';
+GRANT SELECT (id, admin_username, admin_role, member_no, action, before_value, after_value, ip, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_ro'@'localhost';
+
+FLUSH PRIVILEGES;
+```
+
+The consultations GRANT has no `mb_id`: new applications do not store it, so the API matches by phone number. If the table does have `mb_id`, add it to that GRANT to match by login id as well; without the right the API falls back to the phone number.
+`seoulbeauty-admin-api/.env`: `ADMIN_MEMBERS_ACTIVITY=1`, then `sudo systemctl restart seoulbeauty-admin-api`. Rollback: `ADMIN_MEMBERS_ACTIVITY=0` + restart.
+
 ## Apache
 Nothing to add for this API: it is not exposed by Apache. Browsers reach it only through the admin web app
 (`/admin-next/api/*` is rewritten to `http://127.0.0.1:3300/*` by that app's server). Do not add CORS or a public proxy.

@@ -1,4 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
+import { membersEnabled, membersWriteEnabled, membersPasswordEnabled, membersActivityEnabled } from '../admin-auth/admin.guard';
 import { AdminGuard, adminsEnabled, doctorsEnabled, doctorsWriteEnabled, doctorsOrderEnabled, doctorsDeleteEnabled, bookingsEnabled, bookingsWriteEnabled, consultationsEnabled, consultationsWriteEnabled, paymentsEnabled, paymentsRefundEnabled, adminsWriteEnabled, hospitalsDeleteEnabled, hospitalsDocumentsEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsReviewEnabled, hospitalsOrderEnabled, hospitalsTreatmentsEnabled, hospitalApplyEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest, treatmentsEnabled, treatmentsImagesEnabled, treatmentsWriteEnabled, treatmentUnitsEnabled, treatmentUnitsWriteEnabled, moderationEnabled, moderationWriteEnabled, moderationEditEnabled, moderationDeleteEnabled, bannersEnabled, bannersWriteEnabled, categoryBoardEnabled, categoryBoardWriteEnabled } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
@@ -18,6 +19,7 @@ export class MeController {
       treatmentUnits: treatmentUnitsEnabled(), treatmentUnitsWrite: treatmentUnitsWriteEnabled(),
       bookings: bookingsEnabled(), bookingsWrite: bookingsWriteEnabled(), consultations: consultationsEnabled(), consultationsWrite: consultationsWriteEnabled(), payments: paymentsEnabled(), paymentsRefund: paymentsRefundEnabled(),
       moderation: moderationEnabled(), moderationWrite: moderationWriteEnabled(), moderationEdit: moderationEditEnabled(), moderationDelete: moderationDeleteEnabled(),
-      banners: bannersEnabled(), bannersWrite: bannersWriteEnabled(), categoryBoard: categoryBoardEnabled(), categoryBoardWrite: categoryBoardWriteEnabled() } };
+      banners: bannersEnabled(), bannersWrite: bannersWriteEnabled(), categoryBoard: categoryBoardEnabled(), categoryBoardWrite: categoryBoardWriteEnabled(),
+      members: membersEnabled(), membersWrite: membersWriteEnabled(), membersPassword: membersPasswordEnabled(), membersActivity: membersActivityEnabled() } };
   }
 }

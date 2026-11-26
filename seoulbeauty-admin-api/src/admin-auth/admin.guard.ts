@@ -512,6 +512,17 @@ export class MembersPasswordEnabledGuard implements CanActivate {
   }
 }
 
+/** Member activity tabs (applications, bookings, points, history). Read only; needs the members page on as well. */
+export const membersActivityEnabled = (): boolean => membersEnabled() && process.env.ADMIN_MEMBERS_ACTIVITY === '1';
+
+@Injectable()
+export class MembersActivityEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !membersActivityEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
+
 /** Marker header the admin web app sends with every write; a plain cross-site form or fetch cannot set it. */
 export const CSRF_HEADER_VALUE = 'admin-next';
 
