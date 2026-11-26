@@ -1635,3 +1635,15 @@ GRANT SELECT (id, reporter_id, reported_user_id, content_type, content_id, conte
 
 FLUSH PRIVILEGES;
 ```
+
+## 31. Reports about community posts (part of the content review page; read only; super admin only)
+
+On `GET /v1/moderation/community` every post also carries `reportCount` (how many members reported it) and `reports` (the newest 5: who reported, the reason, the free text, the handling status, the date), read from `gangnamunni_content_reports` (`content_type = 'community'`, `content_id` = the post). `?reported=1` lists only the posts somebody reported. Nothing is written; handling a report stays in the PHP admin.
+The reports are a side read: if the read-only user cannot read the table the posts are still listed, without report numbers (`reportCount` and `reports` are `null`, and the API log says why). A report names the reporter by the name stored at report time.
+
+```sql
+-- Reports about community posts (README section 31). Run as the DB admin, once. Safe to run again.
+GRANT SELECT (id, content_type, content_id, reporter_name, reason, reason_detail, status, created_at) ON hms_saas.gangnamunni_content_reports TO 'sb_admin_ro'@'127.0.0.1';
+GRANT SELECT (id, content_type, content_id, reporter_name, reason, reason_detail, status, created_at) ON hms_saas.gangnamunni_content_reports TO 'sb_admin_ro'@'localhost';
+FLUSH PRIVILEGES;
+```

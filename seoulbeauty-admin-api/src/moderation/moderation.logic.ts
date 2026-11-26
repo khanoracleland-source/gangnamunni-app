@@ -10,6 +10,8 @@ export interface ModerationQuery {
   search: string;
   hospitalId: number;
   page: number;
+  /** Community posts only: just the posts somebody reported. */
+  reported: boolean;
 }
 
 export function normalizeModerationQuery(q: Record<string, unknown> | undefined | null): ModerationQuery {
@@ -17,7 +19,7 @@ export function normalizeModerationQuery(q: Record<string, unknown> | undefined 
   const status = (MODERATION_STATES as readonly string[]).includes(get('status')) ? (get('status') as ModerationState) : 'pending';
   const search = Array.from(get('search').trim()).slice(0, MAX_SEARCH_LENGTH).join('');
   const page = Math.min(MAX_PAGE, Math.max(1, positiveInt(get('page'))));
-  return { status, search, hospitalId: parseHospitalId(get('hospitalId')), page };
+  return { status, search, hospitalId: parseHospitalId(get('hospitalId')), page, reported: get('reported') === '1' };
 }
 
 /** Id of /v1/moderation/<kind>/:id, or 0 when it is not a plain positive integer. */
@@ -165,6 +167,7 @@ function postWhere(q: ModerationQuery, withStatus: boolean): Query {
     sql += ' AND p.status = ?';
     values.push(POST_STATE_VALUE[q.status]);
   }
+  if (q.reported) sql += " AND EXISTS (SELECT 1 FROM gangnamunni_content_reports r WHERE r.content_type = 'community' AND r.content_id = p.id)";
   if (q.search) {
     const like = likeContains(q.search);
     sql += ' AND (p.title LIKE ? OR p.content LIKE ? OR p.author_name LIKE ? OR p.category LIKE ?)';
@@ -191,6 +194,31 @@ export function postListQuery(q: ModerationQuery): Query {
             FROM gangnamunni_community_posts p WHERE ${w.sql} ORDER BY p.created_at DESC, p.id DESC LIMIT ? OFFSET ?`,
     values: [...w.values, PER_PAGE + 1, (q.page - 1) * PER_PAGE],
   };
+}
+
+/** Reports about the posts of one page (the newest few per post) and the real number per post. A post nobody reported has neither. */
+export const POST_REPORTS_PER_POST = 5;
+export const postReportCountsQuery = (ids: number[]): Query => ({
+  sql: `SELECT content_id, COUNT(*) AS cnt FROM gangnamunni_content_reports WHERE content_type = 'community' AND content_id IN (${ids.map(() => '?').join(', ')}) GROUP BY content_id`,
+  values: ids,
+});
+export const postReportsQuery = (ids: number[]): Query => ({
+  sql: `SELECT id, content_id, reporter_name, reason, reason_detail, status, created_at FROM gangnamunni_content_reports
+         WHERE content_type = 'community' AND content_id IN (${ids.map(() => '?').join(', ')}) ORDER BY created_at DESC, id DESC LIMIT 500`,
+  values: ids,
+});
+export interface PostReport { id: number; reporter: string; reason: string; detail: string; status: string; createdAt: string }
+export function groupPostReports(counts: Row[], reports: Row[]): Map<number, { reportCount: number; reports: PostReport[] }> {
+  const out = new Map<number, { reportCount: number; reports: PostReport[] }>();
+  for (const c of counts) out.set(num(c.content_id), { reportCount: num(c.cnt), reports: [] });
+  for (const r of reports) {
+    const entry = out.get(num(r.content_id));
+    if (!entry || entry.reports.length >= POST_REPORTS_PER_POST) continue;
+    entry.reports.push({
+      id: num(r.id), reporter: str(r.reporter_name), reason: str(r.reason), detail: str(r.reason_detail).slice(0, 300), status: str(r.status), createdAt: str(r.created_at),
+    });
+  }
+  return out;
 }
 
 /** The pictures column holds a JSON list. The driver hands it over as text or, for a column the server marks as JSON, already as a list; null when it is neither. */

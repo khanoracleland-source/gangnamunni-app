@@ -4,7 +4,7 @@ import { hospitalOptionsQuery, toHospitalOption } from '../doctors/doctors.logic
 import { canSee, num, Query, Scope, seesNothing, str } from '../hospitals/hospitals.logic';
 import {
   decidePostQuery, decideReviewQuery, Decision, deletePostQuery, deleteReviewImagesByUrlQuery, deleteReviewQuery, emptyPage, hospitalTreatmentNamesQuery, lengthErrors, lockPostQuery, parsePostEdit, parseReviewEdit, PostEdit, postCategoriesQuery, postDeleteSteps, remainingPhotos, ReviewEdit, reviewDeleteSteps, treatmentList, updatePostQuery, updateReviewQuery, lockReviewQuery, ModerationPage, ModerationQuery, PER_PAGE, PostItem, postCountsQuery, postListQuery, postRevision, recalcHospitalQuery, reviewCountsQuery, reviewImagesQuery, reviewListQuery, ReviewItem, reviewRevision, safeImageUrl, toCounts,
-  toPage, toPostItem, toReviewItem,
+  toPage, toPostItem, toReviewItem, groupPostReports, postReportCountsQuery, postReportsQuery,
 } from './moderation.logic';
 
 type Row = Record<string, unknown>;
@@ -53,7 +53,19 @@ export class ModerationService {
   /** Community posts: the caller has already been checked to be a whole-platform admin (controller). */
   async posts(q: ModerationQuery): Promise<ModerationPage<PostItem>> {
     const [counts, list] = await Promise.all([this.rows(postCountsQuery(q)), this.rows(postListQuery(q))]);
-    return toPage(q, toCounts(counts[0]), list.map(toPostItem));
+    const page = list.slice(0, PER_PAGE);
+    const ids = page.map((r) => num(r.id));
+    // The reports are a side read: a missing right or table must not take the posts away (the cards then show no report numbers).
+    let grouped: ReturnType<typeof groupPostReports> | null = null;
+    if (ids.length) {
+      try {
+        const [rc, rs] = await Promise.all([this.rows(postReportCountsQuery(ids)), this.rows(postReportsQuery(ids))]);
+        grouped = groupPostReports(rc, rs);
+      } catch (e) {
+        this.log.warn(`post reports unavailable: ${(e as Error).message}`);
+      }
+    }
+    return toPage(q, toCounts(counts[0]), list.map((r) => ({ ...toPostItem(r), reports: grouped ? (grouped.get(num(r.id))?.reports ?? []) : null, reportCount: grouped ? (grouped.get(num(r.id))?.reportCount ?? 0) : null })));
   }
 
   /**

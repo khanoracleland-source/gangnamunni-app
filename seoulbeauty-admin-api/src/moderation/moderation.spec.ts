@@ -25,6 +25,7 @@ describe('admin API: moderation (review list)', () => {
   const events: string[] = [];
   let reviews: Review[];
   let posts: Post[];
+  let reportsFail = false;
 
   const ro = {
     query: jest.fn(async (sql: string, values: unknown[] = []) => {
@@ -35,6 +36,11 @@ describe('admin API: moderation (review list)', () => {
         return [[row]];
       }
       if (sql.includes('FROM review_images')) return [[{ review_id: 1, image_url: '/uploads/a.jpg' }, { review_id: 1, image_url: 'javascript:alert(1)' }]];
+      if (sql.includes('FROM gangnamunni_content_reports')) {
+        if (reportsFail) throw Object.assign(new Error('denied'), { code: 'ER_TABLEACCESS_DENIED_ERROR' });
+        if (sql.includes('GROUP BY content_id')) return [[{ content_id: 9, cnt: 7 }]];
+        return [[{ id: 3, content_id: 9, reporter_name: 'Kim', reason: 'harassment', reason_detail: 'rude', status: 'pending', created_at: '2026-11-21 10:00:00' }]];
+      }
       if (sql.includes('FROM gangnamunni_community_posts p') && sql.includes('SUM(')) return [[{ pending: 1, approved: 0, rejected: 0 }]];
       if (sql.includes('FROM gangnamunni_community_posts p')) return [[{ id: 9, category: '자유', author_name: 'Han', title: 'P', content: 'body', photos: '["/u/a.png","javascript:x"]', status: 'pending', created_at: '2026-11-20 09:00:00' }]];
       if (sql.includes('FROM gangnamunni_hospitals')) return [[{ id: 12, name: 'A' }]];
@@ -167,6 +173,30 @@ describe('admin API: moderation (review list)', () => {
     expect((await get('/v1/moderation/community')).status).toBe(404);
   });
 
+  it('shows who reported a community post and why (newest few plus the real number); the list still works when the reports cannot be read', async () => {
+    reportsFail = false;
+    const res = await get('/v1/moderation/community');
+    expect(res.body.items[0]).toMatchObject({ id: 9, reportCount: 7, reports: [{ id: 3, reporter: 'Kim', reason: 'harassment', detail: 'rude', status: 'pending', createdAt: '2026-11-21 10:00:00' }] });
+    const q = roCalls.find((c) => c.sql.includes('FROM gangnamunni_content_reports') && !c.sql.includes('GROUP BY'))!;
+    expect(q.sql).toContain("content_type = 'community'");
+    expect(q.values).toEqual([9]);
+    reportsFail = true;
+    const down = await get('/v1/moderation/community');
+    expect(down.status).toBe(200);
+    expect(down.body.items[0]).toMatchObject({ id: 9, reportCount: null, reports: null });
+    reportsFail = false;
+  });
+
+  it('can list only the reported posts, by a fixed condition (no value from the request is put in the SQL)', async () => {
+    await get('/v1/moderation/community?reported=1');
+    const q = roCalls.find((c) => c.sql.includes('FROM gangnamunni_community_posts p') && !c.sql.includes('SUM('))!;
+    expect(q.sql).toContain("EXISTS (SELECT 1 FROM gangnamunni_content_reports r WHERE r.content_type = 'community' AND r.content_id = p.id)");
+    const plain = await get('/v1/moderation/community');
+    expect(plain.status).toBe(200);
+    const q2 = roCalls.filter((c) => c.sql.includes('FROM gangnamunni_community_posts p') && !c.sql.includes('SUM(')).pop()!;
+    expect(q2.sql).not.toContain('EXISTS');
+  });
+
   const post = (url: string, body: unknown, cookie: string | null = SUPER, headers: Record<string, string> = MP) => {
     const r = request(app.getHttpServer()).post(url).set(headers).send(body as object);
     return cookie ? r.set('Cookie', cookie) : r;
@@ -242,8 +272,10 @@ describe('admin API: moderation (review list)', () => {
 
 describe('moderation logic', () => {
   it('normalizes the query', () => {
-    expect(normalizeModerationQuery({ status: 'x', page: '0', hospitalId: 'a' })).toEqual({ status: 'pending', search: '', hospitalId: 0, page: 1 });
-    expect(normalizeModerationQuery({ status: 'rejected', search: ' hi ', hospitalId: '12', page: '3' })).toEqual({ status: 'rejected', search: 'hi', hospitalId: 12, page: 3 });
+    expect(normalizeModerationQuery({ status: 'x', page: '0', hospitalId: 'a' })).toEqual({ status: 'pending', search: '', hospitalId: 0, page: 1, reported: false });
+    expect(normalizeModerationQuery({ status: 'rejected', search: ' hi ', hospitalId: '12', page: '3' })).toEqual({ status: 'rejected', search: 'hi', hospitalId: 12, page: 3, reported: false });
+    expect(normalizeModerationQuery({ reported: '1' }).reported).toBe(true);
+    expect(normalizeModerationQuery({ reported: 'true' }).reported).toBe(false);
     expect(normalizeModerationQuery({ search: 'x'.repeat(300) }).search).toHaveLength(100);
   });
   it('shows only plain image addresses', () => {
