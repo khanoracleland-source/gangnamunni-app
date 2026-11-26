@@ -89,9 +89,11 @@ export class MembersWriteService {
     if (id <= 0) throw new NotFoundException({ error: 'not_found' });
     const changed = await this.guarded(() =>
       this.transaction(async (conn) => {
-        const [rows] = (await conn.query('SELECT mb_no, mb_id, mb_email FROM g5_member WHERE mb_no = ? LIMIT 1 FOR UPDATE', [id])) as any;
+        const [rows] = (await conn.query('SELECT mb_no, mb_id, mb_email, mb_leave_date FROM g5_member WHERE mb_no = ? LIMIT 1 FOR UPDATE', [id])) as any;
         const member = (Array.isArray(rows) ? rows[0] : undefined) as Row | undefined;
         if (!member) throw new NotFoundException({ error: 'not_found' });
+        // A member who has left: the address may be taken by a new account, so it is not edited.
+        if (statusOf(member) === 'left') throw new ConflictException({ error: 'member_left' });
         const before = s(member.mb_email).trim();
         // Same address (any letter case): nothing to write, nothing to journal.
         if (before.toLowerCase() === planned.email) return false;

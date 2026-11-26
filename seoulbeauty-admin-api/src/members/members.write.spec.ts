@@ -16,7 +16,7 @@ describe('admin API: members write (e-mail only)', () => {
   const realFetch = global.fetch;
   const rwCalls: { sql: string; values: unknown[] }[] = [];
   const events: string[] = [];
-  let members: Record<number, { mb_no: number; mb_id: string; mb_email: string }>;
+  let members: Record<number, { mb_no: number; mb_id: string; mb_email: string; mb_leave_date?: string }>;
   let rwEmpty = false;
   let rwError: (Error & { code?: string; errno?: number }) | null = null;
   let auditFails = false;
@@ -37,7 +37,7 @@ describe('admin API: members write (e-mail only)', () => {
       rwCalls.push({ sql, values });
       events.push(sql.split(' ').slice(0, 3).join(' '));
       if (rwError) throw rwError;
-      if (sql.startsWith('SELECT mb_no, mb_id, mb_email FROM g5_member WHERE mb_no = ?')) return [members[values[0] as number] ? [members[values[0] as number]] : []];
+      if (sql.startsWith('SELECT mb_no, mb_id, mb_email, mb_leave_date FROM g5_member WHERE mb_no = ?')) return [members[values[0] as number] ? [members[values[0] as number]] : []];
       if (sql.startsWith('SELECT mb_no FROM g5_member WHERE LOWER(mb_email)')) {
         return [Object.values(members).filter((m) => m.mb_email.toLowerCase() === values[0] && m.mb_no !== values[1]).map((m) => ({ mb_no: m.mb_no }))];
       }
@@ -72,7 +72,7 @@ describe('admin API: members write (e-mail only)', () => {
     process.env.ADMIN_HOSPITALS_ENABLED = '1';
     process.env.ADMIN_MEMBERS_ENABLED = '1';
     process.env.ADMIN_MEMBERS_WRITE = '1';
-    members = { 5: { mb_no: 5, mb_id: 'kim01', mb_email: 'Old@Example.kr' }, 6: { mb_no: 6, mb_id: 'lee02', mb_email: 'taken@example.kr' } };
+    members = { 5: { mb_no: 5, mb_id: 'kim01', mb_email: 'Old@Example.kr' }, 6: { mb_no: 6, mb_id: 'lee02', mb_email: 'taken@example.kr' }, 8: { mb_no: 8, mb_id: 'gone08', mb_email: 'gone@example.kr', mb_leave_date: '2026-10-01' } };
     rwPool.getConnection.mockClear();
     rwCalls.length = 0; events.length = 0; rwEmpty = false; rwError = null; auditFails = false; commits = 0; rollbacks = 0;
     @Global() @Module({ providers: [{ provide: DB, useValue: roStub }, { provide: DB_RW, useValue: { get: () => (rwEmpty ? null : rwPool) } }], exports: [DB, DB_RW] }) class TestDbModule {}
@@ -123,6 +123,14 @@ describe('admin API: members write (e-mail only)', () => {
     const r = await patch('/v1/members/5', { email: 'OLD@example.KR' });
     expect(r.status).toBe(200);
     expect(rwCalls.some((c) => c.sql.startsWith('UPDATE') || c.sql.startsWith('INSERT'))).toBe(false);
+  });
+
+  it('refuses to change the e-mail of a member who has left (409) without writing anything', async () => {
+    const r = await patch('/v1/members/8', { email: 'new@example.kr' });
+    expect([r.status, r.body]).toEqual([409, { error: 'member_left' }]);
+    expect(members[8].mb_email).toBe('gone@example.kr');
+    expect(rwCalls.some((c) => c.sql.startsWith('UPDATE') || c.sql.startsWith('INSERT'))).toBe(false);
+    expect(commits).toBe(0);
   });
 
   it('refuses an e-mail another member has (409) and rolls back', async () => {

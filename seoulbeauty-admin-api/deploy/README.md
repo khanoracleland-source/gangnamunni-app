@@ -1481,11 +1481,11 @@ FLUSH PRIVILEGES;
 
 ## 26. Changing a member's e-mail and the audit journal (`ADMIN_MEMBERS_WRITE`, optional; needs 25; super admin only)
 
-`PATCH /v1/members/:id` with `{"email": "..."}`. The e-mail is the only field of a member that can be edited; any other key answers 400 `invalid` (`not_allowed`). The e-mail is stored lower-cased; an address another member already has answers 409 `email_taken`; the same address as now changes nothing and writes no journal row. The address check and the update run in one transaction that locks only the member being changed; `g5_member.mb_email` has no unique key, so two super admins setting the same new address on two different members at the very same moment could both succeed (accepted: rare, manual action).
+`PATCH /v1/members/:id` with `{"email": "..."}`. The e-mail is the only field of a member that can be edited, and not for a member who has left (409 `member_left`); any other key answers 400 `invalid` (`not_allowed`). The e-mail is stored lower-cased; an address another member already has answers 409 `email_taken`; the same address as now changes nothing and writes no journal row. The address check and the update run in one transaction that locks only the member being changed; `g5_member.mb_email` has no unique key, so two super admins setting the same new address on two different members at the very same moment could both succeed (accepted: rare, manual action).
 Every change is one transaction: the member row is locked, the e-mail updated and a row written to `gangnamunni_member_audit` (who: admin id, login name, role, IP; whom: member number and id; what: `email_change` with the old and new e-mail). If the journal row cannot be written the e-mail is not changed either. Without the write user, the table or the GRANTs the route answers 503 `write_unavailable`.
 Needs the write user of section 6 and `ADMIN_MEMBERS_ENABLED=1`, `ADMIN_MEMBERS_WRITE=1`.
 
-Database, as the DB admin, once (replace `hms_saas` by the database that holds `g5_member`; safe to run again). The write user gets `SELECT (mb_no, mb_id, mb_email)` and `UPDATE (mb_email)` on `g5_member` and `INSERT` on the journal, nothing else:
+Database, as the DB admin, once (replace `hms_saas` by the database that holds `g5_member`; safe to run again). The write user gets `SELECT (mb_no, mb_id, mb_email, mb_leave_date)` and `UPDATE (mb_email)` on `g5_member` and `INSERT` on the journal, nothing else:
 
 ```sql
 -- Audit journal of member changes (README section 26). Run as the DB admin, once. Safe to run again.
@@ -1508,13 +1508,13 @@ CREATE TABLE IF NOT EXISTS hms_saas.gangnamunni_member_audit (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Write user: change the e-mail of a member and journal it. Nothing else of g5_member can be written.
-GRANT SELECT (mb_no, mb_id, mb_email) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
+GRANT SELECT (mb_no, mb_id, mb_email, mb_leave_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
 GRANT UPDATE (mb_email) ON hms_saas.g5_member TO 'sb_admin_rw'@'127.0.0.1';
 GRANT INSERT ON hms_saas.gangnamunni_member_audit TO 'sb_admin_rw'@'127.0.0.1';
 -- Read-only user: the history of a member.
 GRANT SELECT (id, admin_id, admin_username, admin_role, member_no, member_id, action, before_value, after_value, ip, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_ro'@'127.0.0.1';
 
-GRANT SELECT (mb_no, mb_id, mb_email) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
+GRANT SELECT (mb_no, mb_id, mb_email, mb_leave_date) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
 GRANT UPDATE (mb_email) ON hms_saas.g5_member TO 'sb_admin_rw'@'localhost';
 GRANT INSERT ON hms_saas.gangnamunni_member_audit TO 'sb_admin_rw'@'localhost';
 GRANT SELECT (id, admin_id, admin_username, admin_role, member_no, member_id, action, before_value, after_value, ip, created_at) ON hms_saas.gangnamunni_member_audit TO 'sb_admin_ro'@'localhost';
