@@ -131,7 +131,7 @@ export function PasswordDialog({ m, onClose, onDone }: { m: MemberDetail; onClos
           <span className="mb-fld__l">{t("mb.pw.label")}</span>
           <span className="mb-pw">
             <input className="input" type={show ? "text" : "password"} autoComplete="new-password" autoCapitalize="off" autoCorrect="off" spellCheck={false} value={value} onChange={(e) => setValue(e.target.value)} aria-invalid={error !== null} aria-describedby={`${titleId}-hint`} disabled={busy} data-autofocus="" />
-            <button type="button" className="btn btn--ghost mb-pw__eye" onClick={() => setShow((s) => !s)} aria-pressed={show} disabled={busy}>{t(show ? "mb.pw.hide" : "mb.pw.show")}</button>
+            <button type="button" className="ibtn mb-pw__eye" onClick={() => setShow((s) => !s)} aria-pressed={show} aria-label={t(show ? "mb.pw.hide" : "mb.pw.show")} title={t(show ? "mb.pw.hide" : "mb.pw.show")} disabled={busy}><Icon name={show ? "eyeOff" : "eye"} size={20} /></button>
           </span>
           <span className="mb-fld__h" id={`${titleId}-hint`}>{t("mb.pw.hint")}</span>
         </label>

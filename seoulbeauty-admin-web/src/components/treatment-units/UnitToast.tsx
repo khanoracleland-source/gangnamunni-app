@@ -2,6 +2,7 @@
 
 import { toast } from "sonner";
 import Icon from "../Icon";
+import { raiseToastLayer } from "../AppToaster";
 import type { IconName } from "../Icon";
 
 export type UnitToastTone = "ok" | "info" | "error";
@@ -47,4 +48,5 @@ export function showUnitToast({
     ),
     { duration: 5000 },
   );
+  raiseToastLayer();
 }

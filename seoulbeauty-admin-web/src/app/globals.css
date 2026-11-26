@@ -2552,6 +2552,14 @@ html[data-theme="dark"] .dialog--images .htim__btn--d { background: #B02A37; }
   .ha-map__bg, .ha-bar i, .ha-mstrip__chev { transition: none; }
 }
 
+/* The toaster sits in a popover (top layer) so it shows above an open modal dialog; the layer itself takes no room and no clicks. */
+.toast-layer { position: fixed; inset: 0 auto auto 0; width: 0; height: 0; margin: 0; padding: 0; border: 0; background: transparent; overflow: visible; pointer-events: none; }
+.toast-layer [data-sonner-toast] { pointer-events: auto; }
+/* Under an open modal the toast gets no hover of its own (see AppToaster): the script marks the button under the pointer. */
+.units-toast__cl[data-hot] { background: var(--surface-2); color: var(--ink); }
+.units-toast__act[data-hot] { background: var(--surface-2); }
+html.toast-hot, html.toast-hot *, html.toast-hot dialog::backdrop { cursor: pointer !important; }
+
 /* Toasts come down from above the top bar and settle under it. */
 [data-sonner-toast][data-y-position="top"][data-mounted="false"] { --y: translateY(-180%); }
 [data-sonner-toast][data-y-position="top"] { transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease, height 0.3s ease, box-shadow 0.2s ease; }
@@ -4310,7 +4318,7 @@ button.mb-stat:focus-visible { outline: none; box-shadow: var(--ring); }
 .mb-fld__h { color: var(--muted); font-size: 12px; line-height: 18px; }
 .mb-pw { display: flex; gap: 8px; }
 .mb-pw .input { flex: 1; font-size: 16px; }
-.mb-pw__eye { flex: none; min-width: 64px; }
+.mb-pw__eye { flex: none; width: 44px; height: 44px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
 .mb-foot { gap: 8px; flex-wrap: wrap; }
 .mb-foot .btn { flex: 1 1 120px; min-height: 44px; }
 @media (min-width: 640px) { .mb-foot .btn { flex: 0 0 auto; } }
