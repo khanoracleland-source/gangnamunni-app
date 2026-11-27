@@ -9,6 +9,7 @@ import type { ApiResult } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
+import { formatNumber } from "@/lib/format";
 import { minuteOf } from "@/lib/members";
 import { notificationsHref, typeKey, writeErrorKey } from "@/lib/notifications";
 import { cancelScheduled, fetchScheduled, type ScheduledItem, type ScheduledList } from "@/lib/notificationsApi";
@@ -72,7 +73,7 @@ export default function ScheduledTab({ enabled, onChanged }: { enabled: boolean;
       asking === p.id ? (
         <span className="nt-ask">
           <span>{t("nt.sc.ask")}</span>
-          <button type="button" className="btn btn--ghost" onClick={() => setAsking(null)} disabled={busy}>{t("nt.sc.no")}</button>
+          <button type="button" className="btn btn--ghost" onClick={() => setAsking(null)} disabled={busy} autoFocus>{t("nt.sc.no")}</button>
           <button type="button" className="btn btn--primary" onClick={() => void cancel(p.id)} disabled={busy} aria-busy={busy}>{t("nt.sc.yes")}</button>
         </span>
       ) : (
@@ -85,7 +86,7 @@ export default function ScheduledTab({ enabled, onChanged }: { enabled: boolean;
   return (
     <div className="nt-sc">
       <div className="nt-toolbar">
-        <p className="nt-toolbar__n">{list ? t("nt.h.count", { n: list.items.length }) : " "}</p>
+        <p className="nt-toolbar__n">{list ? t("nt.h.count", { n: formatNumber(list.items.length) }) : " "}</p>
         <button type="button" className="btn btn--ghost" onClick={() => setTick((n) => n + 1)} disabled={loading}><Icon name="refresh" size={16} /> {t("nt.h.refresh")}</button>
       </div>
       {error ? <Notice tone="warn" icon="alert">{error}</Notice> : null}

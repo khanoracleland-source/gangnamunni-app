@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import AdminShell from "../AdminShell";
-import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import { ErrorScreen, ForbiddenScreen, LoadingScreen, RedirectingScreen, type ErrorKind } from "../StateScreens";
 import { fetchMe, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 import { useT } from "@/lib/locale";
+import AutoTab from "./AutoTab";
+import DiagTab from "./DiagTab";
 import HistoryTab from "./HistoryTab";
 import ScheduledTab from "./ScheduledTab";
 import SendTab from "./SendTab";
@@ -149,11 +150,10 @@ function Board({ me }: { me: Me }) {
           <HistoryTab />
         ) : tab === "scheduled" ? (
           <ScheduledTab enabled={scheduleOn && options?.scheduleEnabled !== false} onChanged={() => setPlanTick((n) => n + 1)} />
+        ) : tab === "auto" ? (
+          <AutoTab />
         ) : (
-          <div className="nt-soon">
-            <Icon name="phone" size={20} />
-            <p>{t("nt.soon")}</p>
-          </div>
+          <DiagTab />
         )}
       </div>
     </div>
