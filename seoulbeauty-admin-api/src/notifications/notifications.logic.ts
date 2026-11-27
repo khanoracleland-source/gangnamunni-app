@@ -73,6 +73,8 @@ export interface Split {
   skippedPush: number;
   /** marketing push held back only because it is night and 야간 푸시 is off (the in-app row is still written) */
   nightSkipped: number;
+  /** the members counted in `nightSkipped` */
+  nightSkippedIds: string[];
 }
 
 /**
@@ -81,7 +83,7 @@ export interface Split {
  */
 export function splitRecipients(memberIds: string[], prefs: Map<string, Prefs>, type: NotificationType, night: boolean): Split {
   const gate = gateFor(type);
-  const out: Split = { inApp: [], push: [], skippedInApp: 0, skippedPush: 0, nightSkipped: 0 };
+  const out: Split = { inApp: [], push: [], skippedInApp: 0, skippedPush: 0, nightSkipped: 0, nightSkippedIds: [] };
   for (const id of memberIds) {
     const p = prefs.get(id) ?? DEFAULT_PREFS;
     if (gate.kind === 'toggle') {
@@ -89,7 +91,7 @@ export function splitRecipients(memberIds: string[], prefs: Map<string, Prefs>, 
     } else if (gate.kind === 'marketing') {
       out.inApp.push(id);
       if (p.mkt_push !== 1) out.skippedPush++;
-      else if (night && p.mkt_night_push !== 1) out.nightSkipped++;
+      else if (night && p.mkt_night_push !== 1) { out.nightSkipped++; out.nightSkippedIds.push(id); }
       else out.push.push(id);
     } else {
       out.inApp.push(id); out.push.push(id);

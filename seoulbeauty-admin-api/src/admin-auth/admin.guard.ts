@@ -693,3 +693,15 @@ export class NotificationsEnabledGuard implements CanActivate {
     return true;
   }
 }
+
+/** Sending to members. Needs the notifications page on as well; only the exact value "1" turns it on. */
+export const notificationsSendEnabled = (): boolean => notificationsEnabled() && process.env.ADMIN_NOTIFICATIONS_SEND === '1';
+
+/** With the send switch off the sending route answers 404 as if it did not exist; nothing else is looked at. */
+@Injectable()
+export class NotificationsSendEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !notificationsSendEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}

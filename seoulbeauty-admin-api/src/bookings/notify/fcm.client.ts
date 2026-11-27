@@ -4,7 +4,8 @@ import { promises as fs } from 'node:fs';
 import { b64url, isDeadToken } from './notify.logic';
 
 interface ServiceAccount { project_id: string; private_key: string; client_email: string }
-export type FcmResult = { ok: true } | { ok: false; dead: boolean };
+/** A failed send also carries the HTTP status (0 = no answer) and the FCM error code, for the callers that report or retry. */
+export type FcmResult = { ok: true } | { ok: false; dead: boolean; status?: number; code?: string };
 
 /** FCM HTTP v1 sender for the member push. The legacy server-key fallback is intentionally not supported. */
 @Injectable()
@@ -76,10 +77,10 @@ export class FcmClient {
       });
       if (r.status === 200) return { ok: true };
       const j = await r.json().catch(() => null);
-      return { ok: false, dead: isDeadToken(r.status, j) };
+      return { ok: false, dead: isDeadToken(r.status, j), status: r.status, code: String(j?.error?.details?.[0]?.errorCode ?? j?.error?.status ?? '') };
     } catch (err) {
       this.log.warn(`FCM send error: ${(err as Error).message}`);
-      return { ok: false, dead: false };
+      return { ok: false, dead: false, status: 0, code: 'network' };
     }
   }
 }

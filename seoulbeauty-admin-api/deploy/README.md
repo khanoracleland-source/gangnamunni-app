@@ -1668,3 +1668,19 @@ Who counts as a recipient and who gets what (the member's 설정 page decides):
 ```
 ADMIN_NOTIFICATIONS_ENABLED=1
 ```
+
+### 32.2 Sending (`ADMIN_NOTIFICATIONS_SEND`; `POST /v1/notifications/send`; super admin only)
+
+Body: the audience of the preview, `type`, `title`, `message`, `link`, a `requestId` (16-64 chars, one per click of the send button) and `expectedResolved` (the recipient count the admin saw in the preview). One request sends it all: in-app rows (chunks of 500), then push to each device token (parallel, `NOTIFICATIONS_FCM_CONCURRENCY`, two retries on 429/5xx/network). A general or system notice to everybody goes to Android as the topic `seoulbeauty_android_all` and to iOS and web by token.
+- The history row is written first (`push_error='sending'`), so a repeated `requestId` returns the first result (`duplicate: true`) and never sends twice; the same id while it still runs answers 409 `in_progress`; a second send at the same time answers 409 `busy`.
+- 409 `audience_changed` (with the new `resolved`): the audience is not the one that was previewed; nothing was written.
+- A test send (`test: true`) goes to one member (`target: individual`) and is marked `is_test`.
+- Member 설정 and the night rule (21:00-08:00 KST: marketing push only to `야간 푸시` on) are applied as in the table above; why a recipient got nothing is stored per recipient (`setting`, `night`, `no_token`, `topic`, `fcm_disabled`, `apns_auth`, `deadline`, `credentials`).
+- A dead token (UNREGISTERED etc.) is only switched off (`pt_use = 0`). The iOS sends stop after the first APNs key error. The PHP switch `fcm_enabled=0` turns every push off.
+- The send runs inside the request: after `NOTIFICATIONS_SEND_DEADLINE_SEC` (default 25) the rest of the tokens are reported as skipped (`deadline`). Keep the Apache/Next proxy timeout above that (60 s or more) on `/admin-next/api/`.
+- If the process dies in the middle of a send, its history row stays `sending` and that `requestId` answers 409 `in_progress`; a new click gets a new id and is not affected.
+- Run once as the DB admin: `deploy/sql/notifications_send_grants.sql` (write GRANTs only on the columns used; `SELECT (pt_token)` is needed for the dead-token `WHERE`).
+
+```
+ADMIN_NOTIFICATIONS_SEND=1
+```
