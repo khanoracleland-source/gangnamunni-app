@@ -11,6 +11,8 @@ import { fetchMe, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 import { useT } from "@/lib/locale";
+import HistoryTab from "./HistoryTab";
+import ScheduledTab from "./ScheduledTab";
 import SendTab from "./SendTab";
 import { NOTIFICATION_TABS, TAB_LABEL, notificationsHref, parseTab, type NotificationTab } from "@/lib/notifications";
 import { fetchNotificationOptions, fetchScheduled, type NotificationOptions } from "@/lib/notificationsApi";
@@ -143,6 +145,10 @@ function Board({ me }: { me: Me }) {
       <div id="nt-panel" role="tabpanel" aria-labelledby={`nt-tab-${tab}`} className="nt-panel">
         {tab === "send" ? (
           <SendTab me={me} options={options} onPlanned={() => { setPlanTick((n) => n + 1); router.replace(notificationsHref("scheduled"), { scroll: false }); }} />
+        ) : tab === "history" ? (
+          <HistoryTab />
+        ) : tab === "scheduled" ? (
+          <ScheduledTab enabled={scheduleOn && options?.scheduleEnabled !== false} onChanged={() => setPlanTick((n) => n + 1)} />
         ) : (
           <div className="nt-soon">
             <Icon name="phone" size={20} />

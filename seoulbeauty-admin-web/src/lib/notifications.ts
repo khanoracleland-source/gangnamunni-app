@@ -10,7 +10,9 @@ export const TAB_LABEL: Record<NotificationTab, MessageKey> = {
 
 export const parseTab = (raw: string | null): NotificationTab => (NOTIFICATION_TABS as readonly string[]).includes(raw ?? "") ? (raw as NotificationTab) : "send";
 /** The address of a tab (without the base path; the first tab is the plain page). */
-export const notificationsHref = (tab: NotificationTab): string => (tab === "send" ? "/notifications" : `/notifications?tab=${tab}`);
+export const notificationsHref = (tab: NotificationTab, id?: number): string => (tab === "send" ? "/notifications" : id && id > 0 ? `/notifications?tab=${tab}&id=${id}` : `/notifications?tab=${tab}`);
+/** The send picked in the address (?id=): a positive whole number or none. */
+export const parseId = (raw: string | null): number => (raw !== null && /^[1-9]\d{0,9}$/.test(raw) ? Number(raw) : 0);
 
 export const NOTIFICATION_TYPES = ["general", "booking", "community", "review", "event", "raffle", "system", "promotion"] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
