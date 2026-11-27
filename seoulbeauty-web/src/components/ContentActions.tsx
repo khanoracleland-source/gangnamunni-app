@@ -1,6 +1,6 @@
+/* eslint-disable @next/next/no-img-element -- plain <img>: the app WebView does not load the /_next/image optimizer URLs */
 "use client";
 import { useRef, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, type ContentType } from "@/lib/api";
@@ -102,13 +102,13 @@ export default function ContentActions({ type, id, isMine, authorName, className
               <div className={styles.list}>
                 {type !== "comment" && (
                   <button type="button" className={styles.row} onClick={copyLink}>
-                    <span className={styles.ico}><Image src={linkIcon} alt="" width={22} height={22} /></span>링크 복사
+                    <span className={styles.ico}><img src={linkIcon.src} alt="" width={22} height={22} /></span>링크 복사
                   </button>
                 )}
                 {isMine && type === "community" ? (
                   <>
                     <button type="button" className={styles.row} onClick={() => router.push(`/community/write?id=${id}`)}>
-                      <span className={styles.ico}><Image src={editIcon} alt="" width={22} height={22} /></span>수정하기
+                      <span className={styles.ico}><img src={editIcon.src} alt="" width={22} height={22} /></span>수정하기
                     </button>
                     <button type="button" className={styles.row} onClick={() => goTo("delete")}>
                       <span className={`${styles.ico} ${styles.red}`}>{DELETE_ICON}</span>삭제하기
@@ -119,10 +119,10 @@ export default function ContentActions({ type, id, isMine, authorName, className
                 ) : (
                   <>
                     <button type="button" className={styles.row} onClick={() => goTo("block")}>
-                      <span className={styles.ico}><Image src={blockIcon} alt="" width={22} height={22} /></span>차단
+                      <span className={styles.ico}><img src={blockIcon.src} alt="" width={22} height={22} /></span>차단
                     </button>
                     <button type="button" className={styles.row} onClick={() => goTo("report")}>
-                      <span className={styles.ico}><Image src={reportIcon} alt="" width={22} height={22} /></span>신고
+                      <span className={styles.ico}><img src={reportIcon.src} alt="" width={22} height={22} /></span>신고
                     </button>
                   </>
                 )}
@@ -140,11 +140,11 @@ export default function ContentActions({ type, id, isMine, authorName, className
                 <h2 className={styles.confirmTitle}>{authorName}님을 차단할까요?</h2>
                 <ul className={styles.facts}>
                   <li>
-                    <span className={styles.factIco}><Image src={hideContentIcon} alt="" width={24} height={24} /></span>
+                    <span className={styles.factIco}><img src={hideContentIcon.src} alt="" width={24} height={24} /></span>
                     <div><strong>콘텐츠 비공개</strong><p>서로의 후기와 게시글, 프로필을 볼 수 없어요</p></div>
                   </li>
                   <li>
-                    <span className={styles.factIco}><Image src={hideNoticeIcon} alt="" width={24} height={24} /></span>
+                    <span className={styles.factIco}><img src={hideNoticeIcon.src} alt="" width={24} height={24} /></span>
                     <div><strong>차단 사실 비공개</strong><p>상대방에게 차단 사실을 알리지 않아요</p></div>
                   </li>
                 </ul>

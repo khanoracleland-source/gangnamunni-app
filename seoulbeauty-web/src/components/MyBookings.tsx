@@ -1,7 +1,7 @@
+/* eslint-disable @next/next/no-img-element -- plain <img>: the app WebView does not load the /_next/image optimizer URLs */
 "use client";
 import { useRef, useState, useSyncExternalStore } from "react";
 import BottomSheet, { type BottomSheetHandle } from "./BottomSheet";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +27,6 @@ function Summary({ b }: { b: BookingBase }) {
   return (
     <div className={styles.bkSum}>
       <div className={styles.bkThumb}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         {b.imageUrl ? <img src={assetUrl(b.imageUrl) ?? ""} alt="" /> : <>SEOUL<br />BEAUTY</>}
       </div>
       <div className={styles.bkCopy}>
@@ -109,7 +108,7 @@ export default function MyBookings({ initial, anon }: { initial?: MyBookingsData
             {data.showPushHint && !hintOff && (tab === "active" ? data.upcoming.length > 0 : tab === "completed" && data.completed.length > 0) && (
               <div className={styles.bkHint}>
                 <Link className={styles.bkHintLink} href="/mypage/settings">
-                  <Image src={bellIcon} alt="" width={20} height={20} />
+                  <img src={bellIcon.src} alt="" width={20} height={20} />
                   <span>기기 알림을 켜면 예약현황을 푸시로도 알려드려요<br />(마이페이지 &gt; 설정 &gt; 알림설정에서 예약 · 결제 알림을 켜주세요)</span>
                 </Link>
                 <button type="button" className={styles.bkHintX} aria-label="닫기" onClick={dismissHint}>

@@ -1,9 +1,9 @@
+/* eslint-disable @next/next/no-img-element -- plain <img>: the app WebView does not load the /_next/image optimizer URLs */
 "use client";
 import Loading from "./Loading";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import bellIcon from "@/assets/icons/bell.png";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, qk, type NotificationSettings, type SettingKey } from "@/lib/api";
@@ -113,7 +113,7 @@ export default function MySettings({ initial, anon }: { initial?: Data; anon?: b
         <div className={styles.body}>
           {deviceOff && (
             <div className={styles.device} role="status">
-              <Image src={bellIcon} alt="" width={24} height={24} />
+              <img src={bellIcon.src} alt="" width={24} height={24} />
               <div className={styles.deviceTxt}>
                 <strong>기기 알림이 꺼져 있어요</strong>
                 <span>휴대폰 설정에서 알림을 켜야 예약 알림을 받을 수 있어요</span>
