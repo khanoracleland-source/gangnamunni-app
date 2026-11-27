@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, Logger, ServiceUnavailableExce
 import { DB, Db, DB_RW, RwDbProvider } from '../db/db.module';
 import { Query } from '../hospitals/hospitals.logic';
 import {
-  AlertTab, countsQuery, Filter, listQuery, markReadQuery, markTabQuery, PER_PAGE, safeLink, totalQuery, unreadQuery,
+  AlertTab, countsQuery, Filter, listQuery, markReadQuery, markTabQuery, PER_PAGE, purgeDaysOf, purgeQuery, safeLink, totalQuery, unreadQuery,
 } from './alerts.logic';
 
 type Row = Record<string, unknown>;
@@ -64,5 +64,12 @@ export class AlertsService {
 
   async markTab(adminId: number, tab: AlertTab): Promise<{ updated: number }> {
     return { updated: await this.write(markTabQuery(adminId, tab)) };
+  }
+
+  /** Deletes this admin's alerts that are read and older than the given days. */
+  async purge(adminId: number, rawDays: unknown): Promise<{ deleted: number }> {
+    const days = purgeDaysOf(rawDays);
+    if (days === null) throw new BadRequestException({ error: 'bad_days' });
+    return { deleted: await this.write(purgeQuery(adminId, days)) };
   }
 }

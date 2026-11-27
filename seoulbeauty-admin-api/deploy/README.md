@@ -1697,3 +1697,12 @@ ADMIN_NOTIFICATIONS_SEND=1
 ```
 ADMIN_NOTIFICATIONS_SCHEDULE=1
 ```
+
+## 33. Admin alert inbox (`ADMIN_ALERTS_ENABLED`; each admin sees only their own rows)
+The bell in the top bar and the page `/admin-next/alerts` (not in the menu). Table `gangnamunni_notifications` (rows per admin, written by the PHP panel and other features).
+1. Run `deploy/sql/alerts_grants.sql` as the DB admin (both hosts, 127.0.0.1 and localhost).
+2. `ADMIN_ALERTS_ENABLED=1` in `.env`, restart the service. Anything but 1 = off: routes answer 404 and the bell is hidden.
+3. Routes: `GET /v1/alerts?tab&type&from&to&page`, `GET /v1/alerts/unread`, `POST /v1/alerts/:id/read`, `/read-tab`, `/purge` (writes need the CSRF header).
+`POST /v1/alerts/purge` body `{"days": n}` (whole number 1..3650, default 30; anything else = 400 `bad_days`) deletes only the signed-in admin's alerts that are read and older than n days.
+The write user gets table-level `DELETE` on `gangnamunni_notifications` (the one exception to the "no INSERT / DELETE" check of section 7); the code limits it to the admin's own read rows.
+Links in alerts are followed only when relative; others are dropped by the API.

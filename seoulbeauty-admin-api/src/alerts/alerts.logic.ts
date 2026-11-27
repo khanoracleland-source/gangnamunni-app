@@ -19,6 +19,8 @@ export const TAB_TYPES: Record<Exclude<AlertTab, 'all'>, readonly AlertType[]> =
 };
 
 export const PER_PAGE = 20;
+export const DEFAULT_PURGE_DAYS = 30;
+export const MAX_PURGE_DAYS = 3650;
 
 export const tabOf = (raw: unknown): AlertTab => (TABS as readonly string[]).includes(raw as string) ? (raw as AlertTab) : 'all';
 export const typeOf = (raw: unknown): AlertType | '' => (ALERT_TYPES as readonly string[]).includes(raw as string) ? (raw as AlertType) : '';
@@ -30,6 +32,13 @@ export function dayOf(raw: unknown): string {
   if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return '';
   const d = new Date(`${raw}T00:00:00Z`);
   return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== raw ? '' : raw;
+}
+
+/** Days to keep read alerts for: a whole number from 1 to 3650; anything else is invalid (null). */
+export function purgeDaysOf(raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === '') return DEFAULT_PURGE_DAYS;
+  const n = typeof raw === 'number' ? raw : typeof raw === 'string' && /^\d{1,4}$/.test(raw) ? Number(raw) : NaN;
+  return Number.isInteger(n) && n >= 1 && n <= MAX_PURGE_DAYS ? n : null;
 }
 
 /** A link that may be followed from the inbox: a relative path only (no scheme, no "//", no backslash or control characters, not "#"). */
@@ -87,3 +96,5 @@ export function markTabQuery(adminId: number, tab: AlertTab): Query {
   if (tab === 'all') return { sql: 'UPDATE gangnamunni_notifications SET is_read = 1 WHERE admin_id = ? AND is_read = 0', values: [adminId] };
   return { sql: `UPDATE gangnamunni_notifications SET is_read = 1 WHERE admin_id = ? AND is_read = 0 AND type IN (${TAB_TYPES[tab].map(() => '?').join(', ')})`, values: [adminId, ...TAB_TYPES[tab]] };
 }
+
+export const purgeQuery = (adminId: number, days: number): Query => ({ sql: 'DELETE FROM gangnamunni_notifications WHERE admin_id = ? AND is_read = 1 AND created_at < DATE_SUB(NOW(), INTERVAL ? DAY)', values: [adminId, days] });

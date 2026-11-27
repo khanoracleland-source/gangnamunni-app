@@ -29,6 +29,11 @@ export class AlertsController {
     return this.svc.markTab(req.admin.id, tabOf(tab));
   }
 
+  @Post('purge')
+  @HttpCode(200)
+  @UseGuards(CsrfGuard, AdminGuard)
+  purge(@Req() req: ScopedAdminRequest, @Body() b: unknown) { return this.svc.purge(req.admin.id, body(b).days); }
+
   @Post(':id/read')
   @HttpCode(200)
   @UseGuards(CsrfGuard, AdminGuard)

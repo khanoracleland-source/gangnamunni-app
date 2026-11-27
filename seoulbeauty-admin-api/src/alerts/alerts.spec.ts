@@ -71,7 +71,7 @@ describe('admin API: alert inbox', () => {
     expect((await get('/v1/alerts')).status).toBe(401);
     expect((await get('/v1/alerts/unread')).status).toBe(401);
     expect((await post('/v1/alerts/3/read', {}, SUPER, { 'Content-Type': 'application/json' })).status).toBe(403);
-    expect((await post('/v1/alerts/read-tab', '{}', SUPER, { 'Content-Type': 'text/plain' })).status).toBe(403);
+    expect((await post('/v1/alerts/purge', '{}', SUPER, { 'Content-Type': 'text/plain' })).status).toBe(403);
     expect((await post('/v1/alerts/3/read', {}, undefined)).status).toBe(401);
     expect(writes).toHaveLength(0);
     expect((await get('/v1/me', SUPER)).body.features.alerts).toBe(true);
@@ -116,9 +116,21 @@ describe('admin API: alert inbox', () => {
     expect(writes[1].values).toEqual([7]);
   });
 
+  it('purges only this admin\'s read alerts older than the days; bad days are 400', async () => {
+    const r = await post('/v1/alerts/purge', { days: 30 }, SUPER);
+    expect(r.body).toEqual({ deleted: 2 });
+    expect(writes[0].sql).toContain('is_read = 1');
+    expect(writes[0].values).toEqual([7, 30]);
+    expect((await post('/v1/alerts/purge', {}, SUPER)).status).toBe(200);
+    expect(writes[1].values).toEqual([7, 30]);
+    for (const days of [0, -5, 4000, 'x', 2.5]) expect((await post('/v1/alerts/purge', { days }, SUPER)).status).toBe(400);
+  });
+
   it('without a write user the writes answer 503 and nothing is run', async () => {
     rwOn = false;
     expect((await post('/v1/alerts/3/read', {}, SUPER)).status).toBe(503);
+    expect((await post('/v1/alerts/purge', { days: 30 }, SUPER)).status).toBe(503);
+    expect((await post('/v1/alerts/read-tab', {}, SUPER)).status).toBe(503);
     expect(writes).toHaveLength(0);
   });
 });
