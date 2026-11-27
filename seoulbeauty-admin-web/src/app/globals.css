@@ -4335,3 +4335,25 @@ button.mb-stat:focus-visible { outline: none; box-shadow: var(--ring); }
 .mb-foot { gap: 8px; flex-wrap: wrap; }
 .mb-foot .btn { flex: 1 1 120px; min-height: 44px; }
 @media (min-width: 640px) { .mb-foot .btn { flex: 0 0 auto; } }
+
+/* notifications (send to members) */
+.nt-page { display: flex; flex-direction: column; gap: 0; min-width: 0; }
+.nt-top { display: flex; flex-wrap: wrap; gap: 8px; }
+.nt-top:empty { display: none; }
+.nt-top:not(:empty) { margin-bottom: 12px; }
+.nt-key { flex: none; padding: 4px 10px; border-radius: 6px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; line-height: 18px; }
+.nt-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.nt-tabs::-webkit-scrollbar { display: none; }
+.nt-tab { display: inline-flex; flex: none; align-items: center; min-height: 44px; padding: 0 14px; color: var(--muted); font-size: 15px; font-weight: 600; white-space: nowrap; text-decoration: none; transition: color var(--t-fast) var(--ease); }
+.nt-tab:hover { color: var(--ink); }
+.nt-tab[aria-selected="true"] { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--primary); }
+.nt-tab:focus-visible { outline-offset: -2px; }
+.nt-tab__n { margin-left: 6px; padding: 0 6px; background: var(--surface-2); border-radius: 9px; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 18px; font-variant-numeric: tabular-nums; }
+.nt-tab[aria-selected="true"] .nt-tab__n { background: var(--accent-soft); color: var(--accent-text); }
+.nt-soon { display: flex; flex-direction: column; align-items: center; gap: 8px; max-width: 420px; margin: 0 auto; padding: 36px 8px; color: var(--muted); font-size: 14px; text-align: center; }
+/* Below 900 the tab row runs to the edge of the screen (the page padding is taken back) and scrolls. */
+@media (max-width: 1199px) { .nt-tabs { margin-inline: -24px; padding-inline: 24px; } }
+@media (max-width: 767px) { .nt-tabs { margin-inline: -20px; padding-inline: 20px; } }
+@media (max-width: 576px) { .nt-tabs { margin-inline: -16px; padding-inline: 16px; } .nt-tab { padding: 0 12px; } }
+@media (max-width: 360px) { .nt-tabs { margin-inline: -12px; padding-inline: 12px; } }
+@media (min-width: 900px) { .nt-tabs { margin-inline: 0; padding-inline: 0; } }

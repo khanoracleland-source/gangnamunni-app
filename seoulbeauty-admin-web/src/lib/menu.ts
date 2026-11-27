@@ -194,7 +194,7 @@ const MENU: MenuGroup[] = [
       legacy("admins", "admin_hospital_suspension.php", "병원 정지/요금 관리", "Hospital suspension and fees", "lock"),
       legacy("grade_permissions", "admin_grade_permissions.php", "등급별 기능 관리", "Permissions by level", "check"),
       legacy("notifications", "admin_notifications.php", "Admin Center Alert", "Admin Center Alert", "alert"),
-      legacy("send_notification", "admin_send_notification.php", "회원 푸시 발송", "Send push to members", "phone"),
+      { ...legacy("send_notification", "admin_send_notification.php", "회원 푸시 발송", "Send push to members", "phone"), superOnly: true },
     ],
   },
   {
@@ -227,7 +227,7 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "consultations" | "payments" | "members", { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "consultations" | "payments" | "members" | "notifications", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
   doctors: { key: "doctors", href: "/doctors" },
   hospitalApply: { key: "hospital_apply", href: "/hospital-apply" },
@@ -238,6 +238,7 @@ const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatment
   consultations: { key: "consultations", href: "/consultations" },
   payments: { key: "booking_revenue", href: "/payments" },
   members: { key: "members", href: "/members" },
+  notifications: { key: "send_notification", href: "/notifications" },
 };
 
 /**

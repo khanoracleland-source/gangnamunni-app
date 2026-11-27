@@ -19,7 +19,7 @@ export type Admin = {
  * `treatmentUnits`: the price units page is open (read); `treatmentUnitsWrite`: units may be added and removed here.
  * `treatments`: the treatment master page is open (read); `treatmentsWrite`: it may be changed here; `treatmentsImages`: image files may be uploaded for it.
  */
-export type Features = { hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; paymentsRefund: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean; members: boolean; membersWrite: boolean; membersPassword: boolean; membersActivity: boolean; membersStatus: boolean };
+export type Features = { notifications: boolean; notificationsSend: boolean; notificationsSchedule: boolean; hospitals: boolean; hospitalsWrite: boolean; hospitalsDelete: boolean; hospitalsReview: boolean; hospitalsOrder: boolean; doctors: boolean; doctorsWrite: boolean; doctorsOrder: boolean; doctorsDelete: boolean; hospitalsImages: boolean; hospitalsDocuments: boolean; hospitalsDoctors: boolean; hospitalsTreatments: boolean; hospitalsTreatmentsRemove: boolean; hospitalsTreatmentsPrices: boolean; hospitalsTreatmentsQuestions: boolean; hospitalsTreatmentsImages: boolean; archive: boolean; treatments: boolean; treatmentsWrite: boolean; treatmentsImages: boolean; treatmentUnits: boolean; treatmentUnitsWrite: boolean; hospitalApply: boolean; admins: boolean; adminsWrite: boolean; bookings: boolean; bookingsWrite: boolean; consultations: boolean; consultationsWrite: boolean; payments: boolean; paymentsRefund: boolean; moderation: boolean; moderationWrite: boolean; moderationEdit: boolean; moderationDelete: boolean; banners: boolean; bannersWrite: boolean; categoryBoard: boolean; categoryBoardWrite: boolean; members: boolean; membersWrite: boolean; membersPassword: boolean; membersActivity: boolean; membersStatus: boolean };
 
 export type Me = { admin: Admin; features: Features };
 
@@ -85,7 +85,7 @@ const names = (v: unknown): string[] =>
     .filter((item) => item !== "");
 
 /** GET through the same-origin /api rewrite; the admin session cookie goes along. Never cached. */
-async function getJson(path: string, signal?: AbortSignal): Promise<ApiResult<unknown>> {
+export async function getJson(path: string, signal?: AbortSignal): Promise<ApiResult<unknown>> {
   try {
     const res = await fetch(`${BASE_PATH}/api${path}`, {
       credentials: "same-origin",
@@ -162,6 +162,9 @@ export async function fetchMe(signal?: AbortSignal): Promise<ApiResult<Me>> {
         membersPassword: obj(d.features).membersPassword === true,
         membersActivity: obj(d.features).membersActivity === true,
         membersStatus: obj(d.features).membersStatus === true,
+        notifications: obj(d.features).notifications === true,
+        notificationsSend: obj(d.features).notificationsSend === true,
+        notificationsSchedule: obj(d.features).notificationsSchedule === true,
       },
     },
   };
@@ -510,7 +513,7 @@ export type WriteFailure = {
 export type WriteResult<T> = { ok: true; data: T } | WriteFailure;
 
 /** Sends a change through the same-origin /api rewrite. The two headers are what the server demands of every writing request. */
-async function sendJson(method: "PATCH" | "POST" | "PUT" | "DELETE", path: string, body: unknown = {}): Promise<WriteResult<Json>> {
+export async function sendJson(method: "PATCH" | "POST" | "PUT" | "DELETE", path: string, body: unknown = {}): Promise<WriteResult<Json>> {
   try {
     const res = await fetch(`${BASE_PATH}/api${path}`, {
       method,
