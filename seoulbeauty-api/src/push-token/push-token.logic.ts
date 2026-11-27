@@ -59,3 +59,12 @@ export const deviceLike = (deviceId: string): string => `%"device_id":"${deviceI
 
 /** For logs: never the whole token. */
 export const tokenTail = (token: string): string => `…${token.slice(-6)}`;
+
+/**
+ * What a "command denied" error of the database names: the command, the column and the table (e.g. `INSERT pt_token g5_push_tokens`).
+ * Nothing else of the message is kept, so a quoted token value can never reach a log.
+ */
+export const deniedDetail = (message: unknown): string => {
+  const m = /^(\w+) command denied to user [^]*? for column '(\w+)' in table '(\w+)'/.exec(typeof message === 'string' ? message : '');
+  return m ? `${m[1]} ${m[2]} ${m[3]}` : '';
+};

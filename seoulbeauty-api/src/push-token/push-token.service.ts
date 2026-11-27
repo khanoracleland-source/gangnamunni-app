@@ -1,9 +1,9 @@
 import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import { DB, Db } from '../db/db.module';
-import { deviceLike, PushTokenInput, tokenTail } from './push-token.logic';
+import { deniedDetail, deviceLike, PushTokenInput, tokenTail } from './push-token.logic';
 
 const n = (v: unknown) => Number(v ?? 0) || 0;
-const errCode = (e: unknown) => `${(e as Error)?.name || 'Error'} ${String((e as { code?: unknown })?.code ?? '')}`.trim();
+const errCode = (e: unknown) => `${(e as Error)?.name || 'Error'} ${String((e as { code?: unknown })?.code ?? '')} ${deniedDetail((e as { sqlMessage?: unknown })?.sqlMessage)}`.trim();
 
 /**
  * The member's device token in g5_push_tokens (read by member-notify, the booking page and the daily cleanup), written the way PHP
