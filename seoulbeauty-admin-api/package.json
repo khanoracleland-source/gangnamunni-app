@@ -7,7 +7,9 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=.env dist/main.js",
     "start:dev": "node --env-file-if-exists=.env -r ts-node/register src/main.ts",
-    "test": "jest"
+    "test": "jest",
+    "notifications-scheduled": "node --env-file-if-exists=.env dist/notifications-scheduled.cli.js",
+    "notifications-cleanup": "node --env-file-if-exists=.env dist/notifications-cleanup.cli.js"
   },
   "engines": {
     "node": ">=22.9"

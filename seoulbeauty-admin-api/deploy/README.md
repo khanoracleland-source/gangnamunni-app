@@ -1684,3 +1684,16 @@ Body: the audience of the preview, `type`, `title`, `message`, `link`, a `reques
 ```
 ADMIN_NOTIFICATIONS_SEND=1
 ```
+
+### 32.3 Planned sends and housekeeping (`ADMIN_NOTIFICATIONS_SCHEDULE`; super admin only)
+
+- `POST /v1/notifications/schedule`: the body of a send without `requestId` / `expectedResolved`, plus `runAt` (`YYYY-MM-DDTHH:mm`, **Korean time**, from 1 minute to 90 days ahead) and `nightPolicy` (`skip` = the normal night rule applies when it runs; `delay` = a marketing send that comes due between 21:00 and 08:00 waits until 08:00). A test send cannot be planned; at most 50 plans wait at the same time. Answers `{ id, runAt, status: "pending" }`.
+- `GET /v1/notifications/scheduled` (last 100 plans, newest run time first) and `DELETE /v1/notifications/scheduled/:id` (only a `pending` plan; 409 `not_pending`, 404 `not_found`).
+- The audience is worked out **when the plan runs** (members who joined or left meanwhile count; their 설정 as they are then). Nobody previews it, so the send does not compare the count.
+- The timer: `npm run notifications-scheduled` once a minute (one pass: takes each due plan with `UPDATE ... WHERE status = 'pending'`, so two passes never run the same plan; a plan more than `SCHEDULED_MAX_LATE_MIN` late is marked `failed: missed`). The history shows the send as made by the planner, and the plan keeps the `send_id`. A plan left on `running` means the pass died in the middle: look at the history row of `sched_<id>` before touching it.
+- Housekeeping: `npm run notifications-cleanup -- --dry-run` (counts only), then once a day without `--dry-run`: per-recipient rows older than 90 days, finished plans older than 90 days, and history rows a dead process left on `sending` for a day (marked `failed: interrupted`).
+- Server steps (the Hukmdorim): `npm run build`; the extra GRANTs are in `deploy/sql/notifications_send_grants.sql` (Part 3 block). A systemd timer or crontab line, e.g. `* * * * * cd /path/seoulbeauty-admin-api && npm run -s notifications-scheduled >> /var/log/sb-admin-notifications.log 2>&1` and `10 0 * * * ... npm run -s notifications-cleanup`.
+
+```
+ADMIN_NOTIFICATIONS_SCHEDULE=1
+```

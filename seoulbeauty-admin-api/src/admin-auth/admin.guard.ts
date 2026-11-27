@@ -705,3 +705,14 @@ export class NotificationsSendEnabledGuard implements CanActivate {
     return true;
   }
 }
+
+/** Planned sends: needs sending to be on as well; only the exact value "1" turns it on. */
+export const notificationsScheduleEnabled = (): boolean => notificationsSendEnabled() && process.env.ADMIN_NOTIFICATIONS_SCHEDULE === '1';
+
+@Injectable()
+export class NotificationsScheduleEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !notificationsScheduleEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}

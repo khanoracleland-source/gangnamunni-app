@@ -44,7 +44,8 @@ export class NotificationsSendService {
 
   constructor(@Inject(DB) private readonly db: Db, @Inject(DB_RW) private readonly rw: RwDbProvider, private readonly reads: NotificationsService, private readonly fcm: FcmClient) {}
 
-  async send(actor: Actor, body: unknown, now = Date.now(), sleep: (ms: number) => Promise<void> = realSleep): Promise<SendResult> {
+  /** `unattended`: a planned send run by the timer - nobody saw a preview, so the audience count is not compared. */
+  async send(actor: Actor, body: unknown, now = Date.now(), sleep: (ms: number) => Promise<void> = realSleep, unattended = false): Promise<SendResult> {
     const parsed = parseSendBody(body);
     if (!parsed.ok) throw new BadRequestException({ error: parsed.error });
     const pool = this.rw.get();
@@ -52,18 +53,18 @@ export class NotificationsSendService {
     if (this.busy) throw new ConflictException({ error: 'busy' });
     this.busy = true;
     try {
-      return await this.run(pool, actor, parsed.input, now, sleep);
+      return await this.run(pool, actor, parsed.input, now, sleep, unattended);
     } finally {
       this.busy = false;
     }
   }
 
-  private async run(pool: RwDb, actor: Actor, input: SendInput, now: number, sleep: (ms: number) => Promise<void>): Promise<SendResult> {
+  private async run(pool: RwDb, actor: Actor, input: SendInput, now: number, sleep: (ms: number) => Promise<void>, unattended: boolean): Promise<SendResult> {
     const a = input.audience;
     const plan = await this.reads.plan(a, now);
     const { resolved, split } = plan;
     if (resolved.length === 0) throw new BadRequestException({ error: 'no_recipients' });
-    if (!input.test && resolved.length !== input.expectedResolved) throw new ConflictException({ error: 'audience_changed', resolved: resolved.length });
+    if (!input.test && !unattended && resolved.length !== input.expectedResolved) throw new ConflictException({ error: 'audience_changed', resolved: resolved.length });
     if (split.inApp.length === 0 && split.push.length === 0) throw new BadRequestException({ error: 'nobody_allowed' });
 
     const link = absoluteLink(input.link, this.base);
