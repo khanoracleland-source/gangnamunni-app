@@ -267,3 +267,31 @@ export function duplicateTokens(rows: Record<string, unknown>[]): DuplicateToken
 }
 
 export const linkSearchPattern = (q: string): string => likeContains(q.trim().slice(0, 50));
+
+// ---- member search (the picker of "one member" / "chosen members") -------------------------------------------------
+export const MEMBER_SEARCH_MIN = 2;
+export const MEMBER_SEARCH_LIMIT = 15;
+
+/** A search needs at least two characters; shorter text answers nothing (it would scan the whole member table). */
+export const memberSearchText = (raw: unknown): string => {
+  const q = (typeof raw === 'string' ? raw : '').trim().slice(0, 50);
+  return [...q].length >= MEMBER_SEARCH_MIN ? q : '';
+};
+
+/** Members that have not left whose id, name, nickname or phone contains the text (phone also without hyphens). An exact id comes first. */
+export const memberSearchQuery = (q: string): Query => {
+  const like = likeContains(q);
+  const digits = q.replace(/\D/g, '');
+  return {
+    sql: `SELECT m.mb_id, m.mb_name, m.mb_nick, m.mb_hp FROM g5_member m
+          WHERE m.mb_id <> '' AND ${ACTIVE} AND (m.mb_id LIKE ? OR m.mb_name LIKE ? OR m.mb_nick LIKE ? OR m.mb_hp LIKE ? OR REPLACE(m.mb_hp, '-', '') LIKE ?)
+          ORDER BY (m.mb_id = ?) DESC, m.mb_id ASC LIMIT ${MEMBER_SEARCH_LIMIT}`,
+    values: [like, like, like, like, likeContains(digits.length >= 3 ? digits : q), q],
+  };
+};
+
+/** Which of the given members have at least one working push token. */
+export const memberPushQuery = (ids: string[]): Query => ({
+  sql: `SELECT DISTINCT mb_id FROM g5_push_tokens WHERE pt_use = 1 AND pt_token <> '' AND mb_id IN (${ids.map(() => '?').join(',')})`,
+  values: ids,
+});

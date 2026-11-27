@@ -23,6 +23,8 @@ describe('admin API: notifications (read side)', () => {
       sqls.push({ sql, values });
       for (const frag of missing) if (sql.includes(frag)) throw sqlError('ER_NO_SUCH_TABLE');
       if (sql.includes("SHOW COLUMNS FROM gangnamunni_event_entries")) return [[{ Field: 'member_id' }]];
+      if (sql.includes('m.mb_nick')) return [[{ mb_id: 'kim01', mb_name: '김하나', mb_nick: '하나', mb_hp: '010-1234-5678' }, { mb_id: 'lee02', mb_name: '이둘', mb_nick: '', mb_hp: '' }]];
+      if (sql.includes('SELECT DISTINCT mb_id FROM g5_push_tokens')) return [[{ mb_id: 'kim01' }]];
       if (sql.includes('FROM g5_member m')) return [members.map((mb_id) => ({ mb_id }))];
       if (sql.includes('FROM gangnamunni_notification_settings')) {
         return [[
@@ -35,7 +37,7 @@ describe('admin API: notifications (read side)', () => {
       if (sql.includes('FROM gangnamunni_events WHERE is_active = 1 AND title LIKE')) return [[{ id: 4, title: '가을 이벤트' }]];
       if (sql.includes('FROM gangnamunni_hospitals')) return [[{ id: 128, name: '라온의원' }]];
       if (sql.includes('COUNT(*) AS cnt FROM gangnamunni_notification_sends')) return [[{ cnt: 41 }]];
-      if (sql.includes('FROM gangnamunni_notification_sends ORDER BY id DESC')) {
+      if (sql.includes('FROM gangnamunni_notification_sends WHERE admin_id') && sql.includes('ORDER BY id DESC')) {
         if (sql.includes('request_id')) throw sqlError('ER_BAD_FIELD_ERROR');
         return [[{ id: 41, admin_id: 7, admin_username: 'boss', target_type: '전체 회원', notification_type: 'general', title: '안내', message: '내용', link: '/next/events', resolved_count: 10, in_app_count: 9, push_sent: 8, push_failed: 1, push_skipped: 1, push_error: '', created_at: '2026-11-27 10:00:00' }]];
       }
@@ -88,8 +90,36 @@ describe('admin API: notifications (read side)', () => {
     if (cookie) r = r.set('Cookie', cookie);
     return r;
   };
-  const READS = ['/v1/notifications/options', '/v1/notifications/history', '/v1/notifications/history/41', '/v1/notifications/link-targets?q=a', '/v1/notifications/diagnostics', '/v1/notifications/automatic'];
+  const READS = ['/v1/notifications/options', '/v1/notifications/history', '/v1/notifications/history/41', '/v1/notifications/link-targets?q=a', '/v1/notifications/member-search?q=ab', '/v1/notifications/diagnostics', '/v1/notifications/automatic'];
   const AUD = { target: 'selected', memberIds: members, type: 'promotion' };
+
+  it('searches members by text: two characters at least, only the last four phone digits, a push flag, values kept out of the SQL', async () => {
+    const short = await get('/v1/notifications/member-search?q=a', SUPER);
+    expect(short.status).toBe(200);
+    expect(short.body).toEqual({ items: [] });
+    expect(sqls).toHaveLength(0);
+    const r = await get('/v1/notifications/member-search?q=%ED%95%98_%25', SUPER);
+    expect(r.status).toBe(200);
+    expect(r.body.items).toEqual([
+      { id: 'kim01', name: '김하나', nick: '하나', phoneTail: '5678', hasPush: true },
+      { id: 'lee02', name: '이둘', nick: '', phoneTail: '', hasPush: false },
+    ]);
+    const q = sqls.find((x) => x.sql.includes('m.mb_nick'))!;
+    expect(q.sql).not.toContain('%');
+    expect(q.sql).toContain('mb_leave_date');
+    expect(q.values).toContain('%하\\_\\%%');
+  });
+
+  it('splits the history: admin sends (admin_id > 0) and automatic ones (admin_id = 0)', async () => {
+    const admin = await get('/v1/notifications/history', SUPER);
+    expect(admin.status).toBe(200);
+    const auto = await get('/v1/notifications/history?kind=auto', SUPER);
+    expect(auto.status).toBe(200);
+    const sql = sqls.map((x) => x.sql);
+    expect(sql.some((x) => x.includes('WHERE admin_id > 0 ORDER BY id DESC'))).toBe(true);
+    expect(sql.some((x) => x.includes('WHERE admin_id = 0 ORDER BY id DESC'))).toBe(true);
+    expect(sql.some((x) => x.includes('COUNT(*) AS cnt FROM gangnamunni_notification_sends WHERE admin_id = 0'))).toBe(true);
+  });
 
   it('answers 404 while the switch is off, 401 without a session and 403 for a hospital account — before any SQL', async () => {
     process.env.ADMIN_NOTIFICATIONS_ENABLED = '0';

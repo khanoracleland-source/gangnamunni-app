@@ -4,7 +4,7 @@ import { Query } from '../hospitals/hospitals.logic';
 import {
   Audience, buildPreview, chunk, duplicateTokens, HISTORY_PER_PAGE, isNight, ITEM_STATUSES, ITEMS_PER_PAGE, LinkTarget, linkSearchPattern,
   NIGHT_END, NIGHT_START, NotificationType, parseAudience, parsePushDetails, prefsQuery, Prefs, Preview, recipientsQuery, searchStaticLinks, splitRecipients,
-  Split, STATIC_LINKS, TARGETS, tokenCountQuery, toPrefs, TYPE_LABELS, TYPES, gateFor,
+  memberPushQuery, memberSearchQuery, memberSearchText, Split, STATIC_LINKS, TARGETS, tokenCountQuery, toPrefs, TYPE_LABELS, TYPES, gateFor,
 } from './notifications.logic';
 
 type Row = Record<string, unknown>;
@@ -110,19 +110,21 @@ export class NotificationsService {
     };
   }
 
-  async history(page: number) {
+  /** `admin` = sent by an admin (admin_id > 0); `auto` = written by the member API after something a member did (admin_id = 0: booking notices, notices to the admins). */
+  async history(page: number, kind: 'admin' | 'auto' = 'admin') {
+    const who = kind === 'auto' ? 'admin_id = 0' : 'admin_id > 0';
     const offset = (page - 1) * HISTORY_PER_PAGE;
     let total = 0;
     let items: Row[] = [];
     let available = true;
     try {
-      total = num((await this.rows({ sql: 'SELECT COUNT(*) AS cnt FROM gangnamunni_notification_sends', values: [] }))[0]?.cnt);
+      total = num((await this.rows({ sql: `SELECT COUNT(*) AS cnt FROM gangnamunni_notification_sends WHERE ${who}`, values: [] }))[0]?.cnt);
       const limit = [HISTORY_PER_PAGE, offset];
       try {
-        items = await this.rows({ sql: `SELECT ${HISTORY_COLUMNS}, request_id, is_test FROM gangnamunni_notification_sends ORDER BY id DESC LIMIT ? OFFSET ?`, values: limit });
+        items = await this.rows({ sql: `SELECT ${HISTORY_COLUMNS}, request_id, is_test FROM gangnamunni_notification_sends WHERE ${who} ORDER BY id DESC LIMIT ? OFFSET ?`, values: limit });
       } catch (e) {
         if (!isMissing(e)) throw e;
-        items = await this.rows({ sql: `SELECT ${HISTORY_COLUMNS} FROM gangnamunni_notification_sends ORDER BY id DESC LIMIT ? OFFSET ?`, values: limit });
+        items = await this.rows({ sql: `SELECT ${HISTORY_COLUMNS} FROM gangnamunni_notification_sends WHERE ${who} ORDER BY id DESC LIMIT ? OFFSET ?`, values: limit });
       }
     } catch (e) {
       if (!isMissing(e)) throw e;
@@ -164,6 +166,21 @@ export class NotificationsService {
       itemsAvailable,
       items: { total, page, perPage: ITEMS_PER_PAGE, status: filter, rows: items.map((r) => ({ memberId: text(r.member_id), channel: text(r.channel), platform: text(r.platform), status: text(r.status), errorCode: text(r.error_code), at: text(r.created_at) })) },
     };
+  }
+
+  /** Members for the picker: who they are (last four digits of the phone only) and whether a push can reach them. */
+  async searchMembers(raw: unknown): Promise<{ id: string; name: string; nick: string; phoneTail: string; hasPush: boolean }[]> {
+    const q = memberSearchText(raw);
+    if (q === '') return [];
+    const found = await this.rows(memberSearchQuery(q));
+    if (found.length === 0) return [];
+    let withPush = new Set<string>();
+    try {
+      withPush = new Set((await this.rows(memberPushQuery(found.map((r) => text(r.mb_id))))).map((r) => text(r.mb_id)));
+    } catch (e) {
+      if (!isMissing(e)) throw e;
+    }
+    return found.map((r) => ({ id: text(r.mb_id), name: text(r.mb_name), nick: text(r.mb_nick), phoneTail: text(r.mb_hp).replace(/\D/g, '').slice(-4), hasPush: withPush.has(text(r.mb_id)) }));
   }
 
   async linkTargets(q: string, kind: string): Promise<LinkTarget[]> {

@@ -19,7 +19,9 @@ export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 export const TARGETS = ["all", "recent_7days", "event_entrants", "specific_event", "individual", "selected"] as const;
 export type Target = (typeof TARGETS)[number];
 
-export const typeKey = (t: string): MessageKey => ((NOTIFICATION_TYPES as readonly string[]).includes(t) ? `nt.type.${t}` : "nt.type.unknown") as MessageKey;
+export const typeKey = (t: string): MessageKey => ((NOTIFICATION_TYPES as readonly string[]).includes(t) ? `nt.type.${t}` : t.startsWith("booking_") ? "nt.type.booking" : "nt.type.unknown") as MessageKey;
+/** Who an automatic notice went to: the member id (target `booking:<id>`), or the admins (`all_admins`). */
+export const autoWho = (target: string, admins: string): string => (target === "all_admins" ? admins : target.startsWith("booking:") ? target.slice("booking:".length) : target);
 /** Marketing types: the member's 마케팅 푸시 switch decides, and at night also 야간 푸시 (the same rule as the server). */
 export const isMarketingType = (t: string): boolean => t === "event" || t === "promotion";
 

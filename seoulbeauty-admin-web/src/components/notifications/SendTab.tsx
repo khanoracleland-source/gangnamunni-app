@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Notice } from "../hospitals/parts";
 import { showUnitToast } from "../treatment-units/UnitToast";
+import MemberPicker from "./MemberPicker";
 import LinkPicker, { type PickedLink } from "./LinkPicker";
 import { LedgerRow, PushCard } from "./NtParts";
 import { ConfirmSendDialog, ScheduleDialog } from "./SendDialogs";
@@ -120,11 +121,15 @@ export default function SendTab({ me, options, onPlanned }: { me: Me; options: N
               </select>
             )
           ) : null}
-          {target === "individual" ? <input className="input nt-ctl" value={memberId} onChange={(e) => setMemberId(e.target.value)} placeholder={t("nt.f.memberPh")} aria-label={t("nt.f.memberPh")} maxLength={100} autoComplete="off" /> : null}
+          {target === "individual" ? <MemberPicker multi={false} ids={memberId.trim() === "" ? [] : [memberId.trim()]} onAdd={setMemberId} onRemove={() => setMemberId("")} onUnauthorized={leaveToLogin} /> : null}
           {target === "selected" ? (
             <>
-              <textarea className="input nt-ctl nt-ta" value={membersText} onChange={(e) => setMembersText(e.target.value)} placeholder={t("nt.f.membersPh")} aria-label={t("nt.f.membersPh")} rows={4} />
+              <MemberPicker multi ids={members} onAdd={(id) => setMembersText((x) => (parseMemberIds(x).includes(id) ? x : `${x.trim()}${x.trim() === "" ? "" : "\n"}${id}`))} onRemove={(id) => setMembersText(members.filter((x) => x !== id).join("\n"))} onUnauthorized={leaveToLogin} />
               <p className={members.length > MAX_SELECTED ? "nt-fld__h nt-fld__h--bad" : "nt-fld__h"}>{t("nt.f.membersCount", { n: formatNumber(members.length), max: MAX_SELECTED })}</p>
+              <details className="nt-mp__bulk">
+                <summary>{t("nt.m.bulk")}</summary>
+                <textarea className="input nt-ctl nt-ta" value={membersText} onChange={(e) => setMembersText(e.target.value)} placeholder={t("nt.f.membersPh")} aria-label={t("nt.f.membersPh")} rows={4} />
+              </details>
             </>
           ) : null}
         </section>

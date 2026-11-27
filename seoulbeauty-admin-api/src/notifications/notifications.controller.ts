@@ -15,7 +15,7 @@ export class NotificationsController {
   options() { return this.svc.options(); }
 
   @Get('history')
-  history(@Query() q: Record<string, unknown>) { return this.svc.history(pageOf(q.page)); }
+  history(@Query() q: Record<string, unknown>) { return this.svc.history(pageOf(q.page), one(q.kind) === 'auto' ? 'auto' : 'admin'); }
 
   @Get('history/:id')
   async historyDetail(@Param('id') rawId: string, @Query() q: Record<string, unknown>) {
@@ -29,6 +29,9 @@ export class NotificationsController {
     const kind = one(q.kind);
     return this.svc.linkTargets(one(q.q), kind === 'page' || kind === 'hospital' || kind === 'event' ? kind : '').then((items) => ({ items }));
   }
+
+  @Get('member-search')
+  memberSearch(@Query() q: Record<string, unknown>) { return this.svc.searchMembers(q.q).then((items) => ({ items })); }
 
   @Get('diagnostics')
   diagnostics() { return this.svc.diagnostics(); }

@@ -9,6 +9,7 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
 const list = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const bool = (v: unknown): boolean => v === true;
 
+export type MemberHit = { id: string; name: string; nick: string; phoneTail: string; hasPush: boolean };
 export type LinkTarget = { kind: "page" | "hospital" | "event"; path: string; label: string };
 export type NotificationOptions = {
   types: { value: NotificationType; gate: "toggle" | "marketing" | "none" }[];
@@ -115,8 +116,8 @@ export async function previewNotification(a: Audience): Promise<WriteResult<Prev
   };
 }
 
-export async function fetchHistory(page: number, signal?: AbortSignal): Promise<ApiResult<HistoryList>> {
-  const res = await getJson(`/v1/notifications/history?page=${encodeURIComponent(String(page))}`, signal);
+export async function fetchHistory(page: number, kind: "admin" | "auto", signal?: AbortSignal): Promise<ApiResult<HistoryList>> {
+  const res = await getJson(`/v1/notifications/history?page=${encodeURIComponent(String(page))}&kind=${kind}`, signal);
   if (!res.ok) return res;
   const d = obj(res.data);
   return { ok: true, data: { available: bool(d.available), total: num(d.total), page: num(d.page), perPage: num(d.perPage), items: list(d.items).map(historyItem) } };
@@ -147,6 +148,12 @@ export async function fetchLinkTargets(q: string, kind: "" | "page" | "hospital"
   const res = await getJson(`/v1/notifications/link-targets?${params.toString()}`, signal);
   if (!res.ok) return res;
   return { ok: true, data: (Array.isArray(res.data) ? res.data : list(obj(res.data).items)).map(link) };
+}
+
+export async function fetchMemberSearch(q: string, signal?: AbortSignal): Promise<ApiResult<MemberHit[]>> {
+  const res = await getJson(`/v1/notifications/member-search?${new URLSearchParams({ q }).toString()}`, signal);
+  if (!res.ok) return res;
+  return { ok: true, data: list(obj(res.data).items).map((r) => { const o = obj(r); return { id: str(o.id), name: str(o.name), nick: str(o.nick), phoneTail: str(o.phoneTail), hasPush: bool(o.hasPush) }; }).filter((m) => m.id !== "") };
 }
 
 export async function fetchDiagnostics(signal?: AbortSignal): Promise<ApiResult<Diagnostics>> {

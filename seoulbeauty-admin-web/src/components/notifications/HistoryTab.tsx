@@ -13,7 +13,7 @@ import { formatNumber } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
 import { minuteOf } from "@/lib/members";
-import { notificationsHref, parseId, typeKey } from "@/lib/notifications";
+import { autoWho, parseId, typeKey } from "@/lib/notifications";
 import { fetchHistory, fetchHistoryDetail, type HistoryDetail, type HistoryList } from "@/lib/notificationsApi";
 import { pageButtons } from "@/lib/bookings";
 
@@ -26,15 +26,17 @@ export default function HistoryTab() {
   const t = useT();
   const router = useRouter();
   const wide = useWide();
-  const selected = parseId(useSearchParams().get("id"));
+  const params = useSearchParams();
+  const selected = parseId(params.get("id"));
+  const [kind, setKind] = useState<"admin" | "auto">(params.get("kind") === "auto" ? "auto" : "admin");
   const [page, setPage] = useState(1);
   const [tick, setTick] = useState(0);
   const [got, setGot] = useState<{ key: string; res: ApiResult<HistoryList> } | null>(null);
-  const key = `${page}#${tick}`;
+  const key = `${kind}#${page}#${tick}`;
 
   useEffect(() => {
     const c = new AbortController();
-    void fetchHistory(page, c.signal).then((res) => {
+    void fetchHistory(page, kind, c.signal).then((res) => {
       if (c.signal.aborted) return;
       if (!res.ok && res.status === 401) leaveToLogin();
       setGot({ key, res });
@@ -46,8 +48,16 @@ export default function HistoryTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  const open = (id: number) => router.replace(notificationsHref("history", id), { scroll: false });
-  const close = () => router.replace(notificationsHref("history"), { scroll: false });
+  const href = (k: "admin" | "auto", id?: number) => `/notifications?tab=history${k === "auto" ? "&kind=auto" : ""}${id ? `&id=${id}` : ""}`;
+  const open = (id: number) => router.replace(href(kind, id), { scroll: false });
+  const close = () => router.replace(href(kind), { scroll: false });
+  const pick = (k: "admin" | "auto") => {
+    if (k === kind) return;
+    setKind(k);
+    setPage(1);
+    setGot(null);
+    router.replace(href(k), { scroll: false });
+  };
   const list = got?.res.ok ? got.res.data : null;
   const loading = got?.key !== key;
   const failed = got?.key === key && !got.res.ok;
@@ -56,6 +66,11 @@ export default function HistoryTab() {
   return (
     <div className="nt-hist">
       <div className="nt-hist__list">
+        <div className="nt-seg" role="group" aria-label={t("nt.h.kind")}>
+          <button type="button" className="nt-seg__b" aria-pressed={kind === "admin"} onClick={() => pick("admin")}>{t("nt.h.kind.admin")}</button>
+          <button type="button" className="nt-seg__b" aria-pressed={kind === "auto"} onClick={() => pick("auto")}>{t("nt.h.kind.auto")}</button>
+        </div>
+        <p className="nt-fld__h nt-seg__h">{t(kind === "auto" ? "nt.h.kind.autoHint" : "nt.h.kind.adminHint")}</p>
         <div className="nt-toolbar">
           <p className="nt-toolbar__n" aria-live="polite">{list ? t("nt.h.count", { n: formatNumber(list.total) }) : " "}</p>
           <button type="button" className="btn btn--ghost" onClick={() => setTick((n) => n + 1)} disabled={loading}><Icon name="refresh" size={16} /> {t("nt.h.refresh")}</button>
@@ -73,7 +88,7 @@ export default function HistoryTab() {
                 <button type="button" className="nt-li__row" aria-current={it.id === selected ? "true" : undefined} onClick={() => open(it.id)}>
                   <span className="nt-li__t">{it.isTest ? <em className="nt-tag">{t("nt.h.test")}</em> : null}{it.title}</span>
                   <span className="nt-li__k">{t("nt.h.push", { n: formatNumber(it.pushSent) })}{it.pushFailed > 0 ? <b>{t("nt.h.failedN", { n: formatNumber(it.pushFailed) })}</b> : null}</span>
-                  <span className="nt-li__m">{minuteOf(it.createdAt)} · {it.adminUsername} · {it.target} · {t(typeKey(it.type))}</span>
+                  <span className="nt-li__m">{kind === "auto" ? `${minuteOf(it.createdAt)} · ${autoWho(it.target, t("nt.h.toAdmins"))} · ${t(typeKey(it.type))}` : `${minuteOf(it.createdAt)} · ${it.adminUsername} · ${it.target} · ${t(typeKey(it.type))}`}</span>
                 </button>
               </li>
             ))}
@@ -176,7 +191,7 @@ function DetailView({ id }: { id: number }) {
   return (
     <div className="nt-dv" aria-busy={loading}>
       <h3 className="nt-dv__t">{d.isTest ? <em className="nt-tag">{t("nt.h.test")}</em> : null}{d.title}</h3>
-      <p className="nt-dv__m">{minuteOf(d.createdAt)} · {d.adminUsername} · {d.target} · {t(typeKey(d.type))}</p>
+      <p className="nt-dv__m">{d.adminUsername === "system" ? `${minuteOf(d.createdAt)} · ${autoWho(d.target, t("nt.h.toAdmins"))} · ${t(typeKey(d.type))}` : `${minuteOf(d.createdAt)} · ${d.adminUsername} · ${d.target} · ${t(typeKey(d.type))}`}</p>
       {d.message !== "" ? <p className="nt-dv__msg">{d.message}</p> : null}
       {d.link !== "" ? <p className="nt-dv__link">{d.link}</p> : null}
       <dl className="nt-led">
