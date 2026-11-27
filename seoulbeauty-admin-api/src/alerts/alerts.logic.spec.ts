@@ -7,8 +7,8 @@ describe('alerts logic', () => {
     expect(new Set(all).size).toBe(all.length);
   });
   it('follows relative links only', () => {
-    for (const ok of ['admin_hospitals.php', '/admin/x.php?id=3', 'a/b#c']) expect(safeLink(ok)).toBe(ok);
-    for (const bad of ['', '#', '  ', 'http://evil.test', 'javascript:alert(1)', 'JaVa:x', '//evil.test', 'a\\b', 'a\nb', 'mailto:a@b.c', null, 5]) expect(safeLink(bad)).toBe('');
+    for (const ok of ['admin_hospitals.php', 'admin_hospitals.php?id=3&x=1', '/admin/x.php?id=3', 'a/b#c', 'a.php?next=../x']) expect(safeLink(ok)).toBe(ok);
+    for (const bad of ['', '#', '  ', 'http://evil.test', 'javascript:alert(1)', 'JaVa:x', '//evil.test', 'a\\b', 'a\nb', 'mailto:a@b.c', '/.//evil.com', '/%2e//evil.com', '/a/..//evil.com', '..//evil.com', './..//evil.com', 'a/%2F/b', null, 5]) expect(safeLink(bad)).toBe('');
   });
   it('reads filters strictly', () => {
     expect(filterOf({ tab: 'x', type: "a' OR 1=1", from: '2026-02-30', to: '2026-11-27' })).toEqual({ tab: 'all', type: '', from: '', to: '2026-11-27' });

@@ -48,6 +48,9 @@ export function safeLink(raw: unknown): string {
   if (s === '' || s === '#' || s.length > 500) return '';
   if (/[\u0000-\u001f\u007f\\]/.test(s)) return '';
   if (s.startsWith('//') || /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(s)) return '';
+  // dot segments and encoded dots/slashes in the path can fold into "//host" in a browser ("/.//host", "/%2e//host")
+  const path = s.split(/[?#]/, 1)[0];
+  if (/(^|\/)\.{1,2}(\/|$)/.test(path) || /%2e|%2f|%5c/i.test(path)) return '';
   return s;
 }
 
