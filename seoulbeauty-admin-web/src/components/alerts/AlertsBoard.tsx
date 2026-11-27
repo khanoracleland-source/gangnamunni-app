@@ -4,13 +4,15 @@ import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } fro
 import Icon from "../Icon";
 import { Notice } from "../hospitals/parts";
 import AlertRow from "./AlertRow";
-import { ALERT_TABS, ALERT_UNREAD_EVENT, dayGroup, TAB_TYPE_LIST, alertMeta, type AlertTab } from "@/lib/alerts";
-import { fetchAlerts, markAlertRead, type AlertItem, type AlertsList } from "@/lib/alertsApi";
+import { ALERT_TABS, ALERT_UNREAD_EVENT, dayGroup, TAB_TYPE_LIST, alertMeta, resolveAlertLink, type AlertTab } from "@/lib/alerts";
+import { fetchAlerts, markAlertRead, type AlertCounts, type AlertItem, type AlertsList } from "@/lib/alertsApi";
 import { pageButtons } from "@/lib/bookings";
+import type { Features, Scope } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 import type { MessageKey } from "@/lib/i18n";
 import { useT } from "@/lib/locale";
+import { newPageFor } from "@/lib/menu";
 
 const leaveToLogin = () => window.location.assign(PHP_ADMIN_URL);
 const TAB_LABEL: Record<AlertTab, MessageKey> = { all: "alerts.tab.all", activity: "alerts.tab.activity", pending: "alerts.tab.pending", system: "alerts.tab.system" };
@@ -18,14 +20,28 @@ const TAB_LABEL: Record<AlertTab, MessageKey> = { all: "alerts.tab.all", activit
 type Loaded = { key: string; list: AlertsList | null; status: number; now: number };
 
 /** The inbox: tabs with their unread numbers, filters, the list grouped by day, pages. */
-export default function AlertsBoard() {
+export default function AlertsBoard({ tab, onTab, tick, onReload, onCounts, notice, features, scope }: {
+  tab: AlertTab;
+  onTab: (tab: AlertTab) => void;
+  /** Goes up whenever the page asks for a fresh answer (after a change). */
+  tick: number;
+  onReload: () => void;
+  /** Tells the page the unread numbers of the last answer (the heading buttons depend on them). */
+  onCounts: (counts: AlertCounts) => void;
+  notice: { tone: "ok" | "warn"; text: string } | null;
+  features: Features | null;
+  scope: Scope | null;
+}) {
   const t = useT();
-  const [tab, setTab] = useState<AlertTab>("all");
+  /** The page of this panel when the link names an old-admin page that already exists here; else the old page. */
+  const hrefOf = (link: string): string => {
+    const old = resolveAlertLink(link);
+    return old === "" ? "" : newPageFor(old, features, scope) ?? old;
+  };
   const [type, setType] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
-  const [tick, setTick] = useState(0);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [markFailed, setMarkFailed] = useState(false);
 
@@ -35,11 +51,14 @@ export default function AlertsBoard() {
     void fetchAlerts({ tab, type, from, to, page }, c.signal).then((res) => {
       if (c.signal.aborted) return;
       if (!res.ok && res.status === 401) { leaveToLogin(); return; }
-      if (res.ok) window.dispatchEvent(new CustomEvent<number>(ALERT_UNREAD_EVENT, { detail: res.data.counts.unread }));
+      if (res.ok) {
+        window.dispatchEvent(new CustomEvent<number>(ALERT_UNREAD_EVENT, { detail: res.data.counts.unread }));
+        onCounts(res.data.counts);
+      }
       setLoaded({ key, list: res.ok ? res.data : null, status: res.ok ? 200 : res.status, now: Date.now() });
     });
     return () => c.abort();
-  }, [key, tab, type, from, to, page]);
+  }, [key, tab, type, from, to, page, onCounts]);
 
   const list = loaded?.list ?? null;
   const busy = loaded?.key !== key;
@@ -47,7 +66,7 @@ export default function AlertsBoard() {
   const now = loaded?.now ?? 0;
   const filtered = type !== "" || from !== "" || to !== "";
 
-  const changeTab = (next: AlertTab) => { setTab(next); setType(""); setPage(1); };
+  const changeTab = (next: AlertTab) => { onTab(next); setType(""); setPage(1); };
   const onTabKey = (e: KeyboardEvent<HTMLElement>) => {
     const index = ALERT_TABS.indexOf(tab);
     let next = index;
@@ -69,14 +88,14 @@ export default function AlertsBoard() {
   // Opening an unread alert marks it read first and then follows the link; with a modifier key (new tab) the link opens as usual.
   const onOpen = (item: AlertItem, href: string, e: MouseEvent<HTMLAnchorElement>) => {
     if (item.read) return;
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { void markAlertRead(item.id).then((res) => { if (res.ok) setTick((n) => n + 1); }); return; }
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) { void markAlertRead(item.id).then((res) => { if (res.ok) onReload(); }); return; }
     e.preventDefault();
     void markAlertRead(item.id).finally(() => window.location.assign(href));
   };
   const onMarkRead = (item: AlertItem) => {
     setMarkFailed(false);
     void markAlertRead(item.id).then((res) => {
-      if (res.ok) setTick((n) => n + 1);
+      if (res.ok) onReload();
       else if (res.status === 401) leaveToLogin();
       else setMarkFailed(true);
     });
@@ -99,6 +118,7 @@ export default function AlertsBoard() {
 
   return (
     <div className="al-page">
+      {notice ? <Notice icon={notice.tone === "ok" ? "check" : "alert"} tone={notice.tone}>{notice.text}</Notice> : null}
       {markFailed ? <Notice icon="alert" tone="warn">{t("alerts.markFailed")}</Notice> : null}
 
       <div className="al-tabs" role="tablist" aria-label={t("alerts.tabs")} onKeyDown={onTabKey}>
@@ -145,7 +165,7 @@ export default function AlertsBoard() {
           <div className="al-empty" role="alert">
             <Icon name="unplug" size={24} />
             <p>{t("alerts.error")}</p>
-            <button type="button" className="btn btn--ghost" onClick={() => setTick((n) => n + 1)}>{t("alerts.retry")}</button>
+            <button type="button" className="btn btn--ghost" onClick={() => onReload()}>{t("alerts.retry")}</button>
           </div>
         ) : !ready ? (
           <ul className="al-list al-skel" aria-hidden="true">
@@ -164,7 +184,7 @@ export default function AlertsBoard() {
               <section key={`${g.group}-${g.items[0].id}`} className="al-group" aria-label={t(`alerts.group.${g.group}` as MessageKey)}>
                 <h2>{t(`alerts.group.${g.group}` as MessageKey)}</h2>
                 <ul className="al-list">
-                  {g.items.map((it) => <AlertRow key={it.id} item={it} now={now} onOpen={onOpen} onMarkRead={onMarkRead} />)}
+                  {g.items.map((it) => <AlertRow key={it.id} item={it} href={hrefOf(it.link)} now={now} onOpen={onOpen} onMarkRead={onMarkRead} />)}
                 </ul>
               </section>
             ))}

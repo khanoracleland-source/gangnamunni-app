@@ -98,3 +98,13 @@ export function alertTime(createdAt: string, now: number): AlertTime {
   if (group === 1) return { key: "alerts.time.yesterday", vars: { time: createdAt.slice(11, 16) } };
   return { key: "alerts.time.date", vars: { date: createdAt.slice(0, 10).replace(/-/g, ".") } };
 }
+
+export const PURGE_MIN_DAYS = 1;
+export const PURGE_MAX_DAYS = 3650;
+export const PURGE_DEFAULT_DAYS = 30;
+/** The days typed into the delete dialog: a whole number from 1 to 3650, or null. */
+export function parsePurgeDays(text: string): number | null {
+  if (!/^\d{1,4}$/.test(text.trim())) return null;
+  const n = Number(text.trim());
+  return n >= PURGE_MIN_DAYS && n <= PURGE_MAX_DAYS ? n : null;
+}

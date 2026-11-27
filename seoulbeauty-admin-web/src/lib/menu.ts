@@ -1,6 +1,7 @@
 import type { IconName } from "@/components/Icon";
 import type { Features, Scope } from "./api";
-import { PHP_BASE_URL } from "./config";
+import { BASE_PATH, PHP_BASE_URL } from "./config";
+import { ALERTS_ROUTE } from "./alerts";
 import type { Locale } from "./i18n";
 
 export type Label = Record<Locale, string>;
@@ -227,7 +228,7 @@ const MENU: MenuGroup[] = [
 ];
 
 /** Pages that exist in this panel once the server has switched them on: menu key -> route (without basePath). */
-const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "consultations" | "payments" | "members" | "notifications", { key: string; href: string }> = {
+const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatmentUnits" | "hospitalApply" | "admins" | "bookings" | "consultations" | "payments" | "members" | "notifications" | "alerts", { key: string; href: string }> = {
   hospitals: { key: "hospitals", href: "/hospitals" },
   doctors: { key: "doctors", href: "/doctors" },
   hospitalApply: { key: "hospital_apply", href: "/hospital-apply" },
@@ -239,6 +240,7 @@ const FEATURE_ROUTES: Record<"hospitals" | "doctors" | "treatments" | "treatment
   payments: { key: "booking_revenue", href: "/payments" },
   members: { key: "members", href: "/members" },
   notifications: { key: "send_notification", href: "/notifications" },
+  alerts: { key: "notifications", href: ALERTS_ROUTE },
 };
 
 /**
@@ -270,6 +272,19 @@ export function buildMenu(features: Features | null, scope: Scope | null): MenuG
   return groups
     .map((group) => ({ ...group, items: group.items.filter((item) => item.status === "new" && !item.superOnly) }))
     .filter((group) => group.items.length > 0);
+}
+
+/**
+ * An old-admin page path (e.g. the link of an alert) that already has a page in this panel for this viewer:
+ * the new page's full path (with basePath), else null. A link with a query or hash is never mapped (its meaning
+ * would be lost), and a page the viewer cannot open here stays a link to the old admin.
+ */
+export function newPageFor(oldPath: string, features: Features | null, scope: Scope | null): string | null {
+  if (!features || /[?#]/.test(oldPath)) return null;
+  const old = buildMenu(null, null).flatMap((g) => g.items).find((i) => i.status === "legacy" && i.href === oldPath);
+  if (!old) return null;
+  const now = buildMenu(features, scope).flatMap((g) => g.items).find((i) => i.key === old.key);
+  return now && now.status === "new" ? `${BASE_PATH}${now.href}` : null;
 }
 
 /** Is `pathname` (basePath already removed, as usePathname returns it) the page `href` or one below it? */

@@ -2,12 +2,14 @@
 
 import type { MouseEvent } from "react";
 import Icon from "../Icon";
-import { alertMeta, alertTime, resolveAlertLink } from "@/lib/alerts";
+import { alertMeta, alertTime } from "@/lib/alerts";
 import type { AlertItem } from "@/lib/alertsApi";
 import { useT } from "@/lib/locale";
 
 type Props = {
   item: AlertItem;
+  /** Where the row leads ("" = nowhere): the page in this panel when there is one, else the old admin page. */
+  href: string;
   now: number;
   /** An unread alert with a link: marks it read, then follows the link (the click handler of the title link). */
   onOpen: (item: AlertItem, href: string, e: MouseEvent<HTMLAnchorElement>) => void;
@@ -16,10 +18,9 @@ type Props = {
 };
 
 /** One alert: type chip, label and time, title, message. A row with a link is clickable as a whole (the title link covers it). */
-export default function AlertRow({ item, now, onOpen, onMarkRead }: Props) {
+export default function AlertRow({ item, href, now, onOpen, onMarkRead }: Props) {
   const t = useT();
   const meta = alertMeta(item.type);
-  const href = resolveAlertLink(item.link);
   const when = alertTime(item.createdAt, now);
   return (
     <li className={`al-rw ${item.read ? "al-rw--r" : "al-rw--u"}${href ? " al-rw--link" : ""}`}>

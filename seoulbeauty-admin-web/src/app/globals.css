@@ -4739,3 +4739,12 @@ html:has(.nt-bbar) { scroll-padding-bottom: 96px; }
 @media (max-width: 360px) {
   .al-filter__date { flex: 1 1 100%; }
 }
+
+/* Alert inbox: the age field of the delete dialog */
+.al-purge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 16px; font-size: 15px; }
+.al-purge .field__label { flex: 1 1 100%; }
+.al-purge__input { width: 96px; text-align: right; }
+.al-purge + .field__error { margin: 8px 0 0; }
+@media (max-width: 639px) {
+  .al-purge__input { height: 44px; font-size: 16px; }
+}

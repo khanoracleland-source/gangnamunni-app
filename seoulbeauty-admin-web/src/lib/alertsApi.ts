@@ -49,3 +49,15 @@ export async function fetchAlerts(q: AlertQuery, signal?: AbortSignal): Promise<
 export function markAlertRead(id: number): Promise<WriteResult<Record<string, unknown>>> {
   return sendJson("POST", `/v1/alerts/${id}/read`);
 }
+
+/** Marks every unread alert of the signed-in admin in a tab (or all of them) as read; the answer says how many changed. */
+export async function markAlertsTabRead(tab: AlertTab): Promise<WriteResult<{ updated: number }>> {
+  const res = await sendJson("POST", "/v1/alerts/read-tab", { tab });
+  return res.ok ? { ok: true, data: { updated: num(obj(res.data).updated) } } : res;
+}
+
+/** Deletes the signed-in admin's alerts that are read and older than the given number of days (1..3650). */
+export async function purgeAlerts(days: number): Promise<WriteResult<{ deleted: number }>> {
+  const res = await sendJson("POST", "/v1/alerts/purge", { days });
+  return res.ok ? { ok: true, data: { deleted: num(obj(res.data).deleted) } } : res;
+}
