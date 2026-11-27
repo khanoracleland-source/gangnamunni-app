@@ -1647,3 +1647,24 @@ GRANT SELECT (id, content_type, content_id, reporter_name, reason, reason_detail
 GRANT SELECT (id, content_type, content_id, reporter_name, reason, reason_detail, status, created_at) ON hms_saas.gangnamunni_content_reports TO 'sb_admin_ro'@'localhost';
 FLUSH PRIVILEGES;
 ```
+
+## 32. Notifications to members: the page and its history (`ADMIN_NOTIFICATIONS_ENABLED`; read only; super admin only)
+
+Part 1 of the notifications page: choosing who is written to and counting them (`POST /v1/notifications/preview`), the history of sends (`GET /v1/notifications/history`, `history/:id` with what happened to each recipient), the search of the pages a notification can open (`GET /v1/notifications/link-targets?q=&kind=page|hospital|event`), the push token health (`diagnostics`) and what the member API's 방문 전 알림 has sent (`automatic`). **Nothing is sent or written yet**: sending and planning come with `ADMIN_NOTIFICATIONS_SEND` and `ADMIN_NOTIFICATIONS_SCHEDULE` (later sections). `PHP admin_send_notification.php` keeps working as before.
+Needs `ADMIN_PANEL_ENABLED=1`. Anything but `1` = off: every `/v1/notifications*` route answers 404 (the PHP session is not asked). Without the tables or GRANTs below the page still opens and says "not available" for the parts it cannot read (the history, the recipient list of a send, the visit counters); a preview then uses the 설정 defaults and says so (`settingsAvailable: false`).
+
+Who counts as a recipient and who gets what (the member's 설정 page decides):
+
+| Type | Switch | In-app row | Push |
+|---|---|---|---|
+| `booking` / `community` / `review` | 예약·결제 / 커뮤니티 / 포인트·후기 | only when the switch is on | only when the switch is on |
+| `promotion`, `event` | 마케팅 푸시 | everybody | `마케팅 푸시` on; between 21:00 and 08:00 KST also `야간 푸시` on |
+| `general`, `system`, `raffle` | none (a notice) | everybody | everybody |
+
+- Members that left are never written to; a member without a 설정 row has the page defaults (notice switches on, marketing off). The old `noti_general`, `noti_event`, `noti_promo`, `noti_push` columns are not looked at (the member cannot change them any more).
+- A link is not free text: only a fixed page of the member site or an id page (`/next/hospitals/N`, `/next/events/N`, `/next/community/N`, `/next/reviews/N`).
+- Run once as the DB admin: `deploy/sql/notifications.sql` (two columns on the history table, the per-recipient table, the scheduled-sends table and the read-only GRANTs; MariaDB). It does not give the API user any write right.
+
+```
+ADMIN_NOTIFICATIONS_ENABLED=1
+```

@@ -681,3 +681,15 @@ export class ModerationDeleteEnabledGuard implements CanActivate {
     return true;
   }
 }
+
+/** Notifications to members (/v1/notifications*). Independent of the other switches; super admin only. Only the exact value "1" turns it on. */
+export const notificationsEnabled = (): boolean => process.env.ADMIN_NOTIFICATIONS_ENABLED === '1';
+
+/** With ADMIN_NOTIFICATIONS_ENABLED off the notification routes answer 404 as if they did not exist; PHP is not asked. */
+@Injectable()
+export class NotificationsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !notificationsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}

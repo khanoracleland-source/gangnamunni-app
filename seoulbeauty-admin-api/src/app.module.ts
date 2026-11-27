@@ -20,6 +20,7 @@ import { BannersModule } from './banners/banners.module';
 import { CategoryBoardModule } from './category-board/category-board.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { MembersModule } from './members/members.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -45,6 +46,7 @@ import { HealthController } from './health/health.controller';
     BannersModule,
     CategoryBoardModule,
     MembersModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
