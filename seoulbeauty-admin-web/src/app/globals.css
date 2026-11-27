@@ -283,6 +283,11 @@ button, select { font: inherit; color: inherit; }
 .ibtn:active { background: var(--line); }
 .ibtn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* Bell of the alert inbox (top bar): 44px target on every screen; the dot is only drawn while something is unread. */
+.alert-bell { position: relative; min-width: 44px; height: 44px; text-decoration: none; }
+.alert-bell[aria-current="page"] { background: var(--surface-2); color: var(--ink); }
+.alert-bell__dot { position: absolute; top: 9px; right: 10px; width: 10px; height: 10px; border-radius: 50%; background: var(--badge-bg); box-shadow: 0 0 0 2px var(--surface); }
+
 /* ───────── Layout frame ───────── */
 .app {
   min-height: 100dvh;
@@ -711,6 +716,11 @@ html[data-theme="dark"] .dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
   .seg button { padding: 0 8px; }
   .intro__summary { padding: 0 16px; }
   .intro__list { padding: 4px 16px 16px; }
+}
+
+/* On the narrowest phones the top bar (menu, logo, bell, language, theme, log out) would overflow by a few pixels. */
+@media (max-width: 339px) {
+  .brand { padding: 0 4px; }
 }
 
 /* ───────── Data pages: notices, labels, filters, table, detail blocks ─────────

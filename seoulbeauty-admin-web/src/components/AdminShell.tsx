@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import AlertBell from "./alerts/AlertBell";
 import Icon from "./Icon";
 import LangSelect from "./LangSelect";
 import { fetchArchiveList, type Admin, type Features } from "@/lib/api";
@@ -155,6 +156,7 @@ export default function AdminShell({ admin, features = null, title, description,
 
           <span className="spacer" />
           {admin ? <span className="who" title={displayName ? `${t("top.signedIn")}: ${displayName}` : t("top.signedIn")}>{roleLabel}</span> : null}
+          <AlertBell enabled={admin !== null && features?.alerts === true} />
           <LangSelect />
           <a className="ibtn top-legacy" href={PHP_ADMIN_URL} title={t("top.legacyTitle")} aria-label={t("top.legacyTitle")}>
             <Icon name="external" />
