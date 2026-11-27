@@ -1,4 +1,4 @@
-import { ALERT_TYPES, countsQuery, dayOf, filterOf, listQuery, safeLink, TAB_TYPES } from './alerts.logic';
+import { ALERT_TYPES, countsQuery, dayOf, filterOf, listQuery, markReadQuery, markTabQuery, safeLink, TAB_TYPES } from './alerts.logic';
 
 describe('alerts logic', () => {
   it('every type is in exactly one tab', () => {
@@ -22,9 +22,10 @@ describe('alerts logic', () => {
     expect(q.sql).not.toMatch(/ad_pending|2026/);
     expect(q.values[0]).toBe(7);
     expect(q.values.slice(-2)).toEqual([20, 20]);
-    for (const x of [countsQuery(7)]) {
+    for (const x of [markReadQuery(7, 3), markTabQuery(7, 'all'), markTabQuery(7, 'system'), countsQuery(7)]) {
       expect(x.sql).toMatch(/admin_id = \?/);
       expect(x.values).toContain(7);
     }
+    expect(markTabQuery(7, 'activity').values).toEqual([7, ...TAB_TYPES.activity]);
   });
 });

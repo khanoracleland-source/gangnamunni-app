@@ -80,3 +80,10 @@ export function countsQuery(adminId: number): Query {
 }
 
 export const unreadQuery = (adminId: number): Query => ({ sql: 'SELECT COUNT(*) AS n FROM gangnamunni_notifications WHERE admin_id = ? AND is_read = 0', values: [adminId] });
+
+export const markReadQuery = (adminId: number, id: number): Query => ({ sql: 'UPDATE gangnamunni_notifications SET is_read = 1 WHERE id = ? AND admin_id = ? AND is_read = 0', values: [id, adminId] });
+
+export function markTabQuery(adminId: number, tab: AlertTab): Query {
+  if (tab === 'all') return { sql: 'UPDATE gangnamunni_notifications SET is_read = 1 WHERE admin_id = ? AND is_read = 0', values: [adminId] };
+  return { sql: `UPDATE gangnamunni_notifications SET is_read = 1 WHERE admin_id = ? AND is_read = 0 AND type IN (${TAB_TYPES[tab].map(() => '?').join(', ')})`, values: [adminId, ...TAB_TYPES[tab]] };
+}

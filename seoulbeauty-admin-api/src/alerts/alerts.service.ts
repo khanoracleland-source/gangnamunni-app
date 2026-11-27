@@ -1,8 +1,8 @@
-import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { DB, Db } from '../db/db.module';
+import { BadRequestException, Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { DB, Db, DB_RW, RwDbProvider } from '../db/db.module';
 import { Query } from '../hospitals/hospitals.logic';
 import {
-  countsQuery, Filter, listQuery, PER_PAGE, safeLink, totalQuery, unreadQuery,
+  AlertTab, countsQuery, Filter, listQuery, markReadQuery, markTabQuery, PER_PAGE, safeLink, totalQuery, unreadQuery,
 } from './alerts.logic';
 
 type Row = Record<string, unknown>;
@@ -15,7 +15,7 @@ const notReady = (e: unknown): boolean =>
 @Injectable()
 export class AlertsService {
   private readonly log = new Logger('Alerts');
-  constructor(@Inject(DB) private readonly db: Db) {}
+  constructor(@Inject(DB) private readonly db: Db, @Inject(DB_RW) private readonly rw: RwDbProvider) {}
 
   private async rows(q: Query): Promise<Row[]> {
     try {
@@ -42,5 +42,27 @@ export class AlertsService {
       items: items.map((r) => ({ id: num(r.id), type: text(r.type), title: text(r.title), message: text(r.message), link: safeLink(r.link), icon: text(r.icon), read: num(r.is_read) === 1, createdAt: text(r.created_at) })),
       counts: { all: unread, activity: num(c.u_activity), pending: num(c.u_pending), system: num(c.u_system), unread, read: Math.max(0, totalAll - unread), total: totalAll },
     };
+  }
+
+  private async write(q: Query): Promise<number> {
+    const pool = this.rw.get();
+    if (!pool) throw new ServiceUnavailableException({ error: 'write_unavailable' });
+    try {
+      const [res] = (await pool.query(q.sql, q.values)) as any;
+      return num(res?.affectedRows);
+    } catch (e) {
+      if (notReady(e)) { this.log.warn(`inbox write not ready: ${(e as Error).message}`); throw new ServiceUnavailableException({ error: 'not_ready' }); }
+      throw e;
+    }
+  }
+
+  /** Marks one alert of this admin as read; another admin's id changes nothing. */
+  async markRead(adminId: number, id: number): Promise<{ ok: true; updated: number }> {
+    if (!id) throw new BadRequestException({ error: 'bad_id' });
+    return { ok: true, updated: await this.write(markReadQuery(adminId, id)) };
+  }
+
+  async markTab(adminId: number, tab: AlertTab): Promise<{ updated: number }> {
+    return { updated: await this.write(markTabQuery(adminId, tab)) };
   }
 }
