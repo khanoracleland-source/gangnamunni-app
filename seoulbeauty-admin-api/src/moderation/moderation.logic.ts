@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import { reportDetailText } from '../common/report-detail';
 import { likeContains, MAX_PAGE, MAX_SEARCH_LENGTH, num, parseHospitalId, positiveInt, Query, Scope, str } from '../hospitals/hospitals.logic';
 
 export const PER_PAGE = 20;
@@ -215,7 +216,7 @@ export function groupPostReports(counts: Row[], reports: Row[]): Map<number, { r
     const entry = out.get(num(r.content_id));
     if (!entry || entry.reports.length >= POST_REPORTS_PER_POST) continue;
     entry.reports.push({
-      id: num(r.id), reporter: str(r.reporter_name), reason: str(r.reason), detail: str(r.reason_detail).slice(0, 300), status: str(r.status), createdAt: str(r.created_at),
+      id: num(r.id), reporter: str(r.reporter_name), reason: str(r.reason), detail: reportDetailText(r.reason_detail), status: str(r.status), createdAt: str(r.created_at),
     });
   }
   return out;

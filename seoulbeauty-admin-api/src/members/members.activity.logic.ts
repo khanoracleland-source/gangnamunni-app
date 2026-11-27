@@ -1,4 +1,5 @@
 /** Pure parts of the member activity tabs: applications (consultations), bookings, points ledger and the audit journal. Read only. */
+import { reportDetailText } from '../common/report-detail';
 import { num, positiveInt, Query, str } from '../hospitals/hospitals.logic';
 import { statusOf } from './members.logic';
 
@@ -152,7 +153,7 @@ export function buildBlocks(
     if (list.length < BLOCK_REPORTS_PER_USER) {
       list.push({
         id: num(r.id), contentType: str(r.content_type), contentId: num(r.content_id), snippet: str(r.content_snippet).slice(0, SNIPPET),
-        reason: str(r.reason), detail: str(r.reason_detail).slice(0, SNIPPET), status: str(r.status), createdAt: str(r.created_at),
+        reason: str(r.reason), detail: reportDetailText(r.reason_detail, SNIPPET), status: str(r.status), createdAt: str(r.created_at),
       });
     }
     reportsOf.set(key, list);
