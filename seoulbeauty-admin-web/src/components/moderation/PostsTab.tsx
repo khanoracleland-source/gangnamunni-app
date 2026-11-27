@@ -181,7 +181,7 @@ function PostReports({ p }: { p: PostItem }) {
           <li key={r.id} className="mod-rep__item">
             <div className="mod-rep__top"><b>{label(REPORT_REASONS, r.reason, "mb.bl.r.")}</b><span>{label(REPORT_STATUSES, r.status, "mb.bl.s.")}</span></div>
             <div className="mod-rep__sub"><span translate="no">{r.reporter || "—"}</span> · {formatDay(r.createdAt)}</div>
-            {r.detail ? <p className="mod-rep__msg">{r.detail}</p> : null}
+            {r.detail ? <p className="mod-rep__msg">{t("mb.bl.detail", { text: r.detail })}</p> : null}
           </li>
         ))}
       </ul>
