@@ -51,7 +51,7 @@ describe('account security API', () => {
     if (/^SELECT mb_id FROM g5_member WHERE mb_email/.test(q)) return [emailOwners.includes(p[0]) ? [{ mb_id: 'other' }] : []];
     if (/FROM g5_member_social_profiles WHERE mb_id = \? LIMIT 1/.test(q) && /^SELECT/.test(q)) return [profile ? [profile] : []];
     if (/^SELECT cf_admin/.test(q)) return [[{ cf_admin: 'admin' }]];
-    if (/information_schema/.test(q)) return [[...(p[0] as string[]).filter((t) => t !== 'g5_memo').flatMap((t) => ['member_id', 'mb_id', 'mb_no', 'user_id', 'reported_user_id', 'g5_mb_id'].map((c) => ({ t, c })))]];
+    if (/information_schema/.test(q)) return [[...(p[0] as string[]).filter((t) => t !== 'g5_memo').flatMap((t) => ['member_id', 'mb_id', 'mb_no', 'user_id', 'reported_user_id', 'g5_mb_id', 'id', 'post_id', 'comment_id', 'content_type', 'content_id'].map((c) => ({ t, c })))]];
     if (/^SELECT hms_user_id FROM member_sync/.test(q)) return [[{ hms_user_id: 77 }]];
     if (/^SELECT \(SELECT COUNT/.test(q)) return [[{ n: 0 }]];
     if (/^DELETE FROM g5_member WHERE/.test(q)) return [{ affectedRows: deleteMemberRows }];
@@ -182,6 +182,44 @@ describe('account security API', () => {
     expect(sql[sql.length - 1].q).toBe('COMMIT');
     expect(kakaoCalls).toHaveLength(0);
     expect(phpCalls).toEqual([]);
+  });
+
+  it('withdraw, password member, community purge off (default): no comment or post is touched', async () => {
+    await post('/v1/account/withdraw', { reason: '기타', password: 'old-pass-1' }).expect(201);
+    expect(ran(/gangnamunni_community_(comments|posts)/)).toHaveLength(0);
+  });
+
+  it('withdraw, password member, WITHDRAW_PURGE_COMMUNITY=1: comments and posts go with the account, before the member row', async () => {
+    process.env.WITHDRAW_PURGE_COMMUNITY = '1';
+    try {
+      const r = await post('/v1/account/withdraw', { reason: '기타', password: 'old-pass-1' }).expect(201);
+      expect(r.body.success).toBe(true);
+      const community = ran(/community_comment|community_comments|community_posts|community_likes|gangnamunni_content_reports/);
+      const delComments = community.find((x) => /^DELETE c FROM gangnamunni_community_comments c WHERE/.test(x.q))!;
+      expect(delComments.p).toEqual(['kim', 'kim']); // own comments and the ones under own posts
+      expect(community.some((x) => /^DELETE x FROM gangnamunni_community_comment_threads/.test(x.q))).toBe(true);
+      expect(community.some((x) => /^DELETE x FROM gangnamunni_community_comment_likes/.test(x.q))).toBe(true);
+      expect(community.some((x) => /^DELETE x FROM gangnamunni_community_likes/.test(x.q))).toBe(true);
+      expect(community.filter((x) => /gangnamunni_content_reports/.test(x.q))).toHaveLength(2);
+      const delPosts = community.find((x) => /^DELETE FROM gangnamunni_community_posts WHERE mb_id = \?$/.test(x.q))!;
+      expect(delPosts.p).toEqual(['kim']);
+      // dependents first, then comments, then posts, all before the account row; every value is a parameter
+      const at = (re: RegExp) => sql.findIndex((x) => re.test(x.q));
+      expect(at(/^DELETE x FROM gangnamunni_community_comment_threads/)).toBeLessThan(at(/^DELETE c FROM gangnamunni_community_comments/));
+      expect(at(/^DELETE c FROM gangnamunni_community_comments/)).toBeLessThan(at(/^DELETE FROM gangnamunni_community_posts/));
+      expect(at(/^DELETE FROM gangnamunni_community_posts/)).toBeLessThan(at(/^DELETE FROM g5_member WHERE mb_id/));
+      expect(community.every((x) => !x.q.includes('kim'))).toBe(true);
+      expect(sql[sql.length - 1].q).toBe('COMMIT');
+    } finally { delete process.env.WITHDRAW_PURGE_COMMUNITY; }
+  });
+
+  it('withdraw, password member, purge on: a failure inside the purge rolls the whole withdrawal back', async () => {
+    process.env.WITHDRAW_PURGE_COMMUNITY = '1';
+    deleteMemberRows = 0;
+    try {
+      await post('/v1/account/withdraw', { reason: '기타', password: 'old-pass-1' }).expect(500);
+      expect(sql[sql.length - 1].q).toBe('ROLLBACK');
+    } finally { delete process.env.WITHDRAW_PURGE_COMMUNITY; }
   });
 
   it('withdraw, Kakao member: unlink first, then the service data by number and by id', async () => {

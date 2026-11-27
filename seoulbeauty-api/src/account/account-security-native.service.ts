@@ -13,6 +13,39 @@ const s = (v: unknown) => (v == null ? '' : String(v));
 const fail = (status: number, message: string, field?: string) => new HttpException({ success: false, message, ...(field ? { field } : {}) }, status);
 interface EmailCode { code: string; email: string; expire: number; tries: number }
 
+/** Tables the community purge looks at besides the ones in the withdraw lists (a table the server does not have is skipped). */
+const COMMUNITY_PURGE_TABLES = ['gangnamunni_community_comment_threads', 'gangnamunni_community_comment_likes'];
+/** Off by default: only WITHDRAW_PURGE_COMMUNITY=1 makes a withdrawal remove the member's comments and posts. */
+const communityPurgeEnabled = (): boolean => process.env.WITHDRAW_PURGE_COMMUNITY === '1';
+
+/**
+ * A withdrawing member's community content: their comments and posts go with the account, together with what hangs on them
+ * (comment threads and likes, post likes, reports about them, other members' comments under the member's posts).
+ * Runs inside the withdrawal transaction; table and column names are constants, only the member id is a parameter.
+ */
+async function purgeCommunity(conn: DbConn, has: Set<string>, mbId: string): Promise<void> {
+  const C = 'gangnamunni_community_comments', P = 'gangnamunni_community_posts', T = 'gangnamunni_community_comment_threads';
+  const CL = 'gangnamunni_community_comment_likes', L = 'gangnamunni_community_likes', R = 'gangnamunni_content_reports';
+  const ok = (...cols: string[]) => cols.every((c) => has.has(c));
+  const hasComments = ok(`${C}.id`, `${C}.mb_id`);
+  const hasPosts = ok(`${P}.id`, `${P}.mb_id`);
+  const underPosts = hasPosts && ok(`${C}.post_id`);
+  // a comment is the member's own or sits under one of the member's posts
+  const mine = underPosts ? `(c.mb_id = ? OR c.post_id IN (SELECT id FROM ${P} WHERE mb_id = ?))` : '(c.mb_id = ?)';
+  const mineArgs = underPosts ? [mbId, mbId] : [mbId];
+  if (hasComments) {
+    if (ok(`${T}.comment_id`)) await conn.query(`DELETE x FROM ${T} x JOIN ${C} c ON c.id = x.comment_id WHERE ${mine}`, mineArgs);
+    if (ok(`${CL}.comment_id`)) await conn.query(`DELETE x FROM ${CL} x JOIN ${C} c ON c.id = x.comment_id WHERE ${mine}`, mineArgs);
+    if (ok(`${R}.content_type`, `${R}.content_id`)) await conn.query(`DELETE x FROM ${R} x JOIN ${C} c ON x.content_type = 'comment' AND x.content_id = c.id WHERE ${mine}`, mineArgs);
+    await conn.query(`DELETE c FROM ${C} c WHERE ${mine}`, mineArgs);
+  }
+  if (hasPosts) {
+    if (ok(`${L}.post_id`)) await conn.query(`DELETE x FROM ${L} x JOIN ${P} p ON p.id = x.post_id WHERE p.mb_id = ?`, [mbId]);
+    if (ok(`${R}.content_type`, `${R}.content_id`)) await conn.query(`DELETE x FROM ${R} x JOIN ${P} p ON x.content_type = 'community' AND x.content_id = p.id WHERE p.mb_id = ?`, [mbId]);
+    await conn.query(`DELETE FROM ${P} WHERE mb_id = ?`, [mbId]);
+  }
+}
+
 /**
  * Password, e-mail and 회원 탈퇴 done by Nest itself (no PHP call): the rules and side effects of the retired PHP files
  * api/account_security.php, api/withdraw.php and notification_settings.php action=withdraw_social (live since 2026-11-12).
@@ -153,7 +186,7 @@ export class AccountSecurityNativeService {
     let committed = false;
     try {
       await conn.query('START TRANSACTION');
-      const tables = [...new Set([...WITHDRAW_BY_MB_NO, ...WITHDRAW_BY_MB_ID].map(([t]) => t)), 'gangnamunni_admins'];
+      const tables = [...new Set([...WITHDRAW_BY_MB_NO, ...WITHDRAW_BY_MB_ID].map(([t]) => t)), 'gangnamunni_admins', ...COMMUNITY_PURGE_TABLES];
       const [crows] = (await conn.query('SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (?)', [tables])) as any;
       const has = new Set((crows as any[]).map((r) => `${s(r.t)}.${s(r.c)}`));
       // table and column names come only from the constant lists
@@ -165,6 +198,7 @@ export class AccountSecurityNativeService {
       const [srows] = (await conn.query('SELECT hms_user_id FROM member_sync WHERE mb_no = ? OR mb_id = ? LIMIT 1', [mbNo, id])) as any;
       const hmsId = Number((srows as any[])[0]?.hms_user_id) || 0;
       if (hmsId > 0) await conn.query('UPDATE users SET status = 0 WHERE id = ?', [hmsId]);
+      if (communityPurgeEnabled()) await purgeCommunity(conn, has, id);
       if (profile) {
         for (const [t, c] of WITHDRAW_BY_MB_NO) await del(t, c, mbNo);
         for (const [t, c] of WITHDRAW_BY_MB_ID) await del(t, c, id);
