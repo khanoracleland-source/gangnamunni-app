@@ -1,5 +1,5 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { membersEnabled, membersWriteEnabled, membersPasswordEnabled, membersActivityEnabled, membersStatusEnabled, notificationsEnabled, notificationsSendEnabled, notificationsScheduleEnabled } from '../admin-auth/admin.guard';
+import { alertsEnabled, membersEnabled, membersWriteEnabled, membersPasswordEnabled, membersActivityEnabled, membersStatusEnabled, notificationsEnabled, notificationsSendEnabled, notificationsScheduleEnabled } from '../admin-auth/admin.guard';
 import { AdminGuard, adminsEnabled, doctorsEnabled, doctorsWriteEnabled, doctorsOrderEnabled, doctorsDeleteEnabled, bookingsEnabled, bookingsWriteEnabled, consultationsEnabled, consultationsWriteEnabled, paymentsEnabled, paymentsRefundEnabled, adminsWriteEnabled, hospitalsDeleteEnabled, hospitalsDocumentsEnabled, hospitalsDoctorsEnabled, hospitalsEnabled, hospitalsImagesEnabled, hospitalsReviewEnabled, hospitalsOrderEnabled, hospitalsTreatmentsEnabled, hospitalApplyEnabled, hospitalsTreatmentsImagesEnabled, hospitalsTreatmentsPricesEnabled, hospitalsTreatmentsQuestionsEnabled, hospitalsTreatmentsRemoveEnabled, hospitalsWriteEnabled, ScopedAdminRequest, treatmentsEnabled, treatmentsImagesEnabled, treatmentsWriteEnabled, treatmentUnitsEnabled, treatmentUnitsWriteEnabled, moderationEnabled, moderationWriteEnabled, moderationEditEnabled, moderationDeleteEnabled, bannersEnabled, bannersWriteEnabled, categoryBoardEnabled, categoryBoardWriteEnabled } from '../admin-auth/admin.guard';
 
 @Controller('v1/me')
@@ -21,6 +21,6 @@ export class MeController {
       moderation: moderationEnabled(), moderationWrite: moderationWriteEnabled(), moderationEdit: moderationEditEnabled(), moderationDelete: moderationDeleteEnabled(),
       banners: bannersEnabled(), bannersWrite: bannersWriteEnabled(), categoryBoard: categoryBoardEnabled(), categoryBoardWrite: categoryBoardWriteEnabled(),
       members: membersEnabled(), membersWrite: membersWriteEnabled(), membersPassword: membersPasswordEnabled(), membersActivity: membersActivityEnabled(), membersStatus: membersStatusEnabled(),
-      notifications: notificationsEnabled(), notificationsSend: notificationsSendEnabled(), notificationsSchedule: notificationsScheduleEnabled() } };
+      alerts: alertsEnabled(), notifications: notificationsEnabled(), notificationsSend: notificationsSendEnabled(), notificationsSchedule: notificationsScheduleEnabled() } };
   }
 }

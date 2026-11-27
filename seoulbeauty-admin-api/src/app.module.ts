@@ -20,6 +20,7 @@ import { BannersModule } from './banners/banners.module';
 import { CategoryBoardModule } from './category-board/category-board.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { MembersModule } from './members/members.module';
+import { AlertsModule } from './alerts/alerts.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthController } from './health/health.controller';
 
@@ -47,6 +48,7 @@ import { HealthController } from './health/health.controller';
     CategoryBoardModule,
     MembersModule,
     NotificationsModule,
+    AlertsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

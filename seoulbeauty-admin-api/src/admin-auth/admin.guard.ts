@@ -716,3 +716,15 @@ export class NotificationsScheduleEnabledGuard implements CanActivate {
     return true;
   }
 }
+
+/** The admin's own alert inbox (bell in the top bar). Only the exact value "1" turns it on. */
+export const alertsEnabled = (): boolean => process.env.ADMIN_ALERTS_ENABLED === '1';
+
+/** With ADMIN_ALERTS_ENABLED off the alert routes answer 404 as if they did not exist. */
+@Injectable()
+export class AlertsEnabledGuard implements CanActivate {
+  canActivate(): boolean {
+    if (!adminPanelEnabled() || !alertsEnabled()) throw new NotFoundException({ error: 'not_found' });
+    return true;
+  }
+}
