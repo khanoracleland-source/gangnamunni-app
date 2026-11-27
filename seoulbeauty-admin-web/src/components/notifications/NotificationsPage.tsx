@@ -11,6 +11,7 @@ import { fetchMe, type Me } from "@/lib/api";
 import { PHP_ADMIN_URL } from "@/lib/config";
 import { formatNumber } from "@/lib/format";
 import { useT } from "@/lib/locale";
+import SendTab from "./SendTab";
 import { NOTIFICATION_TABS, TAB_LABEL, notificationsHref, parseTab, type NotificationTab } from "@/lib/notifications";
 import { fetchNotificationOptions, fetchScheduled, type NotificationOptions } from "@/lib/notificationsApi";
 
@@ -71,6 +72,7 @@ function Board({ me }: { me: Me }) {
   const [options, setOptions] = useState<NotificationOptions | null>(null);
   const [optionsFailed, setOptionsFailed] = useState(false);
   const [plans, setPlans] = useState<number | null>(null);
+  const [planTick, setPlanTick] = useState(0);
   const scheduleOn = me.features.notificationsSchedule;
 
   useEffect(() => {
@@ -92,7 +94,7 @@ function Board({ me }: { me: Me }) {
       if (!c.signal.aborted && res.ok) setPlans(res.data.items.filter((p) => p.status === "pending").length);
     });
     return () => c.abort();
-  }, [scheduleOn]);
+  }, [scheduleOn, planTick]);
 
   // Roving tabindex: only the open tab is in the Tab order; the arrow keys (and Home/End) move between the tabs.
   const onTabKey = (e: KeyboardEvent<HTMLElement>) => {
@@ -139,10 +141,14 @@ function Board({ me }: { me: Me }) {
       </div>
 
       <div id="nt-panel" role="tabpanel" aria-labelledby={`nt-tab-${tab}`} className="nt-panel">
-        <div className="nt-soon">
-          <Icon name="phone" size={20} />
-          <p>{t("nt.soon")}</p>
-        </div>
+        {tab === "send" ? (
+          <SendTab me={me} options={options} onPlanned={() => { setPlanTick((n) => n + 1); router.replace(notificationsHref("scheduled"), { scroll: false }); }} />
+        ) : (
+          <div className="nt-soon">
+            <Icon name="phone" size={20} />
+            <p>{t("nt.soon")}</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -52,3 +52,33 @@ export function writeErrorKey(res: WriteFailure): MessageKey {
   };
   return known[res.error] ?? "nt.err.generic";
 }
+
+export const MAX_SELECTED = 500;
+export const MAX_TITLE = 200;
+export const MAX_MESSAGE = 1000;
+/** Member ids typed one per line or separated by commas, spaces or semicolons: each once, in the order typed. */
+export const parseMemberIds = (text: string): string[] => [...new Set(text.split(/[\s,;]+/).map((s) => s.trim()).filter((s) => s !== ""))];
+/** Length as the server counts it (code points, not UTF-16 units). */
+export const lengthOf = (s: string): number => Array.from(s).length;
+
+// ---- planned time: typed as Korean wall time in a datetime-local input ("YYYY-MM-DDTHH:mm") --------------------------------------
+const p2 = (n: number): string => String(n).padStart(2, "0");
+/** A moment as Korean wall time, in the format of a datetime-local input. */
+export function kstInput(ms: number): string {
+  const d = new Date(ms + 9 * 3600_000);
+  return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}T${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
+}
+/** The hour (0-23) of a "YYYY-MM-DDTHH:mm" text; null when it is not one. */
+export function hourOfInput(v: string): number | null {
+  const m = /^\d{4}-\d{2}-\d{2}T(\d{2}):\d{2}$/.exec(v);
+  return m ? Number(m[1]) : null;
+}
+export const isNightInput = (v: string): boolean => { const h = hourOfInput(v); return h !== null && (h >= NIGHT_START || h < NIGHT_END); };
+/** The same text moved to the next 08:00 (the same day when it is before 08:00, else the next day). */
+export function morningOf(v: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):/.exec(v);
+  if (!m) return v;
+  const [y, mo, d, h] = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
+  const day = new Date(Date.UTC(y, mo - 1, d + (h >= NIGHT_END ? 1 : 0)));
+  return `${day.getUTCFullYear()}-${p2(day.getUTCMonth() + 1)}-${p2(day.getUTCDate())}T08:00`;
+}
